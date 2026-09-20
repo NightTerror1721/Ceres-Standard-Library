@@ -179,7 +179,9 @@ foreach ($name in $tests) {
         $out = "build/$name.O$level.out"
         $err = "build/$name.O$level.err"
         $cmdLine = "$sources -I include -O$level -Werror -o build/$name.O$level.cres --run --clean --ceres-path `"$CeresDir`""
-        $code = Invoke-Tool $Ceresc $cmdLine $out $err
+        $stdin = "tests/expected/$name.stdin"        # what the program reads from the terminal, if it reads
+        if (-not (Test-Path $stdin)) { $stdin = '' }
+        $code = Invoke-Tool $Ceresc $cmdLine $out $err $stdin
         $errText = Read-Text $err
 
         if ($code -ne 0) {

@@ -1,0 +1,12 @@
+-- devices with nothing attached to a window
+-- keyboard event fields
+-- gamepad dead zone
+-- gamepad axis to float
+-- keys: pressed, held, released
+-- keys: a tap inside one frame
+-- keys: several at once and the edges
+-- keys: scancodes out of range
+-- mouse and pad state without a device
+-- key to character
+-- terminal fallback
+ALL PASSED 129/129

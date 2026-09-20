@@ -1,0 +1,22 @@
+-- yes or no
+ok? [y/N] ok? [Y/n] ok? [Y/n] ok? [y/N] ok? [y/N] please answer y or n
+ok? [y/N] ok? [y/N] -- a numbered choice
+pick
+  1) red
+  2) green
+  3) blue
+> pick
+  1) red
+  2) green
+  3) blue
+> enter a number from 1 to 3
+pick
+  1) red
+  2) green
+  3) blue
+> enter a number from 1 to 3
+pick
+  1) red
+  2) green
+  3) blue
+> ALL PASSED 8/8

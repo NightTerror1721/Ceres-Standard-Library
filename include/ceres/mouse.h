@@ -1,6 +1,9 @@
 // Mouse device (0xFF060000). Reports deltas (consumed on read), absolute
 // position, a button mask and the wheel.
 // See CeresASM docs/07-IO-Devices-and-Ports.md.
+//
+// The deltas and the wheel are CONSUMED by reading them: read each once per frame, ideally all at
+// once with mouse_poll(). Without a window nothing ever arrives.
 
 #pragma once
 
@@ -26,3 +29,16 @@ int mouse_x(void);          // absolute position
 int mouse_y(void);
 int mouse_wheel(void);      // signed, consumed on read
 int mouse_buttons(void);    // mask: MOUSE_BTN_*
+
+// Everything at once, with the button edges worked out against the previous call.
+struct mouse_state
+{
+    int x, y;                    // absolute position
+    int dx, dy;                  // movement since the previous mouse_poll()
+    int wheel;                   // wheel movement since the previous mouse_poll()
+    unsigned int buttons;        // held now
+    unsigned int pressed;        // went down since the previous poll
+    unsigned int released;       // went up since the previous poll
+};
+
+void mouse_poll(struct mouse_state* out);

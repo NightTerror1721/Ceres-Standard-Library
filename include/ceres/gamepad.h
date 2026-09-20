@@ -1,6 +1,6 @@
 // Gamepad device (0xFF080000). Polled rather than event-driven: read the button
 // mask and axes every frame.
-// See CeresASM docs/07-IO-Devices-and-Ports.md.
+// See CeresASM docs/07-IO-Devices-and-Ports.md. Without a window nothing ever arrives.
 
 #pragma once
 
@@ -34,6 +34,9 @@
 #define GP_BTN_DPAD_LEFT      0x2000
 #define GP_BTN_DPAD_RIGHT     0x4000
 
+#define GP_AXIS_MAX           32767
+#define GP_DEFAULT_DEADZONE   4096      // about an eighth of the range: sticks rarely rest at exactly 0
+
 int  gp_changed(void);         // nonzero if the state changed; clears the flag
 unsigned int gp_buttons(void); // button bitmask
 int  gp_left_x(void);          // signed sticks (-32768..32767)
@@ -42,3 +45,21 @@ int  gp_right_x(void);
 int  gp_right_y(void);
 int  gp_left_trigger(void);    // triggers (0..32767)
 int  gp_right_trigger(void);
+
+// Stick handling. gp_deadzone() zeroes |v| <= zone and rescales the rest so the output still reaches
+// the full range (a stick just outside the zone reads near 0, not a sudden jump to `zone`).
+// gp_axis_f() maps -32768..32767 to -1.0..1.0.
+int   gp_deadzone(int v, int zone);
+float gp_axis_f(int v);
+
+// Everything at once, with the button edges worked out against the previous call.
+struct gp_state
+{
+    unsigned int buttons;        // held now
+    unsigned int pressed;        // went down since the previous gp_poll()
+    unsigned int released;       // went up since the previous gp_poll()
+    int lx, ly, rx, ry;          // sticks, raw
+    int lt, rt;                  // triggers, raw
+};
+
+void gp_poll(struct gp_state* out);
