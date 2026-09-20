@@ -8,16 +8,6 @@ int putchar(int c)
     return c;
 }
 
-int getchar(void)
-{
-    return term_read_char(TERM_READ_UNTIL_STATUS);
-}
-
-int getchar_nb(void)
-{
-    return term_read_char(TERM_READ_NON_BLOCKING);    // -1 when nothing is buffered
-}
-
 int putstr(const char* s)
 {
     int n = 0;
@@ -89,11 +79,4 @@ int putbin(unsigned int v, int bits)
         text[i] = (v & (1u << (bits - 1 - i))) ? '1' : '0';
     term_write(text, bits);
     return bits;
-}
-
-int putfloat(float f, int decimals)
-{
-    if (decimals < 0) decimals = 0;
-    if (decimals > 9) decimals = 9;
-    return printf("%.*f", decimals, f);
 }

@@ -4,6 +4,11 @@
 // user interrupts, delivered only while unmasked (__builtin_sti()).
 // See Ceres-C docs/10-Interrupts.md and CeresASM docs/08-Interrupts-and-Exceptions.md.
 
+#define IRQ_COUNT        64     // the size of the vector table
+#define IRQ_USER_FIRST   16     // 0-15 are exceptions, always deliverable; 16-63 are masked unless sti
+#define IRQ_USER_LAST    63
+#define IRQ_DEVICE_LAST  21     // the last number a device raises today (the gamepad)
+
 enum IRQ
 {
     IRQ_TRAP        = 1,

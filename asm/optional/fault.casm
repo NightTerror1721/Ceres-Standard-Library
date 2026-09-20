@@ -1,0 +1,53 @@
+// Fault reporting: binds the exception vectors to handlers that report and stop. OPTIONAL - the linker
+// allows one binding per vector for the whole program, so this object is only linked by a program that
+// calls sys_install_fault_handlers() (src/ceres/fault.c references __fault_present below, which is what
+// pulls this file in).
+//
+// On entry to a handler the machine has pushed what it needs to come back: [sp] is the address of the
+// interrupted instruction and [sp + 4] the flags. These handlers never return, so they save nothing and
+// never `iret`: they hand (irq, pc, flags) to the C reporter, which stops the machine. The reporter is
+// reached through the pointer __fault_target that sys_install_fault_handlers() fills in: a hand-written unit
+// can only name C functions by importing the build's generated declarations file, whose name depends on
+// the output, and a library file cannot know it.
+
+interrupt Trap:               __fault_trap
+interrupt IllegalInstruction: __fault_illegal
+interrupt MemoryFault:        __fault_memory
+interrupt StackOverflow:      __fault_stack
+interrupt AlignmentFault:     __fault_align
+interrupt PageFault:          __fault_page
+
+@data
+
+global let __fault_target: u32 = 0     // the address of the C function that reports (set by fault.c)
+
+@text
+
+global __fault_present:         // never called for its effect: naming it links this object
+    ret
+
+__fault_trap:
+    li r0, 1
+    jp __fault_common
+__fault_illegal:
+    li r0, 2
+    jp __fault_common
+__fault_memory:
+    li r0, 3
+    jp __fault_common
+__fault_stack:
+    li r0, 5
+    jp __fault_common
+__fault_align:
+    li r0, 6
+    jp __fault_common
+__fault_page:
+    li r0, 7
+    jp __fault_common
+
+__fault_common:
+    ldr r1, [sp]                // the pc that was interrupted
+    ldr r2, [sp + 4]            // the flags
+    ldv r3, __fault_target      // the C reporter: (irq, pc, flags) in r0, r1, r2
+    call r3                     // reports and stops the machine
+    halt

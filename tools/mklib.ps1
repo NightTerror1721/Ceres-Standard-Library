@@ -64,7 +64,7 @@ if ($code -ne 0) { Fail 'ceresc could not compile the library' build/mklib.compi
 
 # ---- 2. CASM -> objects ---------------------------------------------------------------------------
 
-$units = @($AllC | ForEach-Object { [System.IO.Path]::ChangeExtension($_, '.casm') }) + $Asm
+$units = @($AllC | ForEach-Object { [System.IO.Path]::ChangeExtension($_, '.casm') }) + $Asm + $OptionalAsm
 Write-Host "assembling $($units.Count) units" -ForegroundColor Cyan
 foreach ($u in $units) {
     $o = "$objDir/$(Flat $u).cobj"

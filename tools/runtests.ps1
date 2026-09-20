@@ -10,8 +10,8 @@
     signature of a word store into a byte register - therefore fails a test. All three levels must
     print the same thing: that is how an optimizer bug becomes a failing build instead of a surprise.
 
-    Optional modules are not linked unless a test asks for them with a `// USE: irq` line in its
-    first lines. They bind interrupt vectors, and the linker allows one binding per number for the
+    Optional modules (irq, fault) are not linked unless a test asks for them with a `// USE: irq` line
+    in its first lines. They bind interrupt vectors, and the linker allows one binding per number for the
     whole program, so a program that binds its own must not carry them.
 
     The tools are found next to this checkout (../../Ceres-C, ../../CeresASM) or through the

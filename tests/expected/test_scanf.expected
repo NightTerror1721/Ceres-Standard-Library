@@ -1,0 +1,11 @@
+-- integers
+-- sizes
+-- floating point
+-- strings and characters
+-- scansets
+-- literals and white space
+-- widths
+-- suppression, %n and %p
+-- the end of the input
+-- vsscanf
+ALL PASSED 117/117

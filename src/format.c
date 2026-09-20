@@ -26,6 +26,8 @@ struct __sink
     unsigned int cap;           // memory sinks: its size
     unsigned int len;           // characters produced so far (also what %n reports)
     unsigned int used;          // terminal sink: bytes waiting in chunk
+    void (*ext)(void*, int);    // external sink (fprintf): a function and its context
+    void* ext_ctx;
     char chunk[TERM_CHUNK];     // terminal sink: goes out as ONE block transfer instead of a store per byte
 };
 
@@ -42,6 +44,12 @@ static void sink_term(struct __sink* s, int c)
         term_flush_chunk(s);
     s->chunk[s->used] = (char)c;
     s->used = s->used + 1;
+    s->len++;
+}
+
+static void sink_ext(struct __sink* s, int c)
+{
+    s->ext(s->ext_ctx, c);
     s->len++;
 }
 
@@ -425,6 +433,14 @@ int vprintf(const char* fmt, va_list ap)
     int r = vformat(&s, fmt, ap);
     term_flush_chunk(&s);
     return r;
+}
+
+// The engine into any character sink: what vfprintf (fprintf.c) uses to write to a stream.
+int __vformat_ext(void (*put)(void*, int), void* ctx, const char* fmt, va_list ap)
+{
+    struct __sink s;
+    s.put = sink_ext; s.buf = 0; s.cap = 0; s.len = 0; s.used = 0; s.ext = put; s.ext_ctx = ctx;
+    return vformat(&s, fmt, ap);
 }
 
 int printf(const char* fmt, ...)

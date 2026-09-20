@@ -16,10 +16,6 @@
 // A handler runs with user interrupts masked, on the 1 KiB system stack: keep it short, and do not
 // call printf or malloc from it. It gets the interrupt number.
 
-#define IRQ_COUNT       64
-#define IRQ_USER_FIRST  16
-#define IRQ_DEVICE_LAST 21     // the last number a device raises today (gamepad)
-
 typedef void (*irq_handler_t)(int irq);
 
 int  irq_attach(int irq, irq_handler_t handler);   // 16..21; -1 for any other number

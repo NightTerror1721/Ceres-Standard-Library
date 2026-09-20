@@ -32,12 +32,18 @@ $Ceres = Join-Path $CeresDir 'ceres.exe'
 
 # Modules that bind interrupt vectors are opt-in: the linker allows ONE `interrupt N` binding per
 # number in a whole program, so a program that binds its own must not carry them.
-$Optional = @{ irq = 'src/ceres/irq.c' }
+# Each module is a list of files: a C file and, for fault, the assembly that binds its vectors.
+$Optional = @{
+    irq   = @('src/ceres/irq.c')
+    fault = @('src/ceres/fault.c', 'asm/optional/fault.casm')
+}
+$OptionalFiles = @($Optional.Values | ForEach-Object { $_ })
+$OptionalAsm = @($OptionalFiles | Where-Object { $_ -like '*.casm' })
 
 function Get-Rel([string]$full) { return $full.Substring($Root.Length + 1).Replace('\', '/') }
 
 $AllC = @(Get-ChildItem src -Recurse -Filter *.c | ForEach-Object { Get-Rel $_.FullName } | Sort-Object)
-$CoreC = @($AllC | Where-Object { $Optional.Values -notcontains $_ })
+$CoreC = @($AllC | Where-Object { $OptionalFiles -notcontains $_ })
 $Asm = @(Get-ChildItem asm -Filter *.casm -ErrorAction SilentlyContinue | ForEach-Object { Get-Rel $_.FullName } | Sort-Object)
 
 New-Item -ItemType Directory -Force build | Out-Null
