@@ -1,0 +1,5 @@
+-- size
+-- colours
+-- drawing without a window
+-- a blit of another size resizes the surface
+ALL PASSED 25/25

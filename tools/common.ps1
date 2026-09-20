@@ -51,6 +51,8 @@ function Invoke-Tool([string]$exe, [string]$argLine, [string]$outFile, [string]$
         -RedirectStandardOutput $outFile -RedirectStandardError $errFile @extra
     $null = $p.Handle                         # without this ExitCode can come back empty
     if (-not $p.WaitForExit($TimeoutSeconds * 1000)) {
+        # ceresc starts `ceres` as a child: killing only ceresc would leave a hung VM holding the output files
+        try { & taskkill /T /F /PID $p.Id 2>$null | Out-Null } catch { }
         try { $p.Kill() } catch { }
         return -1
     }

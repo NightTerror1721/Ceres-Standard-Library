@@ -1,0 +1,8 @@
+-- size
+-- one sector
+-- the edges of the disk
+-- a buffer that is not aligned
+-- several sectors
+-- a run that leaves the disk
+-- flush
+ALL PASSED 52/52

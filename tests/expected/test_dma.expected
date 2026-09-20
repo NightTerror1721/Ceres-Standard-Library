@@ -1,0 +1,7 @@
+-- lengths
+-- unaligned source and destination
+-- zero length and the source
+-- asynchronous
+-- back to back
+-- words
+ALL PASSED 37/37
