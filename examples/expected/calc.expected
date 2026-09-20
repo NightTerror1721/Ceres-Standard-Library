@@ -1,0 +1,9 @@
+calc: number op number  (ops: + - * / % ^), number sqrt, or quit
+> = 15.5
+> = 1024
+> = 9
+> = 1
+> division by zero
+> ?
+> = 42
+> bye

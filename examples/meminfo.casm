@@ -1,0 +1,186 @@
+import "../build/examples/meminfo.decls.casm"
+
+@rodata
+let __ccstr0: u8[4] = "%s\n"
+let __ccstr1: u8[80] = "  %d block(s), %u bytes in use, %u free inside the heap, largest free block %u\n"
+let __ccstr2: u8[74] = "  the heap spans %#x - %#x (limit %#x); %u bytes remain before the stack\n"
+let __ccstr3: u8[1] = ""
+let __ccstr4: u8[13] = "at the start"
+let __ccstr5: u8[47] = "after malloc(1000), malloc(50000), malloc(300)"
+let __ccstr6: u8[18] = "  a=%p b=%p c=%p\n"
+let __ccstr7: u8[14] = "after free(b)"
+let __ccstr8: u8[25] = "after freeing everything"
+let __ccstr9: u8[16] = "heap_check: %s\n"
+let __ccstr10: u8[6] = "sound"
+let __ccstr11: u8[8] = "CORRUPT"
+
+@text
+
+// show_heap - examples/meminfo.c:9
+struct __frame_show_heap
+    outgoing0: u32
+    outgoing1: u32
+    outgoing2: u32
+    outgoing3: u32
+    slot0: u32[8]
+    slot1: u32
+    slot2: u32
+    slot3: u32
+    slot4: u32
+endstruct
+show_heap:
+    pushm 0x0100          // examples/meminfo.c:9
+    enter __frame_show_heap // examples/meminfo.c:9
+    mov r8, r0            // examples/meminfo.c:9
+.L0:
+    la r12, [sp + __frame_show_heap.slot0] // examples/meminfo.c:12
+    mov r0, r12           // examples/meminfo.c:12
+    call heap_stats       // examples/meminfo.c:12
+    la r12, __ccstr0      // examples/meminfo.c:13
+    mov r0, r12           // examples/meminfo.c:13
+    str [sp + 0], r8      // examples/meminfo.c:13
+    call printf           // examples/meminfo.c:13
+    mov r4, r0            // examples/meminfo.c:13
+    str [sp + __frame_show_heap.slot1], r4 // examples/meminfo.c:13
+    la r12, __ccstr1      // examples/meminfo.c:14
+    la r7, [sp + __frame_show_heap.slot0] // examples/meminfo.c:15
+    ldr r7, [r7 + 20]     // examples/meminfo.c:15
+    la r6, [sp + __frame_show_heap.slot0] // examples/meminfo.c:15
+    ldr r6, [r6 + 12]     // examples/meminfo.c:15
+    la r2, [sp + __frame_show_heap.slot0] // examples/meminfo.c:15
+    ldr r5, [r2 + 16]     // examples/meminfo.c:15
+    str [sp + __frame_show_heap.slot1], r5 // examples/meminfo.c:15
+    la r1, [sp + __frame_show_heap.slot0] // examples/meminfo.c:15
+    ldr r5, [r1 + 28]     // examples/meminfo.c:15
+    str [sp + __frame_show_heap.slot2], r5 // examples/meminfo.c:15
+    mov r0, r12           // examples/meminfo.c:14
+    str [sp + 0], r7      // examples/meminfo.c:14
+    str [sp + 4], r6      // examples/meminfo.c:14
+    ldr r4, [sp + __frame_show_heap.slot1] // examples/meminfo.c:14
+    str [sp + 8], r4      // examples/meminfo.c:14
+    ldr r4, [sp + __frame_show_heap.slot2] // examples/meminfo.c:14
+    str [sp + 12], r4     // examples/meminfo.c:14
+    call printf           // examples/meminfo.c:14
+    mov r4, r0            // examples/meminfo.c:14
+    str [sp + __frame_show_heap.slot1], r4 // examples/meminfo.c:14
+    la r4, __ccstr2       // examples/meminfo.c:16
+    str [sp + __frame_show_heap.slot1], r4 // examples/meminfo.c:16
+    la r6, [sp + __frame_show_heap.slot0] // examples/meminfo.c:17
+    ldr r5, [r6]          // examples/meminfo.c:17
+    str [sp + __frame_show_heap.slot2], r5 // examples/meminfo.c:17
+    la r6, [sp + __frame_show_heap.slot0] // examples/meminfo.c:17
+    ldr r5, [r6 + 4]      // examples/meminfo.c:17
+    str [sp + __frame_show_heap.slot3], r5 // examples/meminfo.c:17
+    la r12, [sp + __frame_show_heap.slot0] // examples/meminfo.c:17
+    ldr r5, [r12 + 8]     // examples/meminfo.c:17
+    str [sp + __frame_show_heap.slot4], r5 // examples/meminfo.c:17
+    call sys_stack_free   // examples/meminfo.c:17
+    mov r7, r0            // examples/meminfo.c:17
+    ldr r4, [sp + __frame_show_heap.slot1] // examples/meminfo.c:16
+    mov r0, r4            // examples/meminfo.c:16
+    ldr r4, [sp + __frame_show_heap.slot2] // examples/meminfo.c:16
+    str [sp + 0], r4      // examples/meminfo.c:16
+    ldr r4, [sp + __frame_show_heap.slot3] // examples/meminfo.c:16
+    str [sp + 4], r4      // examples/meminfo.c:16
+    ldr r4, [sp + __frame_show_heap.slot4] // examples/meminfo.c:16
+    str [sp + 8], r4      // examples/meminfo.c:16
+    str [sp + 12], r7     // examples/meminfo.c:16
+    call printf           // examples/meminfo.c:16
+    mov r4, r0            // examples/meminfo.c:16
+    str [sp + __frame_show_heap.slot1], r4 // examples/meminfo.c:16
+    leave                 // examples/meminfo.c:9
+    popm 0x0100           // examples/meminfo.c:9
+    ret                   // examples/meminfo.c:9
+
+// main - examples/meminfo.c:20
+struct __frame_main
+    outgoing0: u32
+    outgoing1: u32
+    outgoing2: u32
+    slot0: u32
+    slot1: u32
+    slot2: u32
+    slot3: u32
+endstruct
+global main:
+    enter __frame_main    // examples/meminfo.c:20
+.L0:
+    call sys_print_layout // examples/meminfo.c:22
+    la r12, __ccstr3      // examples/meminfo.c:23
+    mov r0, r12           // examples/meminfo.c:23
+    call puts             // examples/meminfo.c:23
+    mov r4, r0            // examples/meminfo.c:23
+    str [sp + __frame_main.slot0], r4 // examples/meminfo.c:23
+    la r12, __ccstr4      // examples/meminfo.c:24
+    mov r0, r12           // examples/meminfo.c:24
+    call show_heap        // examples/meminfo.c:24
+    li r12, 1000          // examples/meminfo.c:26
+    mov r0, r12           // examples/meminfo.c:26
+    call malloc           // examples/meminfo.c:26
+    mov r4, r0            // examples/meminfo.c:26
+    str [sp + __frame_main.slot0], r4 // examples/meminfo.c:26
+    li r12, 50000         // examples/meminfo.c:27
+    mov r0, r12           // examples/meminfo.c:27
+    call malloc           // examples/meminfo.c:27
+    mov r4, r0            // examples/meminfo.c:27
+    str [sp + __frame_main.slot1], r4 // examples/meminfo.c:27
+    li r12, 300           // examples/meminfo.c:28
+    mov r0, r12           // examples/meminfo.c:28
+    call malloc           // examples/meminfo.c:28
+    mov r4, r0            // examples/meminfo.c:28
+    str [sp + __frame_main.slot2], r4 // examples/meminfo.c:28
+    la r12, __ccstr5      // examples/meminfo.c:29
+    mov r0, r12           // examples/meminfo.c:29
+    call show_heap        // examples/meminfo.c:29
+    la r12, __ccstr6      // examples/meminfo.c:30
+    mov r0, r12           // examples/meminfo.c:30
+    ldr r4, [sp + __frame_main.slot0] // examples/meminfo.c:30
+    str [sp + 0], r4      // examples/meminfo.c:30
+    ldr r4, [sp + __frame_main.slot1] // examples/meminfo.c:30
+    str [sp + 4], r4      // examples/meminfo.c:30
+    ldr r4, [sp + __frame_main.slot2] // examples/meminfo.c:30
+    str [sp + 8], r4      // examples/meminfo.c:30
+    call printf           // examples/meminfo.c:30
+    mov r4, r0            // examples/meminfo.c:30
+    str [sp + __frame_main.slot3], r4 // examples/meminfo.c:30
+    ldr r4, [sp + __frame_main.slot1] // examples/meminfo.c:32
+    mov r0, r4            // examples/meminfo.c:32
+    call free             // examples/meminfo.c:32
+    la r12, __ccstr7      // examples/meminfo.c:33
+    mov r0, r12           // examples/meminfo.c:33
+    call show_heap        // examples/meminfo.c:33
+    ldr r4, [sp + __frame_main.slot0] // examples/meminfo.c:34
+    mov r0, r4            // examples/meminfo.c:34
+    call free             // examples/meminfo.c:34
+    ldr r4, [sp + __frame_main.slot2] // examples/meminfo.c:35
+    mov r0, r4            // examples/meminfo.c:35
+    call free             // examples/meminfo.c:35
+    la r12, __ccstr8      // examples/meminfo.c:36
+    mov r0, r12           // examples/meminfo.c:36
+    call show_heap        // examples/meminfo.c:36
+    la r4, __ccstr9       // examples/meminfo.c:37
+    str [sp + __frame_main.slot0], r4 // examples/meminfo.c:37
+    call heap_check       // examples/meminfo.c:37
+    mov r12, r0           // examples/meminfo.c:37
+    ifne r12, 0, .L2      // examples/meminfo.c:37
+.L1:
+    la r7, __ccstr10      // examples/meminfo.c:37
+    mov r12, r7           // examples/meminfo.c:37
+    jp .L3                // examples/meminfo.c:37
+.L2:
+    la r7, __ccstr11      // examples/meminfo.c:37
+    mov r12, r7           // examples/meminfo.c:37
+.L3:
+    ldr r4, [sp + __frame_main.slot0] // examples/meminfo.c:37
+    mov r0, r4            // examples/meminfo.c:37
+    str [sp + 0], r12     // examples/meminfo.c:37
+    call printf           // examples/meminfo.c:37
+    mov r4, r0            // examples/meminfo.c:37
+    str [sp + __frame_main.slot0], r4 // examples/meminfo.c:37
+    li r7, 0              // examples/meminfo.c:38
+    mov r0, r7            // examples/meminfo.c:38
+    leave                 // examples/meminfo.c:38
+    la r4, 0xFFFF0000     // examples/meminfo.c:38
+    li r5, 1              // examples/meminfo.c:38
+    strb [r4 + 0], r5     // examples/meminfo.c:38
+    halt                  // examples/meminfo.c:38
