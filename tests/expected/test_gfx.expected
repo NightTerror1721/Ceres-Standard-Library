@@ -1,0 +1,51 @@
+-- colour packing
+-- hsv
+-- mixing
+-- palette
+-- before init
+-- init
+-- pixels
+-- present headless
+-- init again resizes
+-- horizontal, vertical, diagonal
+-- a point, and both ends included
+-- the same pixels in either direction, and one pixel per step
+-- a shallow line has one pixel per column
+-- spans
+-- rectangles
+-- circle outline
+-- filled circle
+-- small and degenerate circles
+-- filled triangle geometry
+-- the order of the corners does not matter
+-- flat and degenerate triangles
+-- triangle outline
+-- a clip rectangle
+-- blits and text obey it too
+-- an empty clip draws nothing
+-- a clip larger than the surface is limited to it
+-- reset
+-- creating and freeing
+-- drawing goes to the target, and only there
+-- blit copies exactly
+-- blit partly outside
+-- a surface blitted onto itself
+-- a colour key
+-- scaled
+-- freeing the target
+-- the glyph table
+-- one character
+-- scaling
+-- strings
+-- printf
+-- measuring
+-- text into another surface keeps the caller's target and clip
+-- sprite
+-- flipped
+-- animation
+-- rectangles
+-- looking tiles up
+-- drawing the whole map
+-- scrolled by a camera
+-- shutdown
+ALL PASSED 284/284
