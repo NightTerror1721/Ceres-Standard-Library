@@ -253,20 +253,4 @@ void bcopy(const void* src, void* dst, size_t n) { memmove(dst, src, n); }
 char* index(const char* s, int c) { return strchr(s, c); }
 char* rindex(const char* s, int c) { return strrchr(s, c); }
 
-// ---- strerror: table indexed by a small errno-to-slot mapping ----
-char* strerror(int e)
-{
-    if (e == 0) return "Success";
-    if (e == 2) return "No such file or directory";
-    if (e == 5) return "Input/output error";
-    if (e == 9) return "Bad file descriptor";
-    if (e == 12) return "Out of memory";
-    if (e == 17) return "File exists";
-    if (e == 22) return "Invalid argument";
-    if (e == 24) return "Too many open files";
-    if (e == 28) return "No space left on device";
-    if (e == 33) return "Domain error";
-    if (e == 34) return "Result out of range";
-    if (e == 38) return "Function not implemented";
-    return "Unknown error";
-}
+// strerror() lives in errno.c, next to the error codes it describes.

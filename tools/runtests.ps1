@@ -134,7 +134,7 @@ foreach ($name in $tests) {
         if ($code -ne 0) {
             [void]$failures.Add("$name -O$level (exit $code)")
             Write-Host "  FAIL  $label  the build or the run failed (exit $code)" -ForegroundColor Red
-            ($errText -split "`r?`n") | Where-Object { $_ } | Select-Object -First 6 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }
+            ($errText -split "`r?`n") | Where-Object { $_ -and $_ -notmatch '^Wrote ' } | Select-Object -First 6 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }
             continue
         }
 
