@@ -1,0 +1,15 @@
+-- bump allocation
+-- it says no instead of running over
+-- marks
+-- zeroed memory and strings
+-- a buffer that is not aligned itself
+-- from the heap
+-- blocks
+-- free and reuse
+-- what it will not free
+-- clear
+-- blocks smaller than a pointer, and odd sizes
+-- a churn of allocations
+-- atomic operations
+-- critical sections
+ALL PASSED 109/109

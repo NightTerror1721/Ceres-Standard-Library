@@ -1,0 +1,40 @@
+-- log levels
+[error] error 1
+[warn] warning two
+[info] info xy
+[debug] debug now 3
+[error] only errors
+[info] back to info:  3.14
+-- hexdump
+00001000  41 42 43 00 45 46 47 48  49 4a 4b 4c 4d 4e 4f 50  |ABC.EFGHIJKLMNOP|
+00001010  70 77 7e 85 7f 93 9a a1  a8 af b6 bd c4 cb d2 d9  |pw~.............|
+00001020  e0 e7 ee f5 fc                                    |.....|
+fffffff0  48 69                                             |Hi|
+-- stack watermark
+-- spans count instructions
+-- ansi
+[3;5H|goto
+[1;1H|goto clamps to 1;1
+[31m|fg red
+[44m|bg blue
+[37m|fg white
+[31m|fg wraps to 1
+[38;5;200m|fg 200
+[48;5;16m|bg 16
+[38;5;44m|fg 300 wraps to 44
+[3A|up 3
+[12B|down 12
+[1C|right 1
+[80D|left 80
+|up 0 sends nothing
+|left -4 sends nothing
+[2K|clear line
+[s|save
+[u|restore
+[2J[H|clear
+[H|home
+[?25l|hide
+[?25h|show
+[1m|bold
+[0m|reset
+ALL PASSED 13/13

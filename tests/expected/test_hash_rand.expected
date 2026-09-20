@@ -1,0 +1,15 @@
+-- fnv1a
+-- djb2
+-- murmur3
+-- crc32
+-- adler32
+-- longer input, and unaligned input
+-- the exact stream
+-- same seed, same sequence
+-- the global generator
+-- range bounds
+-- uniformity
+-- no modulo bias
+-- float, chance, shuffle
+-- entropy
+ALL PASSED 70/70
