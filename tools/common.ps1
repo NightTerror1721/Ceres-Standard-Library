@@ -44,9 +44,11 @@ New-Item -ItemType Directory -Force build | Out-Null
 
 # ---- running a native tool with its stdout in a file (bytes preserved) -----------------------------
 
-function Invoke-Tool([string]$exe, [string]$argLine, [string]$outFile, [string]$errFile) {
+function Invoke-Tool([string]$exe, [string]$argLine, [string]$outFile, [string]$errFile, [string]$inFile = '') {
+    $extra = @{}
+    if ($inFile) { $extra['RedirectStandardInput'] = $inFile }      # the program's stdin comes from a file
     $p = Start-Process -FilePath $exe -ArgumentList $argLine -WorkingDirectory $Root -NoNewWindow -PassThru `
-        -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        -RedirectStandardOutput $outFile -RedirectStandardError $errFile @extra
     $null = $p.Handle                         # without this ExitCode can come back empty
     if (-not $p.WaitForExit($TimeoutSeconds * 1000)) {
         try { $p.Kill() } catch { }

@@ -98,6 +98,57 @@ if ($Headers) {
     if ($failures.Count -gt 0) { exit 1 } else { exit 0 }
 }
 
+# ---- the examples -------------------------------------------------------------------------------
+# Every examples/*.c must build with the whole library at -O2 -Werror. One that has an
+# examples/expected/<name>.expected is also run, with examples/expected/<name>.stdin (if there is one) as
+# its input, and its output compared byte for byte.
+
+function Test-Examples {
+    Write-Host "examples: build, and run those with an expected output" -ForegroundColor Cyan
+    New-Item -ItemType Directory -Force build/examples | Out-Null
+    $count = 0
+    $bad = 0
+    foreach ($ex in (Get-ChildItem examples -Filter *.c | Sort-Object Name)) {
+        $name = $ex.BaseName
+        $count++
+        $sources = ($CoreC + $Asm + "examples/$name.c") -join ' '
+        $expectedPath = "examples/expected/$name.expected"
+        $stdin = "examples/expected/$name.stdin"
+        if (-not (Test-Path $stdin)) { $stdin = '' }
+        if (Test-Path $expectedPath) {
+            # ceresc builds, links and runs in one go; the program reads its stdin from the .stdin file
+            $cmd = "$sources -I include -O2 -Werror -o build/examples/$name.cres --run --clean --ceres-path `"$CeresDir`""
+            $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err" $stdin
+        } else {
+            $cmd = "$sources -I include -O2 -Werror -S -o build/examples/$name.casm"   # only prove it compiles
+            $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err"
+        }
+        if ($code -ne 0) {
+            $bad++
+            [void]$failures.Add("example $name (build or run)")
+            Write-Host "  FAIL  $name  does not build or run" -ForegroundColor Red
+            (Read-Text "build/examples/$name.err") -split "`r?`n" | Where-Object { $_ -and $_ -notmatch '^Wrote ' } | Select-Object -First 6 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }
+            continue
+        }
+        if (-not (Test-Path $expectedPath)) { continue }
+        $actual = Get-ProgramOutput (Read-Text "build/examples/$name.out")
+        if ($Update) {
+            [System.IO.File]::WriteAllBytes("$Root\$expectedPath", $Latin1.GetBytes($actual))
+            Write-Host "  wrote $expectedPath ($($actual.Length) bytes)" -ForegroundColor Yellow
+        }
+        elseif (-not (Same $actual ((Read-Text $expectedPath) -replace "`r`n", "`n"))) {
+            $bad++
+            [void]$failures.Add("example $name (output)")
+            Write-Host "  FAIL  $name  output differs from $expectedPath" -ForegroundColor Red
+            Show-Difference ((Read-Text $expectedPath) -replace "`r`n", "`n") $actual
+        }
+    }
+    if ($bad -eq 0) {
+        Write-Host "  ok    $count examples" -ForegroundColor Green
+        $script:passed++
+    }
+}
+
 # ---- the tests ----------------------------------------------------------------------------------
 
 $tests = @(Get-ChildItem tests -Filter *.c | Sort-Object Name | ForEach-Object { $_.BaseName })
@@ -170,6 +221,7 @@ foreach ($name in $tests) {
 }
 
 Test-EachHeader
+Test-Examples
 
 Write-Host ""
 if ($failures.Count -eq 0) {
