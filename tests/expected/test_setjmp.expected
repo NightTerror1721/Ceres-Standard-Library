@@ -1,0 +1,7 @@
+-- a jump out of deep recursion
+-- the value delivered
+-- registers survive
+-- volatile locals keep their latest value
+-- a retry loop
+-- two buffers
+ALL PASSED 19/19

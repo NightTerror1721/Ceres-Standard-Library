@@ -1,0 +1,54 @@
+// setjmp / longjmp. jmp_buf is unsigned int[16]; 15 words are used:
+//   0..3   r8-r11        the registers a call must preserve
+//   4      fp
+//   5      sp            as it was on entry: it points at the return address
+//   6      pc            the return address, read from [sp]
+//   7..14  f8-f15        the float registers a call must preserve
+//
+// longjmp puts all of that back, adds 4 to sp (the `ret` it replaces would have popped the address)
+// and jumps to the saved pc with `val` in r0. As in C, a local variable changed after setjmp has an
+// indeterminate value unless it is volatile: the compiler keeps locals in r8-r11.
+@text
+
+global setjmp:
+    str [r0 + 0],  r8
+    str [r0 + 4],  r9
+    str [r0 + 8],  r10
+    str [r0 + 12], r11
+    str [r0 + 16], fp
+    str [r0 + 20], sp
+    ldr r1, [sp]
+    str [r0 + 24], r1
+    str [r0 + 28], f8
+    str [r0 + 32], f9
+    str [r0 + 36], f10
+    str [r0 + 40], f11
+    str [r0 + 44], f12
+    str [r0 + 48], f13
+    str [r0 + 52], f14
+    str [r0 + 56], f15
+    li  r0, 0
+    ret
+
+global longjmp:                 // (buf, val)
+    ldr r8,  [r0 + 0]
+    ldr r9,  [r0 + 4]
+    ldr r10, [r0 + 8]
+    ldr r11, [r0 + 12]
+    ldr fp,  [r0 + 16]
+    ldr f8,  [r0 + 28]
+    ldr f9,  [r0 + 32]
+    ldr f10, [r0 + 36]
+    ldr f11, [r0 + 40]
+    ldr f12, [r0 + 44]
+    ldr f13, [r0 + 48]
+    ldr f14, [r0 + 52]
+    ldr f15, [r0 + 56]
+    ldr r2,  [r0 + 24]          // the saved return address
+    ldr sp,  [r0 + 20]
+    add sp, sp, 4               // what `ret` would have popped
+    ifne r1, 0, .longjmp_nonzero
+    li  r1, 1                   // longjmp(buf, 0) returns 1, as in C
+.longjmp_nonzero:
+    mov r0, r1
+    jp  r2
