@@ -1,0 +1,15 @@
+-- strtol: decimal
+-- strtol: no number
+-- strtol: bases
+-- strtol: invalid base
+-- strtol: range
+-- strtoul
+-- atoi, atol
+-- strtof: plain numbers
+-- strtof: shapes
+-- strtof: exponents
+-- strtof: long inputs
+-- strtof: range
+-- strtof: inf and nan
+-- atof, strtod
+ALL PASSED 249/249

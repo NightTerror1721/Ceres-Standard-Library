@@ -1,0 +1,11 @@
+-- abs and div
+-- rand
+-- qsort: sizes and shapes
+-- qsort: element sizes
+-- bsearch
+-- itoa and utoa
+-- the process
+-- exit
+ALL PASSED 128/128
+atexit: second registered, runs first
+atexit: first registered, runs last
