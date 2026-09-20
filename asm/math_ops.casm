@@ -20,7 +20,12 @@ global ceil:
     fceil f0, f0
     ret
 
-global round:
+// `fround` rounds ties to EVEN: that is C's rint()/nearbyint(). C's round() (ties away from zero) is in math.c.
+global rint:
+    fround f0, f0
+    ret
+
+global nearbyint:
     fround f0, f0
     ret
 
@@ -40,8 +45,9 @@ global copysign:
     fcopysign f0, f0, f1
     ret
 
-global fma:
-    fma f0, f1, f2
+global fma:                     // x*y + z. The instruction ACCUMULATES: fd = fd + fs * ft
+    fma f2, f0, f1
+    mov f0, f2
     ret
 
 global rcp:
@@ -83,4 +89,48 @@ global float_bits:
 
 global float_from_bits:
     mtf f0, r0
+    ret
+
+global isfinite:                // neither infinity (bits 0, 7) nor NaN (bit 8): mask 1 + 128 + 256
+    fclass r1, f0
+    and    r0, r1, 385
+    ifne   r0, 0, .isfinite_no
+    li     r0, 1
+    ret
+.isfinite_no:
+    li     r0, 0
+    ret
+
+global isnormal:                // -normal and +normal: bits 1 and 6, mask 2 + 64
+    fclass r1, f0
+    and    r0, r1, 66
+    ifeq   r0, 0, .isnormal_no
+    li     r0, 1
+.isnormal_no:
+    ret
+
+// FP_INFINITE 1, FP_NAN 2, FP_NORMAL 3, FP_SUBNORMAL 4, FP_ZERO 5 (see math.h)
+global fpclassify:
+    fclass r1, f0
+    and    r0, r1, 129          // -inf, +inf
+    ifne   r0, 0, .fpclassify_inf
+    and    r0, r1, 256          // NaN
+    ifne   r0, 0, .fpclassify_nan
+    and    r0, r1, 24           // -0, +0
+    ifne   r0, 0, .fpclassify_zero
+    and    r0, r1, 36           // -subnormal, +subnormal
+    ifne   r0, 0, .fpclassify_sub
+    li     r0, 3
+    ret
+.fpclassify_inf:
+    li     r0, 1
+    ret
+.fpclassify_nan:
+    li     r0, 2
+    ret
+.fpclassify_zero:
+    li     r0, 5
+    ret
+.fpclassify_sub:
+    li     r0, 4
     ret
