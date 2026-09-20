@@ -1,6 +1,6 @@
 // USE: fault
-// The program's own code is read-only: storing into it is a MemoryFault. (The vector table and the BIOS
-// below the image are NOT protected against a plain store.)
+// The program's own code is read-only: storing into it is a MemoryFault. (test_fault_vector and
+// test_fault_null cover the vector table and the BIOS below the image.)
 #include "stdio.h"
 #include "ceres/sys.h"
 
