@@ -211,3 +211,13 @@ char* itoa(int v, char* buf, int base)
     }
     return utoa((unsigned int)v, buf, base);
 }
+
+// Fixed-point text of a float, `decimals` digits after the point (like "%.*f"). Needs a buffer of
+// sign + integer digits + point + decimals + NUL; a float below 1e10 with 9 decimals fits 32 bytes.
+char* ftoa(float v, char* buf, int decimals)
+{
+    if (decimals < 0) decimals = 0;
+    if (decimals > 9) decimals = 9;
+    sprintf(buf, "%.*f", decimals, v);
+    return buf;
+}

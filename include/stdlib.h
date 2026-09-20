@@ -70,3 +70,4 @@ int   system(const char* cmd);  // there is no shell: 0 for system(NULL), else -
 // ---- common non-standard helpers ----
 char* itoa(int v, char* buf, int base);            // base 2..36; a negative value is signed only in base 10
 char* utoa(unsigned int v, char* buf, int base);
+char* ftoa(float v, char* buf, int decimals);      // like "%.*f", decimals 0..9; the buffer must hold the whole text
