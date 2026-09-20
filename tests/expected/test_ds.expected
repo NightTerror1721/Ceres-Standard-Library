@@ -1,0 +1,37 @@
+-- list: empty
+-- list: order
+-- list: remove
+-- list: pop
+-- list: removing while walking
+-- vector: push and access
+-- vector: copy in, pop, clear
+-- vector: insert and remove
+-- vector: sort
+-- vector: reserve
+-- vector: structs
+-- ring: fill and drain
+-- ring: wrapping
+-- ring: bytes 128 and up come back unsigned
+-- ring: blocks and clear
+-- ring: a size that is not a power of two rounds down
+-- map: basics
+-- map: replace, NULL values
+-- map: the key is copied
+-- map: remove
+-- map: growing
+-- map: each
+-- map: remove many, then reuse
+-- map: clear
+-- map: keys that collide
+-- pqueue: order
+-- pqueue: a max queue, and popping without taking the value
+-- pqueue: records and a long random run
+-- bitset: single bits
+-- bitset: finding a free bit
+-- bitset: set all, and sizes at a word boundary
+-- strbuf: appending
+-- strbuf: printf-style
+-- strbuf: growing a long way
+-- strbuf: taking the memory
+-- nothing leaked
+ALL PASSED 1557/1557
