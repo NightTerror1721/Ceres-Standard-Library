@@ -1,0 +1,113 @@
+// memory.casm - the four hot memory primitives. Leaf routines: no frame, r0-r7 only.
+@text
+
+// void* memcpy(void* dst, const void* src, size_t n)   r0 = dst, r1 = src, r2 = n
+global memcpy:
+    mov  r4, r0                 // the return value
+    or   r5, r0, r1
+    and  r5, r5, 3
+    ifne r5, 0, .tail           // either pointer unaligned -> bytes only
+.words:
+    ifbl r2, 4, .tail
+    ldr  r6, [r1]
+    str  [r0], r6
+    add  r0, r0, 4
+    add  r1, r1, 4
+    sub  r2, r2, 4
+    jp   .words
+.tail:
+    ifeq r2, 0, .done
+    ldrb r6, [r1]
+    strb [r0], r6
+    add  r0, r0, 1
+    add  r1, r1, 1
+    sub  r2, r2, 1
+    jp   .tail
+.done:
+    mov  r0, r4
+    ret
+
+// void* memmove(void* dst, const void* src, size_t n)
+global memmove:
+    ifbe r0, r1, memcpy         // dst <= src: a forward copy is safe (tail call)
+    add  r4, r1, r2             // src + n
+    ifae r0, r4, memcpy         // dst >= src + n: no overlap
+    mov  r4, r0                 // overlap with dst > src: copy backwards
+    add  r0, r0, r2
+    add  r1, r1, r2
+.back:
+    ifeq r2, 0, .bdone
+    sub  r0, r0, 1
+    sub  r1, r1, 1
+    ldrb r6, [r1]
+    strb [r0], r6
+    sub  r2, r2, 1
+    jp   .back
+.bdone:
+    mov  r0, r4
+    ret
+
+// void* memset(void* dst, int c, size_t n)
+global memset:
+    mov  r4, r0
+    and  r1, r1, 255
+    la   r5, 0x01010101
+    mul  r5, r1, r5             // c replicated into all four bytes
+    and  r6, r0, 3
+    ifne r6, 0, .stail
+.swords:
+    ifbl r2, 4, .stail
+    str  [r0], r5
+    add  r0, r0, 4
+    sub  r2, r2, 4
+    jp   .swords
+.stail:
+    ifeq r2, 0, .sdone
+    strb [r0], r1
+    add  r0, r0, 1
+    sub  r2, r2, 1
+    jp   .stail
+.sdone:
+    mov  r0, r4
+    ret
+
+// int memcmp(const void* a, const void* b, size_t n)
+global memcmp:
+.cmp:
+    ifeq r2, 0, .equal
+    ldrb r4, [r0]
+    ldrb r5, [r1]
+    ifne r4, r5, .differ
+    add  r0, r0, 1
+    add  r1, r1, 1
+    sub  r2, r2, 1
+    jp   .cmp
+.differ:
+    sub  r0, r4, r5
+    ret
+.equal:
+    li   r0, 0
+    ret
+
+// size_t strlen(const char* s)
+global strlen:
+    mov  r1, r0
+.len:
+    ldrb r2, [r1]
+    ifeq r2, 0, .lend
+    add  r1, r1, 1
+    jp   .len
+.lend:
+    sub  r0, r1, r0
+    ret
+
+// void memset32(unsigned int* dst, unsigned int value, size_t count)   -- count in WORDS
+global memset32:
+.m32:
+    ifeq r2, 0, .m32done
+    str  [r0], r1
+    add  r0, r0, 4
+    sub  r2, r2, 1
+    jp   .m32
+.m32done:
+    ret

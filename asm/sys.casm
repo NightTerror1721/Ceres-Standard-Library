@@ -1,0 +1,46 @@
+// sys.casm - machine state C cannot see.
+@text
+global sys_sp:                  // the caller's stack pointer, as seen by this leaf
+    mov r0, sp
+    ret
+
+global irq_save:                // returns nonzero if user interrupts were enabled; masks them
+    push                        // pushf
+    pop  r0
+    and  r0, r0, 16             // the Interrupt flag is bit 4
+    cli
+    ret
+
+global irq_restore:             // pass irq_save's result
+    ifeq r0, 0, .off
+    sti
+.off:
+    ret
+
+global sys_heap_start:          // the first free byte above the program (linker symbol)
+    la r0, __heap_start
+    ret
+
+// void sys_get_layout(struct sys_layout* out)     r0 = out  (ten words, see ceres/sys.h)
+global sys_get_layout:
+    la  r1, __text_start
+    str [r0 + 0], r1
+    la  r1, __text_end
+    str [r0 + 4], r1
+    la  r1, __rodata_start
+    str [r0 + 8], r1
+    la  r1, __rodata_end
+    str [r0 + 12], r1
+    la  r1, __data_start
+    str [r0 + 16], r1
+    la  r1, __data_end
+    str [r0 + 20], r1
+    la  r1, __bss_start
+    str [r0 + 24], r1
+    la  r1, __bss_end
+    str [r0 + 28], r1
+    la  r1, __heap_start
+    str [r0 + 32], r1
+    mov r1, sp
+    str [r0 + 36], r1
+    ret

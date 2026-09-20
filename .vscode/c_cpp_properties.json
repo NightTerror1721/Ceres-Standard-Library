@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "RockPaperScissors",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__interrupt=",
+                "__interrupt_vector(int_num, isr)=",
+                "__builtin_sti()=",
+                "__builtin_cli()=",
+                "__builtin_halt()=",
+                "__builtin_va_list=void*"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ],
+    "version": 4
+}

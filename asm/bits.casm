@@ -1,0 +1,38 @@
+// bits.casm - the bit instructions C cannot reach. One instruction each, leaf, no frame.
+@text
+global bit_clz:                 // count leading zeros; 32 for 0
+    clz r0, r0
+    ret
+global bit_ctz:                 // count trailing zeros; 32 for 0  = 32 - clz(~x & (x - 1))
+    sub r1, r0, 1
+    not r2, r0
+    and r1, r1, r2
+    clz r1, r1
+    li  r2, 32
+    sub r0, r2, r1
+    ret
+global bit_popcount:
+    popcnt r0, r0
+    ret
+global bit_bswap:
+    bswap r0, r0
+    ret
+global bit_rotl:                // (x, n)
+    rol r0, r0, r1
+    ret
+global bit_rotr:
+    ror r0, r0, r1
+    ret
+global umulhi:                  // high 32 bits of the unsigned 64-bit product
+    mulh r0, r0, r1
+    ret
+global imulhi:
+    imulh r0, r0, r1
+    ret
+global fx_mul:                  // 16.16 fixed-point multiply, no overflow of the intermediate
+    imul  r2, r0, r1
+    imulh r3, r0, r1
+    shr   r2, r2, 16
+    shl   r3, r3, 16
+    or    r0, r2, r3
+    ret

@@ -1,0 +1,6 @@
+-- clz / ctz
+-- popcount / bswap
+-- rotations
+-- wide multiply
+-- helpers
+ALL PASSED 37/37

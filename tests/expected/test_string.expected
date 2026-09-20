@@ -1,0 +1,10 @@
+-- memcpy
+-- memmove
+-- memset / memcmp / memchr
+-- length, copy, concatenate
+-- compare
+-- search
+-- tokens
+-- case and reverse
+-- duplicates and errors
+ALL PASSED 254/254

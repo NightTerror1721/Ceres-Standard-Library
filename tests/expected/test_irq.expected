@@ -1,0 +1,6 @@
+-- attach
+-- timer interrupts
+-- detach
+-- critical sections
+-- wait for a flag
+ALL PASSED 17/17
