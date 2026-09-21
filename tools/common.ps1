@@ -34,7 +34,7 @@ $Ceres = Join-Path $CeresDir 'ceres.exe'
 # number in a whole program, so a program that binds its own must not carry them.
 # Each module is a list of files: a C file and, for fault, the assembly that binds its vectors.
 $Optional = @{
-    irq   = @('src/ceres/irq.c')
+    irq   = @('src/ceres/irq.c', 'src/ceres/game_halt.c', 'asm/optional/game_wait.casm')
     fault = @('src/ceres/fault.c', 'asm/optional/fault.casm')
 }
 $OptionalFiles = @($Optional.Values | ForEach-Object { $_ })

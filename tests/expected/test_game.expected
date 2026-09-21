@@ -1,0 +1,7 @@
+-- init
+-- a frame lasts at least its budget
+-- work is measured, and a heavy frame is over budget
+-- game_run
+-- game_run without callbacks
+-- a zero budget does not wait
+ALL PASSED 24/24

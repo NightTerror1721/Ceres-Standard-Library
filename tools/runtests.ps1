@@ -111,13 +111,27 @@ function Test-Examples {
     foreach ($ex in (Get-ChildItem examples -Filter *.c | Sort-Object Name)) {
         $name = $ex.BaseName
         $count++
-        $sources = ($CoreC + $Asm + "examples/$name.c") -join ' '
+        # optional modules, as for the tests: a `// USE: irq` line in the first lines of the example
+        $use = @()
+        foreach ($line in (Get-Content "examples/$name.c" -TotalCount 6)) {
+            if ($line -match '^s*//s*USE:s*(.+)$') { $use += ($Matches[1].Trim() -split 's+') }
+        }
+        $extra = @()
+        foreach ($u in $use) {
+            if (-not $Optional.ContainsKey($u)) { throw "examples/$name.c asks for an unknown module $u" }
+            $extra += $Optional[$u]
+        }
+        # extra compiler flags for the run that is compared (examples/expected/<name>.flags), e.g. a demo
+        # build that plays itself for a fixed number of frames
+        $flagsFile = "examples/expected/$name.flags"
+        $flags = if (Test-Path $flagsFile) { (Get-Content $flagsFile -Raw).Trim() } else { '' }
+        $sources = ($CoreC + $extra + $Asm + "examples/$name.c") -join ' '
         $expectedPath = "examples/expected/$name.expected"
         $stdin = "examples/expected/$name.stdin"
         if (-not (Test-Path $stdin)) { $stdin = '' }
         if (Test-Path $expectedPath) {
             # ceresc builds, links and runs in one go; the program reads its stdin from the .stdin file
-            $cmd = "$sources -I include -O2 -Werror -o build/examples/$name.cres --run --clean --ceres-path `"$CeresDir`""
+            $cmd = "$sources $flags -I include -O2 -Werror -o build/examples/$name.cres --run --clean --ceres-path `"$CeresDir`""
             $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err" $stdin
         } else {
             $cmd = "$sources -I include -O2 -Werror -S -o build/examples/$name.casm"   # only prove it compiles

@@ -1,0 +1,4 @@
+-- set up
+-- frames pass on the clock, not on instructions
+-- the timer is left disarmed
+ALL PASSED 9/9

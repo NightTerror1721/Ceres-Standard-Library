@@ -1,0 +1,14 @@
+// __game_sleep(ticks): arm the timer for `ticks`, enable interrupts and halt - in as few instructions as
+// the machine allows, because `sti` then `halt` is not atomic: a timer that expired before the halt would be
+// delivered first and the halt would then sleep on. With ticks >= 8 the timer cannot expire before the halt
+// (str, sti and halt are the only instructions left), and a halted machine advances it one tick a
+// millisecond. Returns when any interrupt has been handled, the timer's or another's. Part of the irq
+// module: it goes with src/ceres/game_halt.c.
+@text
+
+global __game_sleep:                // r0 = ticks
+    la   r1, 0xFF010008             // the timer's command register
+    str  [r1], r0
+    sti
+    halt
+    ret
