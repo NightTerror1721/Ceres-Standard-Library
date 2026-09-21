@@ -39,6 +39,16 @@ int line_read(char* buf, int max)
     for (;;)
     {
         int c = next_byte();
+        if (c < 0)
+        {
+            // The input ended. A last line with no newline is still a line; nothing at all is the end.
+            if (n == 0)
+            {
+                buf[0] = 0;
+                return -1;
+            }
+            break;
+        }
         if (c == '\r')
         {
             if (term_read_ready())
@@ -143,6 +153,8 @@ int read_choice(const char* prompt, const char* const* options, int n)
         int choice;
         if (read_int("> ", &choice) == 0 && choice >= 1 && choice <= n)
             return choice;
+        if (term_eof())
+            return -1;                   // nobody is left to answer
         printf("enter a number from 1 to %d\n", n);
     }
 }

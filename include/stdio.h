@@ -35,9 +35,12 @@ int  getchar_nb(void);                  // the byte if one is buffered, else -1:
 int  putstr(const char* s);             // write a NUL-terminated string; returns its length
 int  puts(const char* s);               // putstr + newline
 
-// The device has no end-of-input signal, so getchar() can never return EOF, and feof(stdin) is never
-// true: at the end of a piped input a read waits forever. Use getchar_nb() when the program has other
-// work to do, or give the user a way to say "done".
+// getchar() returns EOF, and feof(stdin) becomes true, once the input has ended: a pipe that ran dry, or
+// Ctrl-Z / Ctrl-D at a console. Until then it waits. Use getchar_nb() when the program has other work to do.
+
+// Declared here as well as in stdlib.h: a translation unit that declares exit() ends main by calling it, so
+// that returning n from main is exit(n) - the atexit handlers run and open files are flushed.
+void exit(int status);
 
 // ---- numbers, without the format engine (small and fast) ----
 int  putint(int v);                     // decimal, with sign

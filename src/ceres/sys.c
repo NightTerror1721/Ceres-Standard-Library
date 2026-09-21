@@ -3,11 +3,32 @@
 #include "ceres.h"
 #include "stdio.h"
 
-// The system-control device takes a command BYTE: 1 shuts the machine down, 2 resets it.
+// The system-control device takes a command: 1 shuts the machine down, 2 resets it. A shutdown written as a word
+// (or a halfword) carries the exit status in the second byte; written as a byte it is status 0.
 
 void sys_exit(void)
 {
-    mmio_w8(SYS_CTRL_BASE, 1);
+    mmio_w8(SYS_CTRL_CMD, 1);
+}
+
+void sys_exit_status(int status)
+{
+    mmio_w32(SYS_CTRL_CMD, ((unsigned int)status & 0xFFu) << 8 | 1u);
+}
+
+unsigned int sys_memory_size(void)
+{
+    return mmio_r32(SYS_CTRL_MEM_SIZE);
+}
+
+unsigned int sys_features(void)
+{
+    return mmio_r32(SYS_CTRL_FEATURES);
+}
+
+void sys_set_features(unsigned int features)
+{
+    mmio_w32(SYS_CTRL_FEATURES, features);
 }
 
 void sys_reset(void)
@@ -20,7 +41,7 @@ void sys_panic(const char* msg)
     putstr("panic: ");
     putstr(msg);
     putchar('\n');
-    sys_exit();
+    sys_exit_status(134);                // abnormal termination, like abort()
 }
 
 unsigned int sys_stack_free(void)

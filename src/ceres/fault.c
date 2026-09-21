@@ -49,5 +49,5 @@ static void fault_report(int irq, unsigned int pc, unsigned int flags)
         puthex(flags);
         putstr("\n");
     }
-    sys_exit();
+    sys_exit_status(139);                                // a fault ends the program the way a segmentation fault does
 }

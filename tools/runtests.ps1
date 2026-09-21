@@ -3,8 +3,9 @@
     Builds and runs the standard library's tests, and compares what they print.
 
 .DESCRIPTION
-    `ceres run` exits 0 on a clean halt and never with a value the program chose, so a test's verdict
-    is its TEXT. For every tests/<name>.c this compiles the test together with the whole library at
+    A test's verdict is its TEXT, and its exit status: `ceres run` exits with what main returned, which
+    must be 0 unless tests/expected/<name>.status says otherwise (a number on one line). For every
+    tests/<name>.c this compiles the test together with the whole library at
     -O0, -O1 and -O2, runs it, and requires the output to equal tests/expected/<name>.expected BYTE
     FOR BYTE (line endings aside: the Windows host turns "\n" into "\r\n"). A stray NUL - the
     signature of a word store into a byte register - therefore fails a test. All three levels must
@@ -129,6 +130,8 @@ function Test-Examples {
         $expectedPath = "examples/expected/$name.expected"
         $stdin = "examples/expected/$name.stdin"
         if (-not (Test-Path $stdin)) { $stdin = '' }
+        $statusFile = "examples/expected/$name.status"
+        $wantStatus = if (Test-Path $statusFile) { [int]((Read-Text $statusFile).Trim()) } else { 0 }
         if (Test-Path $expectedPath) {
             # ceresc builds, links and runs in one go; the program reads its stdin from the .stdin file
             $cmd = "$sources $flags -I include -O2 -Werror -o build/examples/$name.cres --run --clean --ceres-path `"$CeresDir`""
@@ -137,9 +140,9 @@ function Test-Examples {
             $cmd = "$sources -I include -O2 -Werror -S -o build/examples/$name.casm"   # only prove it compiles
             $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err"
         }
-        if ($code -ne 0) {
+        if ($code -ne $wantStatus) {
             $bad++
-            [void]$failures.Add("example $name (build or run)")
+            [void]$failures.Add("example $name (build or run, exit $code)")
             Write-Host "  FAIL  $name  does not build or run" -ForegroundColor Red
             (Read-Text "build/examples/$name.err") -split "`r?`n" | Where-Object { $_ -and $_ -notmatch '^Wrote ' } | Select-Object -First 6 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }
             continue
@@ -197,8 +200,10 @@ foreach ($name in $tests) {
         if (-not (Test-Path $stdin)) { $stdin = '' }
         $code = Invoke-Tool $Ceresc $cmdLine $out $err $stdin
         $errText = Read-Text $err
+        $statusFile = "tests/expected/$name.status"          # the exit status the test must end with (default 0)
+        $wantStatus = if (Test-Path $statusFile) { [int]((Read-Text $statusFile).Trim()) } else { 0 }
 
-        if ($code -ne 0) {
+        if ($code -ne $wantStatus) {
             [void]$failures.Add("$name -O$level (exit $code)")
             Write-Host "  FAIL  $label  the build or the run failed (exit $code)" -ForegroundColor Red
             ($errText -split "`r?`n") | Where-Object { $_ -and $_ -notmatch '^Wrote ' } | Select-Object -First 6 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }

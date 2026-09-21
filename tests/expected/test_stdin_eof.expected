@@ -1,0 +1,8 @@
+end before reading: 0
+chars=13 lines=2 feof=1 term_eof=1
+read again: -1
+scanf: -1
+fgets: NULL
+line_read: -1
+term_read: 0
+after clearerr: feof=0, getchar=-1, feof=1

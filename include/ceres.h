@@ -15,6 +15,7 @@
 #define MOUSE_BASE          0xFF060000
 #define DISPLAY_BASE        0xFF070000   // RGB32 pixels
 #define GAMEPAD_BASE        0xFF080000
+#define AUDIO_BASE          0xFF090000
 #define SYS_CTRL_BASE       0xFFFF0000
 
 // Volatile access with an explicit width. The width is part of the register's contract: the
@@ -42,5 +43,6 @@
 #define read_port(port, type) (*((volatile type*)(port)))
 #define write_port(port, type, value) (*((volatile type*)(port)) = (value))
 
-void sys_exit(void);      // halt the VM (write 1 to the system-control device)
+void sys_exit(void);      // halt the VM with status 0 (write 1 to the system-control device)
+void sys_exit_status(int status);   // halt it; the low eight bits of status are the exit status of `ceres run`
 void sys_reset(void);     // reset the VM (write 2 to the system-control device)

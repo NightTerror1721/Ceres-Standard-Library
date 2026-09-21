@@ -7,6 +7,27 @@ int term_read_ready(void)
     return check_status();
 }
 
+int term_eof(void)
+{
+    return (read_port(TERM_STATUS, TERM_STATUS_TYPE) & TERM_INPUT_EOF) != 0;
+}
+
+// Waits until a byte can be read (returns 1) or the input has ended (returns 0). The status word is read once
+// per turn: the end-of-input bit only sets while the ring is empty, so "no byte, and the end" is one snapshot.
+static int wait_for_input(enum term_read_mode_t mode)
+{
+    for (;;)
+    {
+        unsigned int status = read_port(TERM_STATUS, TERM_STATUS_TYPE);
+        if (status & TERM_INPUT_READY)
+            return 1;
+        if (status & TERM_INPUT_EOF)
+            return 0;
+        if (mode == TERM_READ_UNTIL_ISR)
+            wait_irq();
+    }
+}
+
 int term_bytes_available(void)
 {
     return (int)read_port(TERM_BYTES_AVAIL, TERM_BYTES_AVAIL_TYPE);
@@ -24,14 +45,10 @@ void term_write_char(int ch)
 
 int term_read_char(enum term_read_mode_t mode)
 {
-    if (mode == TERM_READ_UNTIL_STATUS)
+    if (mode == TERM_READ_UNTIL_STATUS || mode == TERM_READ_UNTIL_ISR)
     {
-        while (!check_status()) {}
-    }
-    else if (mode == TERM_READ_UNTIL_ISR)
-    {
-        while (!check_status())
-            wait_irq();
+        if (!wait_for_input(mode))
+            return -1;   // the input ended
     }
     else if (!check_status())
     {
@@ -54,14 +71,10 @@ int term_read(char* buf, int max, enum term_read_mode_t mode)
     if (!buf || max <= 0)
         return 0;
 
-    if (mode == TERM_READ_UNTIL_STATUS)
+    if (mode == TERM_READ_UNTIL_STATUS || mode == TERM_READ_UNTIL_ISR)
     {
-        while (!check_status()) {}
-    }
-    else if (mode == TERM_READ_UNTIL_ISR)
-    {
-        while (!check_status())
-            wait_irq();
+        if (!wait_for_input(mode))
+            return 0;    // the input ended
     }
 
     // Block-transfer up to `max` bytes. The device moves whatever is available

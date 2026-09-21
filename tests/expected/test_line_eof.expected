@@ -1,0 +1,11 @@
+line 1 (5): "first"
+line 2 (0): ""
+line 3 (9): "last line"
+ended after 3 lines, term_eof=1, buffer ""
+number? read_int: -1 (number stays 99)
+sure? [Y/n] read_yes_no default yes: 1
+sure? [y/N] read_yes_no default no: 0
+pick
+  1) alpha
+  2) beta
+> read_choice: -1

@@ -13,5 +13,5 @@ void __assert_fail(const char* expr, const char* file, int line)
     putstr(": assertion '");
     putstr(expr);
     putstr("' failed\n");
-    sys_exit();
+    sys_exit_status(134);                                // abnormal termination, like abort()
 }

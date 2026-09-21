@@ -4,8 +4,8 @@
 //
 // stdout and stderr are UNBUFFERED - every byte goes straight to the terminal - so printf, fprintf(stdout)
 // and putchar can never come out of order, and nothing is lost if the program stops without flushing.
-// stdin has no buffer either, only a one-character pushback for ungetc; a read waits for a byte, and the
-// terminal cannot report the end of its input, so feof(stdin) is never true.
+// stdin has no buffer either, only a one-character pushback for ungetc; a read waits for a byte, or for the
+// end of the input (the host closed stdin), which makes it return EOF and feof(stdin) true.
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
@@ -234,7 +234,15 @@ int fgetc(FILE* f)
         return c;
     }
     if (f->kind == FILE_TERM_IN)
-        return terminal_byte(1);                         // waits; the terminal never says "end"
+    {
+        int c = terminal_byte(1);                        // waits for a byte, or for the end of the input
+        if (c < 0)
+        {
+            f->eof = 1;
+            return EOF;
+        }
+        return c;
+    }
     if (f->kind == FILE_DISK)
     {
         int c = f->ops->getc(f);

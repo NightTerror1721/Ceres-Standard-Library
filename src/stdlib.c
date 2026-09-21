@@ -1,4 +1,4 @@
-// Arithmetic, pseudo-random numbers, sorting and searching, and the process. (Text to number is in
+// Arithmetic, pseudo-random numbers, sorting and searching, and the environment. (Text to number is in
 // strtox.c, dynamic memory in malloc.c.)
 #include "stdlib.h"
 #include "errno.h"
@@ -126,41 +126,7 @@ void* bsearch(const void* key, const void* base, size_t n, size_t size, int (*cm
     return 0;
 }
 
-// ---- the process ----
-
-#define ATEXIT_SLOTS 32
-static void (*atexit_table[ATEXIT_SLOTS])(void);
-static int atexit_count = 0;
-
-int atexit(void (*fn)(void))
-{
-    if (fn == 0 || atexit_count >= ATEXIT_SLOTS)
-        return -1;
-    atexit_table[atexit_count] = fn;
-    atexit_count++;
-    return 0;
-}
-
-void _Exit(int status)
-{
-    sys_exit();
-}
-
-void exit(int status)
-{
-    while (atexit_count > 0)
-    {
-        atexit_count--;                    // pop first: a handler that calls exit() must not run twice
-        atexit_table[atexit_count]();
-    }
-    sys_exit();
-}
-
-void abort(void)
-{
-    putstr("abort\n");
-    sys_exit();
-}
+// ---- the process ---- (exit, _Exit, abort and atexit are in exit.c)
 
 char* getenv(const char* name)
 {
