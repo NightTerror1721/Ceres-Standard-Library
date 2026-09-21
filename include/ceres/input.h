@@ -42,6 +42,15 @@ int key_released(int scancode);          // went up since the previous update
 int key_any_pressed(void);               // the first scancode that went down this frame, or 0
 int key_to_ascii(int scancode, int shift);   // US layout; 0 for a key with no character (arrows, F1...)
 
+// ---- typed text ----
+// key_to_ascii() guesses a character from a scancode for one layout. The keyboard also queues what the host's
+// layout really made of each keystroke - capitals, accents, dead keys, an input method - as Unicode code
+// points, apart from the key events. It is not part of input_update(): pop it whenever the program wants text.
+// Without a window (plain `ceres run`) nothing ever arrives.
+int  input_text_ready(void);             // nonzero when a typed character is waiting
+unsigned int input_text(void);           // the next one, as a code point; 0 when there is none
+int  utf8_encode(unsigned int code_point, char* out);   // writes 1 to 4 bytes (no NUL) and returns how many; 0 for an invalid code point
+
 // ---- mouse ----
 int mouse_pos_x(void);
 int mouse_pos_y(void);

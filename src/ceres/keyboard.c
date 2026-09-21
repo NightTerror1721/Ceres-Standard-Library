@@ -5,6 +5,16 @@ int kbd_event_ready(void)
     return (mmio_r32(KBD_STATUS) & KBD_EVENT_READY) != 0;
 }
 
+int kbd_text_ready(void)
+{
+    return (mmio_r32(KBD_STATUS) & KBD_TEXT_READY) != 0;
+}
+
+unsigned int kbd_read_text(void)
+{
+    return mmio_r32(KBD_TEXT);          // pops one; 0 when the queue is empty
+}
+
 unsigned int kbd_read_event(void)
 {
     return mmio_r32(KBD_EVENT);         // pops one; 0 when the queue is empty

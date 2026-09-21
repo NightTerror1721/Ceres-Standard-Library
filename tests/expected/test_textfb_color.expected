@@ -1,0 +1,20 @@
+-- attributes
+[31;44mA[93;40mB[0mcd  
+      
+      
+-- copy and scroll carry the colours
+[31;44mA[93;40mB[0mcd  
+[31;44mA[93;40mB[0mcd  
+      
+[31;44mA[93;40mB[0mcd  
+      
+      
+-- a clear takes the current attribute
+[37;42m......[0m
+[37;42m......[0m
+[37;42m......[0m
+-- a frame with no colour is plain text
+      
+plain 
+      
+ALL PASSED 16/16

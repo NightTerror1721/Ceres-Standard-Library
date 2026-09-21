@@ -4,8 +4,13 @@
 #include "string.h"
 
 static char* grid;
+static unsigned char* attrs;                 // one attribute per cell, alongside the characters
 static int cols;
 static int rows;
+static unsigned char current_attr;           // what drawing gives the cells it writes
+static int attrs_used;                       // some cell was given a non-zero attribute since the last clear
+
+#define FB_BLOCK_CMD_ATTRS 3
 
 int fb_init(int width, int height)
 {
@@ -18,31 +23,57 @@ int fb_init(int width, int height)
         return -1;
 
     char* fresh = (char*)malloc((size_t)width * (size_t)height);
-    if (fresh == 0)
+    unsigned char* fresh_attrs = (unsigned char*)malloc((size_t)width * (size_t)height);
+    if (fresh == 0 || fresh_attrs == 0)
+    {
+        free(fresh);
+        free(fresh_attrs);
         return -1;
+    }
     free(grid);
+    free(attrs);
     grid = fresh;
+    attrs = fresh_attrs;
     cols = width;
     rows = height;
     memset(grid, ' ', (size_t)cols * (size_t)rows);
+    memset(attrs, 0, (size_t)cols * (size_t)rows);
+    attrs_used = 0;
     return 0;
 }
 
 void fb_shutdown(void)
 {
     free(grid);
+    free(attrs);
     grid = 0;
+    attrs = 0;
     cols = 0;
     rows = 0;
+    attrs_used = 0;
 }
 
 int fb_cols(void) { return cols; }
 int fb_rows(void) { return rows; }
 
+void fb_set_attr(unsigned char attr)
+{
+    current_attr = attr;
+}
+
+unsigned char fb_attr(void)
+{
+    return current_attr;
+}
+
 void fb_clear(char c)
 {
     if (grid != 0)
+    {
         memset(grid, c, (size_t)cols * (size_t)rows);
+        memset(attrs, current_attr, (size_t)cols * (size_t)rows);
+        attrs_used = current_attr != 0;
+    }
 }
 
 void fb_present(void)
@@ -53,13 +84,36 @@ void fb_present(void)
     mmio_w32(FB_BLOCK_ADDR, (unsigned int)grid);
     mmio_w32(FB_BLOCK_LEN, (unsigned int)(cols * rows));
     mmio_w32(FB_BLOCK_CMD, 2);                            // the whole grid in one transfer
+    if (attrs_used)
+    {
+        mmio_w32(FB_BLOCK_ADDR, (unsigned int)attrs);     // and, if anything is coloured, its attributes in another
+        mmio_w32(FB_BLOCK_LEN, (unsigned int)(cols * rows));
+        mmio_w32(FB_BLOCK_CMD, FB_BLOCK_CMD_ATTRS);
+    }
     mmio_w32(FB_CMD, FB_CMD_PRESENT);
+}
+
+void fb_put_attr(int x, int y, char c, unsigned char attr)
+{
+    if (grid != 0 && x >= 0 && x < cols && y >= 0 && y < rows)
+    {
+        grid[y * cols + x] = c;
+        attrs[y * cols + x] = attr;
+        if (attr != 0)
+            attrs_used = 1;
+    }
+}
+
+unsigned char fb_get_attr(int x, int y)
+{
+    if (grid != 0 && x >= 0 && x < cols && y >= 0 && y < rows)
+        return attrs[y * cols + x];
+    return 0;
 }
 
 void fb_put(int x, int y, char c)
 {
-    if (grid != 0 && x >= 0 && x < cols && y >= 0 && y < rows)
-        grid[y * cols + x] = c;
+    fb_put_attr(x, y, c, current_attr);
 }
 
 char fb_get(int x, int y)
@@ -158,7 +212,7 @@ void fb_copy(int dx, int dy, int sx, int sy, int w, int h)
     }
     for (int j = first_row; j != last_row; j += row_step)
         for (int i = first_col; i != last_col; i += col_step)
-            fb_put(dx + i, dy + j, fb_get(sx + i, sy + j));
+            fb_put_attr(dx + i, dy + j, fb_get(sx + i, sy + j), fb_get_attr(sx + i, sy + j));
 }
 
 void fb_scroll(int dy)
@@ -173,12 +227,18 @@ void fb_scroll(int dy)
     if (dy > 0)
     {
         memmove(grid, grid + dy * cols, (size_t)((rows - dy) * cols));
+        memmove(attrs, attrs + dy * cols, (size_t)((rows - dy) * cols));
         memset(grid + (rows - dy) * cols, ' ', (size_t)(dy * cols));
+        memset(attrs + (rows - dy) * cols, current_attr, (size_t)(dy * cols));
     }
     else
     {
         int n = -dy;
         memmove(grid + n * cols, grid, (size_t)((rows - n) * cols));
+        memmove(attrs + n * cols, attrs, (size_t)((rows - n) * cols));
         memset(grid, ' ', (size_t)(n * cols));
+        memset(attrs, current_attr, (size_t)(n * cols));
     }
+    if (current_attr != 0)
+        attrs_used = 1;
 }

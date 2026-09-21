@@ -1,0 +1,4 @@
+before fflush(NULL): flushed file on the disk: no
+after fflush(NULL):  flushed file on the disk: yes
+main returns with two files still open
+at exit, after the sync: closed-by-nobody file is on the disk: yes

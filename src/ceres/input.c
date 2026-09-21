@@ -69,6 +69,49 @@ static const char punct_plain[] = "-=[]\\#;'`,./";
 static const char punct_shift[] = "_+{}|~:\"~<>?";
 static const char digit_shift[] = "!@#$%^&*()";      // shifted 1 2 3 4 5 6 7 8 9 0
 
+int input_text_ready(void)
+{
+    return kbd_text_ready();
+}
+
+unsigned int input_text(void)
+{
+    return kbd_read_text();
+}
+
+int utf8_encode(unsigned int cp, char* out)
+{
+    if (cp < 0x80u)
+    {
+        out[0] = (char)cp;
+        return 1;
+    }
+    if (cp < 0x800u)
+    {
+        out[0] = (char)(0xC0u | (cp >> 6));
+        out[1] = (char)(0x80u | (cp & 0x3Fu));
+        return 2;
+    }
+    if (cp >= 0xD800u && cp <= 0xDFFFu)
+        return 0;                                        // a surrogate is not a character
+    if (cp < 0x10000u)
+    {
+        out[0] = (char)(0xE0u | (cp >> 12));
+        out[1] = (char)(0x80u | ((cp >> 6) & 0x3Fu));
+        out[2] = (char)(0x80u | (cp & 0x3Fu));
+        return 3;
+    }
+    if (cp <= 0x10FFFFu)
+    {
+        out[0] = (char)(0xF0u | (cp >> 18));
+        out[1] = (char)(0x80u | ((cp >> 12) & 0x3Fu));
+        out[2] = (char)(0x80u | ((cp >> 6) & 0x3Fu));
+        out[3] = (char)(0x80u | (cp & 0x3Fu));
+        return 4;
+    }
+    return 0;
+}
+
 int key_to_ascii(int scancode, int shift)
 {
     if (scancode >= KEY_A && scancode <= KEY_Z)

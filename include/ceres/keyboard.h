@@ -13,18 +13,22 @@
 
 #define KBD_STATUS         (KEYBOARD_BASE + 0x00)  // read: bit0 set when an event is queued
 #define KBD_EVENT          (KEYBOARD_BASE + 0x04)  // read: pop one event
+#define KBD_TEXT           (KEYBOARD_BASE + 0x08)  // read: pop one typed character, as a Unicode code point
 #define KBD_BLOCK_READ_CNT (KEYBOARD_BASE + 0x10)  // read: events the last block read drained
 #define KBD_BLOCK_ADDR     (KEYBOARD_BASE + 0xF0)
 #define KBD_BLOCK_LEN      (KEYBOARD_BASE + 0xF4)
 #define KBD_BLOCK_CMD      (KEYBOARD_BASE + 0xF8)  // write: 1 drains the queue into RAM
 
 #define KBD_EVENT_READY     0x01
+#define KBD_TEXT_READY      0x02              // a typed character is queued
 #define KBD_EVENT_PRESSED   0x80000000u   // bit31: 1 = pressed, 0 = released
 #define KBD_EVENT_CODE_MASK 0x7FFFFFFFu   // bits 30:0 hold the key code
 #define KBD_BLOCK_CMD_READ  0x01
 #define KBD_QUEUE_SIZE      64            // events the device can hold
 
 int  kbd_event_ready(void);              // nonzero when an event is queued
+int  kbd_text_ready(void);               // nonzero when a typed character is queued
+unsigned int kbd_read_text(void);        // pop one typed character (a Unicode code point); 0 when empty
 unsigned int kbd_read_event(void);       // pop one event; 0 when empty
 int  kbd_is_pressed(unsigned int event); // nonzero if the pressed bit is set
 int  kbd_keycode(unsigned int event);    // bits 30:0

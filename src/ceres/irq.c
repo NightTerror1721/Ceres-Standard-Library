@@ -48,6 +48,7 @@ IRQ_STUB(18)   // DMA transfer complete
 IRQ_STUB(19)   // keyboard event
 IRQ_STUB(20)   // mouse motion
 IRQ_STUB(21)   // gamepad state change
+IRQ_STUB(22)   // a tone has finished
 
 const char* irq_name(int n)
 {
@@ -68,6 +69,7 @@ const char* irq_name(int n)
         case 19: return "Keyboard";
         case 20: return "Mouse";
         case 21: return "Gamepad";
+        case 22: return "Audio";
         default: break;
     }
     if (n >= IRQ_USER_FIRST && n < IRQ_COUNT)

@@ -17,6 +17,8 @@ static struct __file stdin_file  = { FILE_TERM_IN,  1, 0, 0, 0, -1, 0, 0, 0, 0, 
 static struct __file stdout_file = { FILE_TERM_OUT, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 0 };
 static struct __file stderr_file = { FILE_TERM_ERR, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 0 };
 
+void (*__file_flush_all_hook)(void) = 0;
+
 FILE* stdin = &stdin_file;
 FILE* stdout = &stdout_file;
 FILE* stderr = &stderr_file;
@@ -105,7 +107,13 @@ int fclose(FILE* f)
 
 int fflush(FILE* f)
 {
-    if (f != 0 && f->kind == FILE_DISK)
+    if (f == 0)
+    {
+        if (__file_flush_all_hook != 0)
+            __file_flush_all_hook();                     // every open disk file
+        return 0;
+    }
+    if (f->kind == FILE_DISK)
         return f->ops->flush(f);                         // to the disk
     return 0;                                            // nothing else is ever held back
 }

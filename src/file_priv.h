@@ -29,7 +29,7 @@ struct __file
     int kind;
     int readable;
     int writable;
-    int eof;              // a read hit the end (never set on stdin: the terminal cannot signal one)
+    int eof;              // a read hit the end (on stdin: the host closed the input and it was all read)
     int error;
     int unget;            // one pushed-back character, or -1
     int owned;            // the struct came from malloc: fclose frees it
@@ -45,6 +45,10 @@ struct __file
     int temporary;        // tmpfile(): the file is removed on close
     char name[24];        // ... and this is its name
 };
+
+// Set by the first fopen() to the function that writes every open disk file out (fs_sync). fflush(NULL) calls it,
+// and so does exit(), through atexit: a program that never opens a file carries none of it.
+extern void (*__file_flush_all_hook)(void);
 
 int __file_parse_mode(const char* mode, int* readable, int* writable, int* truncate, int* append);   // "r" "w" "a" + optional "+" and "b"; 0 ok
 int __file_putc(struct __file* f, int c);        // one byte to any writable stream

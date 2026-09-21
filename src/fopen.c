@@ -54,6 +54,28 @@ static int disk_flush(struct __file* f)
 
 static const struct __file_ops disk_ops = { disk_getc, disk_putc, disk_seek, disk_tell, disk_close, disk_flush };
 
+// ---- the end of the program ----
+
+// A disk file is buffered by CeresFS, and the program may end without closing it. C closes every open stream at
+// exit; the first fopen registers this with atexit (and with fflush(NULL)), so the data and the sizes reach the
+// disk whichever way the program ends by exit() or a return from main.
+static int registered;
+
+static void sync_all(void)
+{
+    fs_sync();
+}
+
+static void note_open(void)
+{
+    if (!registered)
+    {
+        registered = 1;
+        atexit(sync_all);
+        __file_flush_all_hook = sync_all;
+    }
+}
+
 // ---- opening ----
 
 // The CeresFS flags a mode asks for.
@@ -103,6 +125,7 @@ FILE* fopen(const char* path, const char* mode)
         return 0;
     }
     init_disk_file(f, fd, readable, writable, append);
+    note_open();
     return f;
 }
 
@@ -127,6 +150,7 @@ FILE* freopen(const char* path, const char* mode, FILE* f)
         return 0;
     }
     init_disk_file(f, fd, readable, writable, append);
+    note_open();
     return f;
 }
 
@@ -155,6 +179,7 @@ FILE* tmpfile(void)
         init_disk_file(f, fd, 1, 1, 0);
         f->temporary = 1;
         strcpy(f->name, name);
+        note_open();
         return f;
     }
     errno = EEXIST;
