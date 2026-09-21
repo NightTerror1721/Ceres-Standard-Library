@@ -1,0 +1,5 @@
+-- each class, every value
+-- the classes partition the printable characters
+-- tolower and toupper
+-- isascii and toascii
+ALL PASSED 22/22
