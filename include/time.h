@@ -22,6 +22,7 @@ struct tm
     int tm_yday;     // 0..365
     int tm_isdst;    // always 0
 };
+_Static_assert(sizeof(struct tm) == 36, "struct tm is nine words");
 
 // time() reads the wall clock (the timer device's clock register) - the ONE non-deterministic value in
 // the machine, so a test must not depend on what it returns.
@@ -57,6 +58,8 @@ struct timespec
     time_t tv_sec;
     long tv_nsec;    // 0..999999999
 };
+
+_Static_assert(sizeof(struct timespec) == 8, "a timespec is two words");
 
 #define TIME_UTC       1
 #define TIME_MONOTONIC 2

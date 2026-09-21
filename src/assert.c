@@ -7,11 +7,13 @@ void __abort_now(void);                                  // exit.c: the SIGABRT 
 // Called by assert() when its expression is 0. It reports with putstr/putint rather than printf:
 // a failing assert may be a symptom of a broken heap or format engine, and the report must not
 // depend on either.
-void __assert_fail(const char* expr, const char* file, int line)
+void __assert_fail(const char* expr, const char* file, int line, const char* func)
 {
     putstr(file);
     putchar(':');
     putint(line);
+    putstr(": ");
+    putstr(func);
     putstr(": assertion '");
     putstr(expr);
     putstr("' failed\n");

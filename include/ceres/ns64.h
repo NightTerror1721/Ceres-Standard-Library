@@ -19,6 +19,8 @@ struct ns64
     unsigned int hi;     // the high 32 bits
 };
 
+_Static_assert(sizeof(struct ns64) == 8, "an ns64 is two words");
+
 struct ns64 ns64_make(unsigned int lo, unsigned int hi);
 struct ns64 ns64_from_u32(unsigned int v);
 

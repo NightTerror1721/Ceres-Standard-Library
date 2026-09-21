@@ -1,4 +1,4 @@
-// assert(): silent while true, one line and a stop when false, and NDEBUG removes it.
+// assert(): silent while true, one line (naming the function) and a stop when false, and NDEBUG removes it.
 #include "ceres/test.h"
 #include "assert.h"
 
@@ -29,7 +29,7 @@ int main(void)
 
     TEST_SECTION("a failed assertion");
     int verdict = test_summary();
-    assert(touch(0) == 1);           // prints "<file>:<line>: assertion 'touch(0) == 1' failed" and stops
+    assert(touch(0) == 1);           // prints "<file>:<line>: main: assertion 'touch(0) == 1' failed" and stops
     putstr("NOT REACHED\n");
     return verdict;
 }
