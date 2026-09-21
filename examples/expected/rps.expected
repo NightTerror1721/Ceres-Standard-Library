@@ -1,0 +1,17 @@
+Best of three. Type the number of your move.
+your move
+  1) rock
+  2) paper
+  3) scissors
+> round 1: you play rock, the computer plays paper: the computer wins the round
+your move
+  1) rock
+  2) paper
+  3) scissors
+> round 2: you play paper, the computer plays scissors: the computer wins the round
+your move
+  1) rock
+  2) paper
+  3) scissors
+> round 3: you play scissors, the computer plays scissors: a draw
+final score 0 - 2: the computer wins
