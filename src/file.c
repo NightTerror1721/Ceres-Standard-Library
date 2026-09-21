@@ -1,5 +1,6 @@
-// The FILE layer over the terminal and over memory (fmemopen). Files on the disk need a file system
-// (ceres/fs.h): until there is one, fopen() fails with ENOSYS.
+// The FILE layer over the terminal, over memory (fmemopen) and - through the operations table a disk
+// stream carries - over CeresFS files. fopen() and friends are in fopen.c, so that a program that never
+// opens a file does not link the file system.
 //
 // stdout and stderr are UNBUFFERED - every byte goes straight to the terminal - so printf, fprintf(stdout)
 // and putchar can never come out of order, and nothing is lost if the program stops without flushing.
@@ -27,38 +28,8 @@ int __file_is_terminal_out(struct __file* f)
 
 // ---- opening and closing ----
 
-FILE* fopen(const char* path, const char* mode)
-{
-    errno = ENOSYS;                                      // no file system yet
-    return 0;
-}
-
-FILE* freopen(const char* path, const char* mode, FILE* f)
-{
-    errno = ENOSYS;
-    return 0;
-}
-
-FILE* tmpfile(void)
-{
-    errno = ENOSYS;
-    return 0;
-}
-
-int remove(const char* path)
-{
-    errno = ENOSYS;
-    return -1;
-}
-
-int rename(const char* from, const char* to)
-{
-    errno = ENOSYS;
-    return -1;
-}
-
 // Parses "r", "w", "a", each with an optional '+' and 'b' in either order after the letter.
-static int parse_mode(const char* mode, int* readable, int* writable, int* truncate, int* append)
+int __file_parse_mode(const char* mode, int* readable, int* writable, int* truncate, int* append)
 {
     if (mode == 0)
         return -1;
@@ -83,7 +54,7 @@ static int parse_mode(const char* mode, int* readable, int* writable, int* trunc
 FILE* fmemopen(void* buf, size_t size, const char* mode)
 {
     int readable, writable, truncate, append;
-    if (buf == 0 || size == 0 || parse_mode(mode, &readable, &writable, &truncate, &append) != 0)
+    if (buf == 0 || size == 0 || __file_parse_mode(mode, &readable, &writable, &truncate, &append) != 0)
     {
         errno = EINVAL;
         return 0;
@@ -124,14 +95,19 @@ int fclose(FILE* f)
 {
     if (f == 0)
         return EOF;
+    int result = 0;
+    if (f->kind == FILE_DISK)
+        result = f->ops->close(f);
     if (f->owned)
         free(f);
-    return 0;                                            // the three terminal streams stay open
+    return result == 0 ? 0 : EOF;                        // the three terminal streams stay open
 }
 
 int fflush(FILE* f)
 {
-    return 0;                                            // nothing is ever held back
+    if (f != 0 && f->kind == FILE_DISK)
+        return f->ops->flush(f);                         // to the disk
+    return 0;                                            // nothing else is ever held back
 }
 
 int setvbuf(FILE* f, char* buf, int mode, size_t size)
@@ -170,6 +146,15 @@ int __file_putc(struct __file* f, int c)
         {
             f->len = f->pos;
             memory_terminate(f);
+        }
+        return c & 0xFF;
+    }
+    if (f->kind == FILE_DISK)
+    {
+        if (f->ops->putc(f, c) < 0)
+        {
+            f->error = 1;
+            return EOF;
         }
         return c & 0xFF;
     }
@@ -250,6 +235,16 @@ int fgetc(FILE* f)
     }
     if (f->kind == FILE_TERM_IN)
         return terminal_byte(1);                         // waits; the terminal never says "end"
+    if (f->kind == FILE_DISK)
+    {
+        int c = f->ops->getc(f);
+        if (c < 0)
+        {
+            f->eof = 1;
+            return EOF;
+        }
+        return c;
+    }
     if (f->pos >= f->len)
     {
         f->eof = 1;
@@ -362,6 +357,16 @@ int getline(char** line, size_t* cap, FILE* f)
 
 int fseek(FILE* f, int offset, int whence)
 {
+    if (f != 0 && f->kind == FILE_DISK)
+    {
+        if (whence == SEEK_CUR && f->unget >= 0)
+            offset--;                                    // the pushed-back character has been read already
+        f->unget = -1;
+        if (f->ops->seek(f, offset, whence) != 0)
+            return -1;
+        f->eof = 0;
+        return 0;
+    }
     if (f == 0 || f->kind != FILE_MEMORY)
     {
         errno = ESPIPE;                                  // a terminal cannot be sought
@@ -390,6 +395,8 @@ int fseek(FILE* f, int offset, int whence)
 
 int ftell(FILE* f)
 {
+    if (f != 0 && f->kind == FILE_DISK)
+        return f->ops->tell(f) - (f->unget >= 0 ? 1 : 0);
     if (f == 0 || f->kind != FILE_MEMORY)
     {
         errno = ESPIPE;

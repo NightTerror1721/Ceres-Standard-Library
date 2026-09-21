@@ -4,7 +4,7 @@
 -- fscanf and getline on memory
 -- append and update modes
 -- what a stream refuses
--- no file system yet
+-- no file system on the disk
 -- stdout and stderr
 to stdout 1
 to stderr 2

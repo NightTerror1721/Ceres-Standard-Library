@@ -1,0 +1,32 @@
+-- an unformatted disk
+-- format
+-- an empty file system
+-- create, write, read
+-- errors
+-- the name is case sensitive and exact
+-- a file over several sectors
+-- overwrite in the middle, then grow
+-- exactly a whole sector, and two
+-- append
+-- truncate gives the space back
+-- one writer or any number of readers
+-- eight files at a time
+-- rename
+-- listing
+-- the disk fills up
+-- what was written to a full disk reads back
+-- the directory fills up
+-- unmount and mount again
+-- the bytes really are on the disk
+-- formatting starts over
+-- many files, some removed, others added into the gaps
+-- fopen on a missing file
+-- write text, read it back
+-- seek, tell, rewind, ungetc
+-- append and update
+-- records, numbers, lines
+-- remove and rename through stdio
+-- tmpfile and freopen
+-- streams and the file system share the limits
+-- nothing left behind
+ALL PASSED 357/357

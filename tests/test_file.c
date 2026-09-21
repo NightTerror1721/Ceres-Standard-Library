@@ -1,5 +1,5 @@
 // Streams: memory streams (fmemopen) in every mode, the terminal streams, ungetc, getline, and the
-// functions that fail with ENOSYS until there is a file system. stdin is tests/expected/test_file.stdin
+// the disk functions on a disk with no file system (ENODEV; test_disk_fs covers the real thing). stdin is tests/expected/test_file.stdin
 // (under 64 bytes: the host pushes it into a 64-byte ring as fast as it can).
 #include "ceres/test.h"
 #include "errno.h"
@@ -176,17 +176,17 @@ int main(void)
     CHECK_EQ(fgetc(0), EOF);
     CHECK_EQ(fputc('x', 0), EOF);
 
-    TEST_SECTION("no file system yet");
+    TEST_SECTION("no file system on the disk");
     errno = 0;
     CHECK(fopen("data.txt", "r") == 0);
-    CHECK_EQ(errno, ENOSYS);
+    CHECK_EQ(errno, ENODEV);                                      // nothing formatted or mounted
     errno = 0;
     CHECK(freopen("data.txt", "r", stdin) == 0);
-    CHECK_EQ(errno, ENOSYS);
+    CHECK_EQ(errno, ENOSYS);                                      // only a disk stream can be reopened
     CHECK(tmpfile() == 0);
     errno = 0;
     CHECK_EQ(remove("data.txt"), -1);
-    CHECK_EQ(errno, ENOSYS);
+    CHECK_EQ(errno, ENODEV);
     CHECK_EQ(rename("a", "b"), -1);
     CHECK_EQ(setvbuf(stdout, 0, _IOFBF, 100), 0);                 // accepted, and nothing changes
     setbuf(stdout, 0);

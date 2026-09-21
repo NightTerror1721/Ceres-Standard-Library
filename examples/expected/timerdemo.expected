@@ -1,0 +1,10 @@
+3 timers waiting
+tick 1
+tick 2
+tick 3
+one-shot at 10000
+tick 4
+tick 5
+stop at 16000
+1 timer left (the repeating one)
+took at least 16000 ticks

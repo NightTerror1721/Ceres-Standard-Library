@@ -4,8 +4,9 @@
 #include "stdarg.h"
 
 // Console I/O over the terminal device (see ceres/terminal.h), formatted input and output, and streams
-// (FILE) over the terminal and over memory. Files on the disk need a file system: until ceres/fs.h
-// exists, fopen() fails with ENOSYS.
+// (FILE) over the terminal, over memory, and over files on the disk (CeresFS, ceres/fs.h). A disk must
+// carry a CeresFS before fopen() can work: call fs_format() once, or fs_mount() for a disk that has one;
+// otherwise fopen() fails with ENODEV.
 
 #define EOF          (-1)
 #define BUFSIZ       256
@@ -73,16 +74,16 @@ int  vsscanf(const char* s, const char* fmt, va_list ap);
 // ---- streams (src/file.c) ----
 // stdout and stderr are unbuffered, so nothing is lost when the program stops and printf/fprintf/putchar
 // always come out in order. stdin waits for each byte and has one character of pushback.
-FILE* fopen(const char* path, const char* mode);          // NULL with ENOSYS until there is a file system
-FILE* freopen(const char* path, const char* mode, FILE* f);   // ditto
+FILE* fopen(const char* path, const char* mode);          // "r" "w" "a", with "+" and/or "b"; NULL with errno set (ENOENT, ENODEV, ENOSPC, EMFILE, EBUSY...)
+FILE* freopen(const char* path, const char* mode, FILE* f);   // closes f and opens path in its place; only for disk streams (ENOSYS for the others)
 FILE* fmemopen(void* buf, size_t size, const char* mode);     // a stream over `buf`; it never grows
 int   fclose(FILE* f);
 int   fflush(FILE* f);                                     // a no-op: nothing is held back
 int   setvbuf(FILE* f, char* buf, int mode, size_t size);  // accepted and ignored
 void  setbuf(FILE* f, char* buf);
-FILE* tmpfile(void);                                       // NULL with ENOSYS
-int   remove(const char* path);                            // -1 with ENOSYS
-int   rename(const char* from, const char* to);            // -1 with ENOSYS
+FILE* tmpfile(void);                                       // a "w+" file that is removed when it is closed
+int   remove(const char* path);                            // deletes a disk file; -1 with errno set
+int   rename(const char* from, const char* to);            // -1 with errno set (EEXIST when the new name is taken)
 
 size_t fread(void* buf, size_t size, size_t n, FILE* f);
 size_t fwrite(const void* buf, size_t size, size_t n, FILE* f);

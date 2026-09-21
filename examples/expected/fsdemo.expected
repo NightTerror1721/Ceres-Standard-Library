@@ -1,0 +1,8 @@
+formatted a new CeresFS: 30720 bytes of room
+this is run 1
+log.txt:
+  1: run 1: 30208 bytes free
+files:
+  runs.txt         2 bytes
+  log.txt         24 bytes
+29696 of 30720 bytes free
