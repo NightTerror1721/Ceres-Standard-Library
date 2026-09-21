@@ -35,13 +35,14 @@ if (-not (Test-Path $harness) -or (Get-Item $harness).LastWriteTime -lt (Get-Ite
     if ($LASTEXITCODE -ne 0) { Write-Host "FAILED: could not build the console harness" -ForegroundColor Red; exit 1 }
 }
 
-$sources = @($CoreC + $Asm)
+Ensure-Library @(1)
+$lib = Get-LibraryDir 1
 $args1 = @(($TimeoutSeconds * 1000).ToString(),
     'waitfor:Colour', 'key:DOWN', 'key:DOWN', 'wait:300', 'key:ENTER',
     'waitfor:Again', 'wait:300', 'key:END', 'key:UP', 'wait:200', 'key:ENTER',
     'waitfor:type a line', 'text:hello', 'key:ENTER', 'wait:800',
-    '--', $Ceresc) + $sources + @('tools/console/tuidemo.c', '-I', 'include', '-O1', '-o', "$dir/tuidemo.cres",
-    '--run', '--clean', '--ceres-path', $CeresDir)
+    '--', $Ceresc, 'tools/console/tuidemo.c', "$lib/libceres.car", '--decls', "$lib/libceres.decls.casm",
+    '-I', 'include', '-O1', '-o', "$dir/tuidemo.cres", '--run', '--clean', '--ceres-path', $CeresDir)
 
 $output = & $harness @args1 2>&1 | Out-String
 $failures = @()

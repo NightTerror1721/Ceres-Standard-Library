@@ -1,10 +1,10 @@
 # Ceres standard library.
 #
 # The real work is in tools/*.ps1 (PowerShell 5.1, which every Windows has): they find ceresc and ceres
-# next to this checkout (../../Ceres-C, ../../CeresASM) or through the CERESC and CERES_DIR environment
+# next to this checkout (../../Ceres-C, ../../CeresASM) or through the CERESC and CERES_PATH environment
 # variables, and they compare what a test PRINTS byte for byte, which make cannot do portably.
 #
-#   make              build build/libceres.car and prove it links (tools/mklib.ps1)
+#   make              build the library at -O0, -O1 and -O2 (build/lib/O*/libceres.car) and prove it links (tools/mklib.ps1)
 #   make test         every test at -O0, -O1 and -O2, plus each header compiled on its own
 #   make test-NAME    one test: tests/NAME.c   (make test-test_malloc, make test-hello)
 #   make headers      only "each header compiles on its own"

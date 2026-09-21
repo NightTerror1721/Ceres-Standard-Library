@@ -5,8 +5,10 @@
 .DESCRIPTION
     A test's verdict is its TEXT, and its exit status: `ceres run` exits with what main returned, which
     must be 0 unless tests/expected/<name>.status says otherwise (a number on one line). For every
-    tests/<name>.c this compiles the test together with the whole library at
-    -O0, -O1 and -O2, runs it, and requires the output to equal tests/expected/<name>.expected BYTE
+    tests/<name>.c this compiles the test at -O0, -O1 and -O2 and links it against the library built at the
+    same level (tools/mklib.ps1 builds build/lib/O<level>/libceres.car when it is missing or older than the
+    sources, and ceresc takes the archive with --decls), runs it, and requires the output to equal
+    tests/expected/<name>.expected BYTE
     FOR BYTE (line endings aside: the Windows host turns "\n" into "\r\n"). A stray NUL - the
     signature of a word store into a byte register - therefore fails a test. All three levels must
     print the same thing: that is how an optimizer bug becomes a failing build instead of a surprise.
@@ -14,6 +16,10 @@
     Optional modules (irq, fault) are not linked unless a test asks for them with a `// USE: irq` line
     in its first lines. They bind interrupt vectors, and the linker allows one binding per number for the
     whole program, so a program that binds its own must not carry them.
+
+    A test with a tests/expected/<name>.flags file sets a compile-time option of the LIBRARY (-DCERES_...), so
+    the library is compiled again with it, together with the test, as before. -FromSources does that for every
+    test: the slow path, and the one that proves the archive changes nothing.
 
     The tools are found next to this checkout (../../Ceres-C, ../../CeresASM) or through the
     CERESC and CERES_DIR environment variables.
@@ -23,6 +29,7 @@
     tools\runtests.ps1 -Test test_malloc    # one test
     tools\runtests.ps1 -Headers             # only "each header compiles on its own"
     tools\runtests.ps1 -Update              # write tests/expected from the -O0 output (review it!)
+    tools\runtests.ps1 -FromSources         # compile the whole library into every test, as it once was
 #>
 [CmdletBinding()]
 param(
@@ -30,6 +37,7 @@ param(
     [string]$Levels = "0,1,2",          # optimization levels, e.g. -Levels 0,2
     [switch]$Headers,
     [switch]$Update,
+    [switch]$FromSources,
     [int]$TimeoutSeconds = 180
 )
 
@@ -115,7 +123,7 @@ function Test-Examples {
         # optional modules, as for the tests: a `// USE: irq` line in the first lines of the example
         $use = @()
         foreach ($line in (Get-Content "examples/$name.c" -TotalCount 6)) {
-            if ($line -match '^s*//s*USE:s*(.+)$') { $use += ($Matches[1].Trim() -split 's+') }
+            if ($line -match '^\s*//\s*USE:\s*(.+)$') { $use += ($Matches[1].Trim() -split '\s+') }
         }
         $extra = @()
         foreach ($u in $use) {
@@ -134,7 +142,8 @@ function Test-Examples {
         $wantStatus = if (Test-Path $statusFile) { [int]((Read-Text $statusFile).Trim()) } else { 0 }
         if (Test-Path $expectedPath) {
             # ceresc builds, links and runs in one go; the program reads its stdin from the .stdin file
-            $cmd = "$sources $flags -I include -O2 -Werror -o build/examples/$name.cres --run --clean --ceres-path `"$CeresDir`""
+            $body = if ($FromSources) { "$sources $flags" } else { "examples/$name.c $(Get-LibraryArgs 2 $use) $flags" }   # a define only the example reads goes with either
+            $cmd = "$body -I include -O2 -Werror -o build/examples/$name.cres --run --clean --ceres-path `"$CeresDir`""
             $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err" $stdin
         } else {
             $cmd = "$sources -I include -O2 -Werror -S -o build/examples/$name.casm"   # only prove it compiles
@@ -176,6 +185,8 @@ New-Item -ItemType Directory -Force tests/expected | Out-Null
 Write-Host "ceresc  $Ceresc" -ForegroundColor DarkGray
 Write-Host "ceres   $CeresDir" -ForegroundColor DarkGray
 
+if (-not $FromSources) { Ensure-Library @($LevelList + 2 | Sort-Object -Unique) }   # -O2 also serves the examples
+
 foreach ($name in $tests) {
     $src = "tests/$name.c"
     $use = @()
@@ -193,12 +204,14 @@ foreach ($name in $tests) {
     $testFlags = if (Test-Path $flagsFile) { (Get-Content $flagsFile -Raw).Trim() } else { '' }
     $expectedPath = "tests/expected/$name.expected"
     $reference = $null
+    $fromSource = $FromSources -or ($testFlags -ne '')     # a library option means a library built with it
 
     foreach ($level in $LevelList) {
         $label = "{0,-22} -O{1}" -f $name, $level
         $out = "build/$name.O$level.out"
         $err = "build/$name.O$level.err"
-        $cmdLine = "$sources $testFlags -I include -O$level -Werror -o build/$name.O$level.cres --run --clean --ceres-path `"$CeresDir`""
+        $body = if ($fromSource) { "$sources $testFlags" } else { "$src $(Get-LibraryArgs $level $use)" }
+        $cmdLine = "$body -I include -O$level -Werror -o build/$name.O$level.cres --run --clean --ceres-path `"$CeresDir`""
         $stdin = "tests/expected/$name.stdin"        # what the program reads from the terminal, if it reads
         if (-not (Test-Path $stdin)) { $stdin = '' }
         $code = Invoke-Tool $Ceresc $cmdLine $out $err $stdin
