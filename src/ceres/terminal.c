@@ -45,6 +45,12 @@ static int wait_for_input(enum term_read_mode_t mode)
     return ready;
 }
 
+int term_set_raw(int on)
+{
+    write_port(TERM_MODE, unsigned int, on ? TERM_MODE_RAW : 0u);
+    return (int)read_port(TERM_MODE, unsigned int);
+}
+
 int term_bytes_available(void)
 {
     return (int)read_port(TERM_BYTES_AVAIL, TERM_BYTES_AVAIL_TYPE);

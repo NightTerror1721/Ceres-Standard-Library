@@ -1,7 +1,7 @@
 #include "ceres/tui.h"
 #include "stdio.h"
 #include "string.h"
-#include "ceres/terminal.h"
+#include "ceres/key.h"
 
 int tui_init(int cols, int rows)
 {
@@ -154,29 +154,6 @@ int tui_list(int x, int y, int w, int rows, const char* const* items, int count,
     return top;
 }
 
-#define KEY_UP_ARROW    1000
-#define KEY_DOWN_ARROW  1001
-
-// One key from the terminal. An arrow key arrives as ESC [ A or ESC [ B, and is folded into one code. An
-// Escape that nothing follows is itself. -1 at the end of the input.
-static int next_key(void)
-{
-    int c = getchar();
-    if (c != 27)
-        return c;
-    if (!term_read_ready())
-        return 27;                                        // a lone Escape
-    int second = getchar();
-    if (second != '[' || !term_read_ready())
-        return 27;
-    int third = getchar();
-    if (third == 'A')
-        return KEY_UP_ARROW;
-    if (third == 'B')
-        return KEY_DOWN_ARROW;
-    return 0;                                             // some other sequence: ignored
-}
-
 int tui_menu(int x, int y, const char* title, const char* const* items, int count)
 {
     if (count < 1)
@@ -197,21 +174,36 @@ int tui_menu(int x, int y, const char* title, const char* const* items, int coun
 
     int selected = 0;
     int top = 0;
+    int chosen = -1;
+    key_start();                                              // keys as they are pressed, for as long as the menu runs
     for (;;)
     {
         tui_window(x, y, w, rows + 2, title);
         top = tui_list(x + 2, y + 1, w - 4, rows, items, count, selected, top);
-        tui_status("w/s or arrows: move   enter: choose   q: cancel");
+        tui_status("arrows or w/s: move   enter: choose   esc or q: cancel");
         tui_present();
 
-        int key = next_key();
-        if (key < 0 || key == 'q' || key == 27)
-            return -1;
-        if ((key == 'w' || key == 'k' || key == KEY_UP_ARROW) && selected > 0)
+        int key = key_wait();
+        if (key == KEYC_NONE || key == 'q' || key == KEYC_ESC)
+            break;                                            // cancelled, or the input ended
+        if ((key == 'w' || key == 'k' || key == KEYC_UP) && selected > 0)
             selected--;
-        else if ((key == 's' || key == 'j' || key == KEY_DOWN_ARROW) && selected < count - 1)
+        else if ((key == 's' || key == 'j' || key == KEYC_DOWN) && selected < count - 1)
             selected++;
-        else if (key == '\n' || key == '\r' || key == ' ')
-            return selected;
+        else if (key == KEYC_HOME)
+            selected = 0;
+        else if (key == KEYC_END)
+            selected = count - 1;
+        else if (key == KEYC_PAGEUP)
+            selected = selected > rows ? selected - rows : 0;
+        else if (key == KEYC_PAGEDOWN)
+            selected = selected + rows < count ? selected + rows : count - 1;
+        else if (key == KEYC_ENTER || key == ' ')
+        {
+            chosen = selected;
+            break;
+        }
     }
+    key_stop();
+    return chosen;
 }

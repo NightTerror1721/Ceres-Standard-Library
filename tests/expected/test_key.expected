@@ -1,0 +1,12 @@
+-- a file cannot be given raw keys
+-- the keyboard register, as keystrokes
+-- characters
+-- Enter, however it is spelled
+-- Backspace and Tab
+-- the arrows
+-- the editing keys
+-- a modifier does not hide the key
+-- function keys
+-- what is not a key is dropped
+-- the end
+ALL PASSED 50/50

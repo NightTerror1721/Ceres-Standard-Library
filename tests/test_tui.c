@@ -62,7 +62,9 @@ int main(void)
     const char* colours[] = { "red", "green", "blue" };
     CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), 1);    // s, then enter
     CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), 2);    // j, the down arrow, and space; it stops at the last item
-    CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), 0);    // w and k at the top stay there; enter
+    CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), 0);    // w and k at the top stay there; Home; enter
+    CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), 2);    // End, enter
+    CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), 0);    // PageDown goes to the last, PageUp back to the first
     CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), -1);   // q
     CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), -1);   // a lone Escape
     CHECK_EQ(tui_menu(2, 1, "Colour", colours, 3), -1);   // the input ends

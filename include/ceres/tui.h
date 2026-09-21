@@ -11,8 +11,11 @@
 // the pieces are drawn with, and a program can draw its own with fb_set_attr() first. A frame whose cells are
 // all plain is shown as plain text.
 //
-// KEYS. tui_menu() reads the terminal: w, k or the up arrow move up; s, j or the down arrow move down; Enter
-// or Space choose; q, Escape on its own, or the end of the input cancel. Every key redraws and shows the frame.
+// KEYS. tui_menu() reads keystrokes (ceres/key.h): w, k or the up arrow move up; s, j or the down arrow move
+// down; Home and End go to the first and the last; PageUp and PageDown move by a screenful; Enter or Space
+// choose; q, Escape, or the end of the input cancel. Every key redraws and shows the frame. It asks the host
+// for keys as they are pressed for as long as it runs, so on a console and in the window they act at once and
+// the arrows work; from a file the same keys are read as the bytes a terminal sends.
 
 #define TUI_NORMAL    0                                          // the terminal's own colours
 #define TUI_FRAME     FB_ATTR(FB_CYAN, FB_BLACK)                 // the border of a window
@@ -41,5 +44,5 @@ void tui_status(const char* text);                                       // the 
 int  tui_list(int x, int y, int w, int rows, const char* const* items, int count, int selected, int top);
 
 // A window with the title and the items, run until a choice is made: returns the index chosen, or -1 when
-// the user cancels or the input ends. Blocks on the terminal. Shows a frame at the start and after every key.
+// the user cancels or the input ends. Blocks on the keys. Shows a frame at the start and after every key.
 int  tui_menu(int x, int y, const char* title, const char* const* items, int count);

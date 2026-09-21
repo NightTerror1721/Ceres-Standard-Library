@@ -63,7 +63,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m red      [36;40m|[0m                
@@ -75,7 +75,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
@@ -87,7 +87,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m red      [36;40m|[0m                
@@ -99,7 +99,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m red      [36;40m|[0m                
@@ -111,7 +111,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
@@ -123,7 +123,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
@@ -135,7 +135,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
@@ -147,7 +147,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
@@ -159,7 +159,7 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
@@ -171,7 +171,19 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
+[30;46marrows or w/s: move   enter: c[0m
+                              
+  [36;40m+ [93;40mColour[36;40m --+[0m                
+  [36;40m|[0m red      [36;40m|[0m                
+  [36;40m|[0m green    [36;40m|[0m                
+  [36;40m|[0m [30;47mblue    [0m [36;40m|[0m                
+  [36;40m+----------+[0m                
+                              
+                              
+                              
+                              
+                              
+[30;46marrows or w/s: move   enter: c[0m
                               
   [36;40m+ [93;40mColour[36;40m --+[0m                
   [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
@@ -183,5 +195,65 @@
                               
                               
                               
-[30;46mw/s or arrows: move   enter: c[0m
-ALL PASSED 25/25
+[30;46marrows or w/s: move   enter: c[0m
+                              
+  [36;40m+ [93;40mColour[36;40m --+[0m                
+  [36;40m|[0m red      [36;40m|[0m                
+  [36;40m|[0m green    [36;40m|[0m                
+  [36;40m|[0m [30;47mblue    [0m [36;40m|[0m                
+  [36;40m+----------+[0m                
+                              
+                              
+                              
+                              
+                              
+[30;46marrows or w/s: move   enter: c[0m
+                              
+  [36;40m+ [93;40mColour[36;40m --+[0m                
+  [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
+  [36;40m|[0m green    [36;40m|[0m                
+  [36;40m|[0m blue     [36;40m|[0m                
+  [36;40m+----------+[0m                
+                              
+                              
+                              
+                              
+                              
+[30;46marrows or w/s: move   enter: c[0m
+                              
+  [36;40m+ [93;40mColour[36;40m --+[0m                
+  [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
+  [36;40m|[0m green    [36;40m|[0m                
+  [36;40m|[0m blue     [36;40m|[0m                
+  [36;40m+----------+[0m                
+                              
+                              
+                              
+                              
+                              
+[30;46marrows or w/s: move   enter: c[0m
+                              
+  [36;40m+ [93;40mColour[36;40m --+[0m                
+  [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
+  [36;40m|[0m green    [36;40m|[0m                
+  [36;40m|[0m blue     [36;40m|[0m                
+  [36;40m+----------+[0m                
+                              
+                              
+                              
+                              
+                              
+[30;46marrows or w/s: move   enter: c[0m
+                              
+  [36;40m+ [93;40mColour[36;40m --+[0m                
+  [36;40m|[0m [30;47mred     [0m [36;40m|[0m                
+  [36;40m|[0m green    [36;40m|[0m                
+  [36;40m|[0m blue     [36;40m|[0m                
+  [36;40m+----------+[0m                
+                              
+                              
+                              
+                              
+                              
+[30;46marrows or w/s: move   enter: c[0m
+ALL PASSED 27/27
