@@ -18,6 +18,47 @@ clock_t clock(void)
     return timer_ticks();
 }
 
+int timespec_get(struct timespec* ts, int base)
+{
+    if (ts == 0)
+        return 0;
+    if (base == TIME_UTC)
+    {
+        ts->tv_sec = timer_clock();
+        ts->tv_nsec = 0;
+        return base;
+    }
+    if (base == TIME_MONOTONIC)
+    {
+        unsigned int nanos;
+        struct ns64 sec = ns64_div_u32(timer_nanos(), 1000000000u, &nanos);
+        ts->tv_sec = sec.lo;                             // a machine that has run for 136 years has other troubles
+        ts->tv_nsec = (long)nanos;
+        return base;
+    }
+    return 0;
+}
+
+int timespec_getres(struct timespec* ts, int base)
+{
+    if (ts == 0)
+        return 0;
+    if (base == TIME_UTC)
+    {
+        ts->tv_sec = 1;
+        ts->tv_nsec = 0;
+        return base;
+    }
+    if (base == TIME_MONOTONIC)
+    {
+        unsigned int step = timer_nanos_resolution();
+        ts->tv_sec = step / 1000000000u;
+        ts->tv_nsec = (long)(step % 1000000000u);
+        return base;
+    }
+    return 0;
+}
+
 float difftime(time_t end, time_t start)
 {
     return end >= start ? (float)(end - start) : -(float)(start - end);

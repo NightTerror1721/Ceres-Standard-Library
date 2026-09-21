@@ -48,6 +48,22 @@ char*  ctime(const time_t* t);
 // Returns the length written (without the NUL), or 0 when the result does not fit in `max`.
 size_t strftime(char* buf, size_t max, const char* fmt, const struct tm* tm);
 
+// The finer clock, in the C11 way. TIME_UTC is the calendar time: the machine's clock register counts whole
+// seconds, so tv_nsec is 0 and the resolution is one second. TIME_MONOTONIC (C23) is the time since the machine
+// started, to the nanosecond the host clock gives - timer_nanos_resolution() says how fine that is - and is
+// the one for measuring a span.
+struct timespec
+{
+    time_t tv_sec;
+    long tv_nsec;    // 0..999999999
+};
+
+#define TIME_UTC       1
+#define TIME_MONOTONIC 2
+
+int timespec_get(struct timespec* ts, int base);      // `base` on success, 0 for a base that is not supported
+int timespec_getres(struct timespec* ts, int base);   // the same, for the clock's resolution
+
 // Waits `seconds` of real time, to the millisecond. A spin, not a halt: the machine only wakes from
 // a halt on an interrupt that is actually dispatched, and this must not need a handler. Returns 0.
 unsigned int sleep(unsigned int seconds);

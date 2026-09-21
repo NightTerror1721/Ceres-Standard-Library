@@ -14,7 +14,7 @@ static void on_timer(int irq)
 void __game_sleep(unsigned int ticks);   // asm/optional/game_wait.casm
 
 // A halted machine advances the timer one tick per step, and sleeps a millisecond or so per step, so a short
-// sleep costs the host next to nothing. What decides when the frame is over is the millisecond clock, not
+// sleep costs the host next to nothing. What decides when the frame is over is the nanosecond clock, not
 // the ticks: the sleep is a few ticks long and the loop looks at the clock each time it wakes, so the frame
 // ends on time whatever a step really takes, and any other interrupt (a key, the mouse) that wakes the halt
 // early just brings the loop round again. Four ticks: the store, the sti and the halt take three of them,
@@ -24,13 +24,9 @@ void __game_sleep(unsigned int ticks);   // asm/optional/game_wait.casm
 static void wait_halted(struct game* g)
 {
     period_over = 0;
-    for (;;)
-    {
-        int left = (int)(g->frame_start_ms + g->wait_ms - timer_millis());
-        if (left <= 0)
-            break;
+    struct ns64 deadline = ns64_add(g->frame_start_ns, ns64_from_ms(g->wait_ms));
+    while (ns64_cmp(timer_nanos(), deadline) < 0)
         __game_sleep(SLEEP_TICKS);
-    }
     timer_disarm();
 }
 

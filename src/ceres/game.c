@@ -11,7 +11,7 @@ void game_init(struct game* g, unsigned int ticks_per_frame)
     g->frame_start = timer_ticks();
     g->work_last = 0;
     g->wait_ms = 0;
-    g->frame_start_ms = timer_millis();
+    g->frame_start_ns = timer_nanos();
     g->wait = 0;
     input_init();
 }
@@ -25,7 +25,7 @@ void game_frame_begin(struct game* g)
 {
     input_update();
     g->frame_start = timer_ticks();
-    g->frame_start_ms = timer_millis();
+    g->frame_start_ns = timer_nanos();
 }
 
 void game_frame_end(struct game* g)
@@ -44,17 +44,15 @@ void game_frame_end(struct game* g)
 
 // The frame ends `wait_ms` after it began. A frame already past that does not wait, and the next one starts
 // from now: a slow frame is not repaid with a burst of fast ones.
-static void wait_millis(struct game* g)
+static void wait_nanos(struct game* g)
 {
-    while ((int)(g->frame_start_ms + g->wait_ms - timer_millis()) > 0)
-    {
-    }
+    timer_wait_until_ns(ns64_add(g->frame_start_ns, ns64_from_ms(g->wait_ms)));
 }
 
 void game_pace_real(struct game* g, unsigned int ms)
 {
     g->wait_ms = ms;
-    g->wait = wait_millis;
+    g->wait = wait_nanos;
 }
 
 int game_over_budget(const struct game* g)

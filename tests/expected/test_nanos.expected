@@ -1,0 +1,10 @@
+-- the clock never goes backwards
+-- it agrees with the millisecond clock
+-- the resolution
+-- waits last what they were asked
+-- a frame paced on the nanosecond clock
+-- timespec_get, monotonic
+-- timespec_get, calendar time
+-- timespec_get, what it refuses
+-- timespec_getres
+ALL PASSED 34/34

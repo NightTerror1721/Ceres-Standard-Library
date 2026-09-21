@@ -1,0 +1,11 @@
+-- make and compare
+-- add carries
+-- sub borrows
+-- multiply
+-- from a span
+-- to a span rounds down
+-- to a span saturates
+-- division
+-- division is undone by multiplying back
+-- to float
+ALL PASSED 62/62

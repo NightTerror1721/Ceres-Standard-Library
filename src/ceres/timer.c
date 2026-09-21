@@ -33,6 +33,41 @@ void timer_wait_ms(unsigned int ms)
     }
 }
 
+struct ns64 timer_nanos(void)
+{
+    struct ns64 now;
+    now.lo = mmio_r32(TIMER_NANOS_LOW_REG);          // the low word first: it takes the instant and keeps the high half
+    now.hi = mmio_r32(TIMER_NANOS_HIGH_REG);
+    return now;
+}
+
+struct ns64 timer_nanos_elapsed(struct ns64 since)
+{
+    return ns64_sub(timer_nanos(), since);
+}
+
+unsigned int timer_nanos_resolution(void)
+{
+    return mmio_r32(TIMER_NANOS_RES_REG);
+}
+
+void timer_wait_until_ns(struct ns64 deadline)
+{
+    while (ns64_cmp(timer_nanos(), deadline) < 0)
+    {
+    }
+}
+
+void timer_wait_us(unsigned int us)
+{
+    timer_wait_until_ns(ns64_add(timer_nanos(), ns64_from_us(us)));
+}
+
+void timer_wait_ns(unsigned int ns)
+{
+    timer_wait_until_ns(ns64_add(timer_nanos(), ns64_from_u32(ns)));
+}
+
 void timer_arm(unsigned int ticks, int periodic)
 {
     if (ticks == 0)
