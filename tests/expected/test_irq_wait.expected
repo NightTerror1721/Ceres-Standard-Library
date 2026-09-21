@@ -1,0 +1,4 @@
+-- irq_wait_flag with a timer that expires at every moment
+-- irq_wait
+-- interrupts are put back as they were
+ALL PASSED 4/4

@@ -7,36 +7,9 @@ static int select_sector(unsigned int sector)
     return (mmio_r32(DISK_STATUS_REG) & DISK_ERROR) ? -1 : 0;
 }
 
-static unsigned int cached_sectors;
-static int sectors_known;
-
 unsigned int disk_sectors(void)
 {
-    if (sectors_known)
-        return cached_sectors;
-    // The smallest sector number that is refused is the size. Sector numbers are accepted up to the size
-    // and refused from there on, so a binary search over the whole 32-bit range finds it in 32 probes.
-    unsigned int lo = 0;
-    unsigned int hi = 0xFFFFFFFFu;
-    if (select_sector(hi) == 0)
-    {
-        cached_sectors = hi;                    // even the last number is valid: cannot happen with real storage
-    }
-    else
-    {
-        while (lo < hi)
-        {
-            unsigned int mid = lo + (hi - lo) / 2u;
-            if (select_sector(mid) == 0)
-                lo = mid + 1u;
-            else
-                hi = mid;
-        }
-        cached_sectors = lo;
-    }
-    sectors_known = 1;
-    select_sector(0);                           // leave the disk on a valid sector, if it has one
-    return cached_sectors;
+    return mmio_r32(DISK_SECTOR_COUNT_REG);
 }
 
 static int transfer(unsigned int sector, void* buf, unsigned int command)

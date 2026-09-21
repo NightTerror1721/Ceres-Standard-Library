@@ -15,6 +15,24 @@ unsigned int timer_elapsed(unsigned int since)
     return mmio_r32(TIMER_TICKS_REG) - since;      // unsigned subtraction is right across the wrap
 }
 
+unsigned int timer_millis(void)
+{
+    return mmio_r32(TIMER_MILLIS_REG);
+}
+
+unsigned int timer_millis_elapsed(unsigned int since)
+{
+    return mmio_r32(TIMER_MILLIS_REG) - since;
+}
+
+void timer_wait_ms(unsigned int ms)
+{
+    unsigned int start = mmio_r32(TIMER_MILLIS_REG);
+    while (mmio_r32(TIMER_MILLIS_REG) - start < ms)
+    {
+    }
+}
+
 void timer_arm(unsigned int ticks, int periodic)
 {
     if (ticks == 0)

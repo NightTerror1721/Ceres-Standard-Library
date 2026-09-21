@@ -16,10 +16,11 @@
 // which is what a test wants. The same game has more room per frame at -O2 than at -O0, and how fast a
 // frame is in seconds depends on the host.
 //
-// For a game that must run at a steady speed on a real clock, game_pace_ms() (in the irq module - link
-// it with `// USE: irq`) waits by halting with the timer armed instead. A halted machine keeps time at one
-// tick per millisecond, so `game_pace_ms(&g, 16)` is about 60 frames a second, and the host is not kept
-// busy while it waits. That period is the wait itself, added to the frame's own work.
+// For a game that must run at a steady speed on a real clock there are two ways, and in both a frame lasts
+// `ms` milliseconds from its start - its own work counts, and a frame that runs late is not made up for:
+//   game_pace_real(&g, 16)   spins on the millisecond register; needs nothing else, and keeps the host busy;
+//   game_pace_ms(&g, 16)     (in the irq module - link it with `// USE: irq`) waits by halting with the timer
+//                            armed, so the host is not kept busy. Both are about 60 frames a second.
 
 #include "../stddef.h"
 
@@ -30,7 +31,8 @@ struct game
     unsigned int ticks_per_frame;      // the instruction budget of a frame
     unsigned int frame_start;          // timer_ticks() when the frame began
     unsigned int work_last;            // instructions the last frame spent before waiting
-    unsigned int wait_ms;              // 0: pace by instructions; otherwise the halt period of game_pace_ms
+    unsigned int wait_ms;              // 0: pace by instructions; otherwise the frame period in milliseconds
+    unsigned int frame_start_ms;       // the millisecond clock when the frame began
     void (*wait)(struct game* g);      // what game_frame_end runs to pass the rest of the frame; 0 spins on the budget
 };
 
@@ -43,4 +45,5 @@ void game_frame_end(struct game* g);        // counts the frame and waits out th
 int  game_over_budget(const struct game* g);   // 1 when the last frame spent more than its budget (meaningful when pacing by instructions)
 void game_run(struct game* g, game_fn update, game_fn draw, void* ctx);   // until game_quit
 
-void game_pace_ms(struct game* g, unsigned int ms);   // wall-clock pacing; needs the irq module. ms is at least 10
+void game_pace_real(struct game* g, unsigned int ms);   // wall-clock pacing by spinning on the millisecond clock
+void game_pace_ms(struct game* g, unsigned int ms);     // wall-clock pacing by halting; needs the irq module. ms is at least 1

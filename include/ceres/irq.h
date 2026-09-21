@@ -29,10 +29,11 @@ unsigned int irq_save(void);
 void         irq_restore(unsigned int state);
 void         irq_enable_all(void);                 // sti
 
-// Wait for an interrupt. `sti` followed by `halt` is NOT atomic: an interrupt that arrives between
-// the two is handled and then the halt sleeps until the NEXT one (a lost wake-up), because the
-// machine has no shadow after `sti`. irq_wait() is that bare pair. irq_wait_flag() re-checks a
-// flag around it and, when nothing is attached to the timer, arms a short one-shot timer as a
-// guard so the sleep is always bounded.
+// Wait for an interrupt. irq_wait() is `sti` followed by `halt`, and the machine takes no interrupt
+// between the two (`sti` takes effect after the next instruction), so an interrupt that arrives just
+// before the halt wakes it rather than being handled first and leaving the halt to sleep on. A wait
+// also needs a handler: a halt is only woken by an interrupt that is actually dispatched.
+// irq_wait_flag() sleeps until *flag is set, by a handler: it reads the flag with interrupts masked,
+// so it cannot miss the interrupt that sets it.
 void irq_wait(void);
 void irq_wait_flag(volatile int* flag);            // returns once *flag != 0

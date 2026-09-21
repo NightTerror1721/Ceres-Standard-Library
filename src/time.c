@@ -25,10 +25,9 @@ float difftime(time_t end, time_t start)
 
 unsigned int sleep(unsigned int seconds)
 {
-    unsigned int start = timer_clock();
-    while (timer_clock() - start < seconds)
-    {
-    }
+    if (seconds > 4294967u)
+        seconds = 4294967u;                              // the most whole seconds a millisecond count can hold
+    timer_wait_ms(seconds * 1000u);                      // exact, where the seconds register was up to a second early
     return 0;
 }
 

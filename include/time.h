@@ -48,6 +48,6 @@ char*  ctime(const time_t* t);
 // Returns the length written (without the NUL), or 0 when the result does not fit in `max`.
 size_t strftime(char* buf, size_t max, const char* fmt, const struct tm* tm);
 
-// Waits until the wall clock has advanced `seconds`. A spin, not a halt: the machine only wakes from
+// Waits `seconds` of real time, to the millisecond. A spin, not a halt: the machine only wakes from
 // a halt on an interrupt that is actually dispatched, and this must not need a handler. Returns 0.
 unsigned int sleep(unsigned int seconds);

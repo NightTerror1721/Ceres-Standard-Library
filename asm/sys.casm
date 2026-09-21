@@ -11,6 +11,11 @@ global irq_save:                // returns nonzero if user interrupts were enabl
     cli
     ret
 
+global irq_wait:                 // sti, then halt, as ONE step: the machine takes no interrupt between the two, so
+    sti                         // one that arrives just before the halt wakes it instead of being lost
+    halt
+    ret
+
 global irq_restore:             // pass irq_save's result
     ifeq r0, 0, .off
     sti

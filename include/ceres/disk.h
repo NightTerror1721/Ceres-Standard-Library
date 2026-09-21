@@ -9,12 +9,12 @@
 // the machine stops (disk_flush() saves them earlier). Selecting a sector past the end sets the ERROR
 // bit, and every function below reports it as -1.
 //
-// The device has no register that says how big the disk is: disk_sectors() finds out by asking which
-// sector numbers are accepted, and remembers.
+// disk_sectors() reads the device's sector-count register.
 
 #define DISK_STATUS_REG (DISK_BASE + 0x00)   // R: bit0 READY, bit1 ERROR
 #define DISK_CMD_REG    (DISK_BASE + 0x04)   // W: 1 writes the image to the host file
 #define DISK_SECTOR_REG (DISK_BASE + 0x08)   // RW: the sector the next transfer uses
+#define DISK_SECTOR_COUNT_REG (DISK_BASE + 0x0C)   // R: how many sectors the disk has
 #define DISK_BLOCK_ADDR (DISK_BASE + 0xF0)
 #define DISK_BLOCK_LEN  (DISK_BASE + 0xF4)
 #define DISK_BLOCK_CMD  (DISK_BASE + 0xF8)   // 1 reads the selected sector into RAM, 2 writes it

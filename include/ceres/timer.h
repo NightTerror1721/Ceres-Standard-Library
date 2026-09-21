@@ -8,7 +8,8 @@
 // milliseconds: the same program ticks the same number of times on every run, which is what makes
 // tests reproducible, but an optimized build does more work per tick and a game loop must measure
 // WORK, not time. The wall clock (timer_clock, seconds since 1970) is the one value in the whole
-// machine that is not deterministic.
+// machine that is not deterministic - and so is the millisecond register: real time, for the code that wants
+// to keep a rhythm on the wall clock.
 //
 // Nothing here needs an interrupt handler, so this module never binds a vector: the waits spin on
 // the tick register and the task table (timer_after/every) is driven by timer_poll().
@@ -16,12 +17,15 @@
 #define TIMER_TICKS_REG  (TIMER_BASE + 0x00)   // R: instructions executed (truncated to 32 bits)
 #define TIMER_CLOCK_REG  (TIMER_BASE + 0x04)   // R: wall-clock seconds since 1970
 #define TIMER_CMD_REG    (TIMER_BASE + 0x08)   // W: N instructions until it fires; bit 31 = periodic; 0 disarms
+#define TIMER_MILLIS_REG (TIMER_BASE + 0x0C)   // R: milliseconds since the machine started (wraps at 49 days)
 #define TIMER_PERIODIC   0x80000000u
 #define TIMER_MAX_TICKS  0x7FFFFFFFu           // the longest period the command register can hold
 
 unsigned int timer_ticks(void);                          // instructions executed so far (wraps at 2^32)
 unsigned int timer_clock(void);                          // wall-clock seconds since 1970
 unsigned int timer_elapsed(unsigned int since);          // ticks since `since`, correct across the wrap
+unsigned int timer_millis(void);                         // wall-clock milliseconds since the machine started
+unsigned int timer_millis_elapsed(unsigned int since);   // milliseconds since `since`, correct across the wrap
 
 // The hardware timer raises interrupt 16 (IRQ_TIMER) when it expires; it is masked unless the
 // program has done sti and attached a handler (ceres/irq.h).
@@ -31,6 +35,7 @@ void timer_disarm(void);
 // Waiting: a spin on the tick register, so it needs no interrupt and is exact to a few instructions.
 void timer_wait(unsigned int ticks);                     // return after `ticks` instructions have passed
 void timer_wait_until(unsigned int deadline);            // return once timer_ticks() has reached `deadline`
+void timer_wait_ms(unsigned int ms);                     // return after `ms` real milliseconds: a spin on the clock
 
 // A table of software timers driven by polling: call timer_poll() from the main loop and every
 // task whose time has come runs, in the order they fell due. Up to TIMER_MAX_TASKS at once.

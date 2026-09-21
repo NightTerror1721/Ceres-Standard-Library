@@ -16,8 +16,8 @@ int main(void)
     CHECK_EQ((int)g.wait_ms, 20);
     CHECK(g.wait != 0);
     CHECK(irq_handler(IRQ_TIMER) != 0);
-    game_pace_ms(&g, 0);                                // shorter than 10 ms cannot be slept reliably
-    CHECK_EQ((int)g.wait_ms, 10);
+    game_pace_ms(&g, 0);                                // the shortest period is a millisecond
+    CHECK_EQ((int)g.wait_ms, 1);
     game_pace_ms(&g, 20);
 
     TEST_SECTION("frames pass on the clock, not on instructions");

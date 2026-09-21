@@ -1,4 +1,5 @@
 #include "ceres/terminal.h"
+#include "ceres/irq.h"
 
 #define check_status() (read_port(TERM_STATUS, TERM_STATUS_TYPE) & TERM_INPUT_READY)
 
@@ -14,18 +15,34 @@ int term_eof(void)
 
 // Waits until a byte can be read (returns 1) or the input has ended (returns 0). The status word is read once
 // per turn: the end-of-input bit only sets while the ring is empty, so "no byte, and the end" is one snapshot.
+// Waiting by interrupt masks them while it looks, and sleeps with `sti; halt`: a byte that arrives between the
+// look and the sleep wakes the halt, it is not lost.
 static int wait_for_input(enum term_read_mode_t mode)
 {
+    unsigned int was = mode == TERM_READ_UNTIL_ISR ? irq_save() : 0;
+    int ready;
     for (;;)
     {
         unsigned int status = read_port(TERM_STATUS, TERM_STATUS_TYPE);
         if (status & TERM_INPUT_READY)
-            return 1;
+        {
+            ready = 1;
+            break;
+        }
         if (status & TERM_INPUT_EOF)
-            return 0;
+        {
+            ready = 0;
+            break;
+        }
         if (mode == TERM_READ_UNTIL_ISR)
-            wait_irq();
+        {
+            irq_wait();
+            __builtin_cli();
+        }
     }
+    if (mode == TERM_READ_UNTIL_ISR)
+        irq_restore(was);
+    return ready;
 }
 
 int term_bytes_available(void)

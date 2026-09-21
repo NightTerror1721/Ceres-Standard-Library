@@ -13,28 +13,31 @@ static void on_timer(int irq)
 
 void __game_sleep(unsigned int ticks);   // asm/optional/game_wait.casm
 
-// A halted machine advances the timer one tick per millisecond, so waiting `wait_ms` ticks is about that many
-// milliseconds and costs the host next to nothing. Any other interrupt (a key, the mouse) wakes the halt
-// early: then what is left of the period is slept, from how far the tick counter has moved. Within 8 ticks of
-// the end the wait is over: __game_sleep needs at least 8 for its timer not to expire before it halts.
+// A halted machine advances the timer one tick per step, and sleeps a millisecond or so per step, so a short
+// sleep costs the host next to nothing. What decides when the frame is over is the millisecond clock, not
+// the ticks: the sleep is a few ticks long and the loop looks at the clock each time it wakes, so the frame
+// ends on time whatever a step really takes, and any other interrupt (a key, the mouse) that wakes the halt
+// early just brings the loop round again. Four ticks: the store, the sti and the halt take three of them,
+// which leaves one halted step.
+#define SLEEP_TICKS 4u
+
 static void wait_halted(struct game* g)
 {
-    unsigned int start = timer_ticks();
     period_over = 0;
     for (;;)
     {
-        unsigned int spent = timer_elapsed(start);
-        if (period_over || spent + 8u >= g->wait_ms)
+        int left = (int)(g->frame_start_ms + g->wait_ms - timer_millis());
+        if (left <= 0)
             break;
-        __game_sleep(g->wait_ms - spent);
+        __game_sleep(SLEEP_TICKS);
     }
     timer_disarm();
 }
 
 void game_pace_ms(struct game* g, unsigned int ms)
 {
-    if (ms < 10)
-        ms = 10;                            // shorter periods cannot be slept reliably
+    if (ms < 1)
+        ms = 1;
     irq_attach(IRQ_TIMER, on_timer);
     g->wait_ms = ms;
     g->wait = wait_halted;

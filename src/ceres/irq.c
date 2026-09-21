@@ -80,23 +80,18 @@ void irq_enable_all(void)
     __builtin_sti();
 }
 
-void irq_wait(void)
-{
-    __builtin_sti();
-    __builtin_halt();
-}
+// irq_wait is in asm/sys.casm: it has to be an `sti` and a `halt` with nothing between them.
 
 void irq_wait_flag(volatile int* flag)
 {
+    // Interrupts stay masked while the flag is read, and only `sti; halt` opens them: an interrupt that
+    // arrives after the check is held until the halt has run, and wakes it. Nothing can be lost between
+    // looking and sleeping, so no guard timer is needed.
+    unsigned int was = irq_save();
     while (*flag == 0)
     {
-        // With nothing attached to the timer, its interrupt is free to act as a guard: a one-shot
-        // 2000 instructions away, so a wake-up lost between sti and halt costs at most that long.
-        int guard = irq_handler(IRQ_TIMER) == 0;
-        if (guard)
-            mmio_w32(TIMER_BASE + 0x08, 2000u);
         irq_wait();
-        if (guard)
-            mmio_w32(TIMER_BASE + 0x08, 0u);
+        __builtin_cli();
     }
+    irq_restore(was);
 }
