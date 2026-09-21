@@ -1,0 +1,31 @@
+#pragma once
+
+// Compile-time configuration. Each setting has a default here and can be changed for a whole build with a
+// definition on the compiler's command line, which applies to every file the build compiles, the library's
+// included:
+//
+//   ceresc main.c <the library sources> -DCERES_ATEXIT_SLOTS=8 -DFS_MAX_OPEN=4 ... -o app.cres
+//
+// Nothing else reads the environment: there is no file to edit, and a setting that is not defined is its
+// default. Sizes are numbers (a literal, not an expression: some become array sizes).
+
+// How many functions atexit() can hold. exit() runs them last registered first. (src/exit.c)
+#ifndef CERES_ATEXIT_SLOTS
+#define CERES_ATEXIT_SLOTS 32
+#endif
+
+// Bytes malloc keeps free between the top of the heap and the stack pointer, so that the heap never grows
+// into the stack. A program can change it at run time with heap_set_stack_reserve(). (src/malloc.c)
+#ifndef CERES_HEAP_STACK_RESERVE
+#define CERES_HEAP_STACK_RESERVE 16384
+#endif
+
+// How many CeresFS files can be open at once, and so how many fopen() streams. (ceres/fs.h)
+#ifndef FS_MAX_OPEN
+#define FS_MAX_OPEN 8
+#endif
+
+// How many software timers timer_after() and timer_every() can hold at once. (ceres/timer.h)
+#ifndef TIMER_MAX_TASKS
+#define TIMER_MAX_TASKS 8
+#endif

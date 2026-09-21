@@ -39,7 +39,7 @@ void timer_wait_ms(unsigned int ms);                     // return after `ms` re
 
 // A table of software timers driven by polling: call timer_poll() from the main loop and every
 // task whose time has come runs, in the order they fell due. Up to TIMER_MAX_TASKS at once.
-#define TIMER_MAX_TASKS 8
+#include "config.h"                            // TIMER_MAX_TASKS, unless the build sets it
 
 typedef void (*timer_cb)(void* ctx);
 

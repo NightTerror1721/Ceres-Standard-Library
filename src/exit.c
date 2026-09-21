@@ -7,8 +7,9 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include "ceres.h"
+#include "ceres/config.h"
 
-#define ATEXIT_SLOTS 32
+#define ATEXIT_SLOTS CERES_ATEXIT_SLOTS
 static void (*atexit_table[ATEXIT_SLOTS])(void);
 static int atexit_count = 0;
 

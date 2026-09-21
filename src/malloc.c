@@ -5,6 +5,7 @@
 // neighbours, so two free blocks are never adjacent. See ceres/heap.h for the contract.
 
 #include "ceres/heap.h"
+#include "ceres/config.h"
 #include "ceres/sys.h"
 #include "string.h"
 #include "stdio.h"
@@ -23,7 +24,7 @@ struct blk
 static struct blk*  heap_head = 0;
 static struct blk*  heap_tail = 0;
 static char*        heap_brk = 0;               // 0 until the first allocation
-static unsigned int heap_reserve = 16384;       // bytes kept free for the stack
+static unsigned int heap_reserve = CERES_HEAP_STACK_RESERVE;   // bytes kept free for the stack (ceres/config.h)
 
 void heap_set_stack_reserve(unsigned int bytes)
 {

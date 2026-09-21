@@ -188,6 +188,9 @@ foreach ($name in $tests) {
         $extra += $Optional[$u]
     }
     $sources = ($CoreC + $extra + $Asm + $src) -join ' '
+    # extra compiler flags for this test (tests/expected/<name>.flags): a build that sets a compile-time option
+    $flagsFile = "tests/expected/$name.flags"
+    $testFlags = if (Test-Path $flagsFile) { (Get-Content $flagsFile -Raw).Trim() } else { '' }
     $expectedPath = "tests/expected/$name.expected"
     $reference = $null
 
@@ -195,7 +198,7 @@ foreach ($name in $tests) {
         $label = "{0,-22} -O{1}" -f $name, $level
         $out = "build/$name.O$level.out"
         $err = "build/$name.O$level.err"
-        $cmdLine = "$sources -I include -O$level -Werror -o build/$name.O$level.cres --run --clean --ceres-path `"$CeresDir`""
+        $cmdLine = "$sources $testFlags -I include -O$level -Werror -o build/$name.O$level.cres --run --clean --ceres-path `"$CeresDir`""
         $stdin = "tests/expected/$name.stdin"        # what the program reads from the terminal, if it reads
         if (-not (Test-Path $stdin)) { $stdin = '' }
         $code = Invoke-Tool $Ceresc $cmdLine $out $err $stdin

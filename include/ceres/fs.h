@@ -31,7 +31,7 @@
 //   EIO    the disk reported an error
 
 #define FS_NAME_MAX 23
-#define FS_MAX_OPEN 8
+#include "config.h"                            // FS_MAX_OPEN, unless the build sets it
 
 #define FS_O_RDONLY 1
 #define FS_O_WRONLY 2
