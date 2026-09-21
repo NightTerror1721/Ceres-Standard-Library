@@ -2,7 +2,7 @@
 //
 // The explicit (const void*) casts in front of memcpy are there for older ceresc builds, which lost
 // the const of a `const void*` and refused a `const char*` argument (fixed in Ceres-C a7cf62a).
-// There is no comma operator in the C subset, so nothing here uses one.
+// (The C subset has a comma operator now; nothing here uses one.)
 #include "string.h"
 #include "strings.h"
 #include "ceres/heap.h"      // malloc, for strdup/strndup

@@ -1,8 +1,10 @@
 {
     "configurations": [
         {
-            "name": "RockPaperScissors",
+            "name": "Ceres",
             "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src",
                 "${workspaceFolder}/**"
             ],
             "defines": [
@@ -11,7 +13,11 @@
                 "__builtin_sti()=",
                 "__builtin_cli()=",
                 "__builtin_halt()=",
-                "__builtin_va_list=void*"
+                "__builtin_va_list=void*",
+                "__builtin_va_start(ap, last)=",
+                "__builtin_va_arg(ap, T)=(*(T*)0)",
+                "__builtin_va_end(ap)=",
+                "__builtin_va_copy(dest, src)="
             ],
             "cStandard": "c11",
             "cppStandard": "c++17",
