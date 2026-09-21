@@ -1,0 +1,8 @@
+-- numbers
+-- a handler runs on raise, and stays installed
+-- signal returns the previous handler
+-- SIG_IGN swallows the signal
+-- what is refused
+-- the hardware signals want the fault module
+-- sig_atomic_t
+ALL PASSED 42/42

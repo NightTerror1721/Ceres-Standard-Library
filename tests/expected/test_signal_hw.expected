@@ -1,0 +1,8 @@
+-- before the vectors are bound
+-- a handler for SIGFPE
+-- the registers come back as they were
+-- a float division counts too
+-- raise runs the same handler
+-- SIG_IGN swallows it
+-- SIG_DFL puts the machine back to carrying on silently
+ALL PASSED 20/20

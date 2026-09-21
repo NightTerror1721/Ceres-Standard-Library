@@ -27,3 +27,7 @@ int isxdigit(int c);
 int tolower(int c);
 
 int toupper(int c);
+
+// Not ISO C: from BSD and POSIX.
+int isascii(int c);               // c is in 0..127
+int toascii(int c);               // c with all but the low seven bits cleared

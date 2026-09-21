@@ -5,12 +5,15 @@
 //
 // On entry to a handler the machine has pushed what it needs to come back: [sp] is the address of the
 // interrupted instruction and [sp + 4] the flags. These handlers never return, so they save nothing and
-// never `iret`: they hand (irq, pc, flags) to the C reporter, which stops the machine. The reporter is
+// never `iret`: they hand (irq, pc, flags) to the C reporter, which stops the machine - except the division
+// by zero one, which is the only fault a program can carry on after (the machine continues at the instruction
+// after the division), so it saves every register the C reporter may change and irets. The reporter is
 // reached through the pointer __fault_target that sys_install_fault_handlers() fills in: a hand-written unit
 // can only name C functions by importing the build's generated declarations file, whose name depends on
 // the output, and a library file cannot know it.
 
 interrupt Trap:               __fault_trap
+interrupt DivisionByZero:     __fault_divide
 interrupt IllegalInstruction: __fault_illegal
 interrupt MemoryFault:        __fault_memory
 interrupt StackOverflow:      __fault_stack
@@ -44,6 +47,18 @@ __fault_align:
 __fault_page:
     li r0, 7
     jp __fault_common
+
+__fault_divide:                 // resumable: nothing the program held may change
+    pushm 0x1FFF                // r0-r12, the set an __interrupt function saves: thirteen words
+    fpushm 0x00FF               // f0-f7: eight more
+    li r0, 4
+    ldr r1, [sp + 84]           // the pc, under the 21 words just pushed
+    ldr r2, [sp + 88]           // the flags
+    ldv r3, __fault_target
+    call r3                     // returns only when a signal handler dealt with it; otherwise it stops the machine
+    fpopm 0x00FF
+    popm 0x1FFF
+    iret
 
 __fault_common:
     ldr r1, [sp]                // the pc that was interrupted

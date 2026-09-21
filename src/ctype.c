@@ -69,3 +69,13 @@ int toupper(int c)
 {
     return islower(c) ? c - ('a' - 'A') : c;
 }
+
+int isascii(int c)
+{
+    return c >= 0 && c <= 127;
+}
+
+int toascii(int c)
+{
+    return c & 127;
+}

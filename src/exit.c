@@ -36,8 +36,21 @@ void exit(int status)
     sys_exit_status(status);
 }
 
+// What abort() runs before it stops the program: signal(SIGABRT, handler) points it at the handler. It is a
+// pointer, not a call, so a program that never uses signals does not link src/signal.c.
+void (*__abort_hook)(void) = 0;
+
+// Runs the SIGABRT handler, if there is one, and stops the program with status 134 (128 + SIGABRT, what a shell
+// reports for an aborted program). assert() ends here too, without abort()'s message.
+void __abort_now(void)
+{
+    if (__abort_hook != 0)
+        __abort_hook();
+    sys_exit_status(134);
+}
+
 void abort(void)
 {
     putstr("abort\n");
-    sys_exit_status(134);                  // 128 + SIGABRT, what a shell reports for an aborted program
+    __abort_now();
 }
