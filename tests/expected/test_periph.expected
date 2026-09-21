@@ -1,0 +1,11 @@
+-- what the machine has
+-- the events of what was plugged in before the program began
+-- identifiers
+-- a sector written to a stick comes back the same
+-- several sectors at once
+-- the cartridge can be read and never written
+-- what cannot be done says so
+-- flush keeps the stick plugged in
+-- ejecting
+-- waiting for an event that does not come
+ALL PASSED 69/69

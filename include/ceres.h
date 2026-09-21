@@ -16,6 +16,7 @@
 #define DISPLAY_BASE        0xFF070000   // RGB32 pixels
 #define GAMEPAD_BASE        0xFF080000
 #define AUDIO_BASE          0xFF090000
+#define PERIPH_BASE         0xFF0A0000   // plug-in media: sticks and cartridges
 #define SYS_CTRL_BASE       0xFFFF0000
 
 // Volatile access with an explicit width. The width is part of the register's contract: the

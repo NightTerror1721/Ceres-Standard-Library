@@ -25,7 +25,8 @@ enum IRQ
     IRQ_KEYBOARD    = 19,   // UserInterrupt3
     IRQ_MOUSE       = 20,   // UserInterrupt4
     IRQ_GAMEPAD     = 21,   // UserInterrupt5
-    IRQ_AUDIO       = 22    // UserInterrupt6: a tone has finished
+    IRQ_AUDIO       = 22,   // UserInterrupt6: a tone has finished
+    IRQ_PERIPH      = 23    // UserInterrupt7: a medium was plugged in or pulled out
 };
 
 // A handler is declared with `__interrupt` and entered only through the vector

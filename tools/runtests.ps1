@@ -17,6 +17,10 @@
     in its first lines. They bind interrupt vectors, and the linker allows one binding per number for the
     whole program, so a program that binds its own must not carry them.
 
+    A test with a tests/expected/<name>.ports file has media plugged into the machine's peripheral ports: one
+    `--port 0=build/ports/stick.img` or `--cart 1=tests/data/game.cart` per line (a stick's file is created when
+    it is not there, and is new for every level).
+
     A test with a tests/expected/<name>.flags file sets a compile-time option of the LIBRARY (-DCERES_...), so
     the library is compiled again with it, together with the test, as before. -FromSources does that for every
     test: the slow path, and the one that proves the archive changes nothing.
@@ -216,6 +220,17 @@ foreach ($name in $tests) {
         $err = "build/$name.O$level.err"
         $body = if ($fromSource) { "$sources $testFlags" } else { "$src $(Get-LibraryArgs $level $use)" }
         $cmdLine = "$body -I include -O$level -Werror -o build/$name.O$level.cres --run --clean --ceres-path `"$CeresDir`""
+        # tests/expected/<name>.ports: media to plug in, one `--port 0=file` or `--cart 1=file` per line. The files a
+        # test writes to are new for every level, so each run starts from the same empty stick.
+        $portsFile = "tests/expected/$name.ports"
+        if (Test-Path $portsFile) {
+            New-Item -ItemType Directory -Force "build/ports" | Out-Null
+            Remove-Item "build/ports/*" -Force -ErrorAction SilentlyContinue
+            foreach ($spec in (Get-Content $portsFile | Where-Object { $_.Trim() })) {
+                $pair = $spec.Trim() -split '\s+', 2
+                $cmdLine += " --run-arg $($pair[0]) --run-arg $($pair[1])"
+            }
+        }
         $stdin = "tests/expected/$name.stdin"        # what the program reads from the terminal, if it reads
         if (-not (Test-Path $stdin)) { $stdin = '' }
         $code = Invoke-Tool $Ceresc $cmdLine $out $err $stdin
