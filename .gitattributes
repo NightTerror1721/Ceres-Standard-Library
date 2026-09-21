@@ -1,0 +1,2 @@
+# What a test feeds its program on stdin is data: its line endings are part of the test, so git must not rewrite them.
+*.stdin -text
