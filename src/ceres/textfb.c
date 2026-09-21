@@ -53,6 +53,17 @@ void fb_shutdown(void)
     attrs_used = 0;
 }
 
+void fb_set_output(int output)
+{
+    if (output == FB_OUT_AUTO || output == FB_OUT_TERMINAL || output == FB_OUT_WINDOW)
+        mmio_w32(FB_MODE, (unsigned int)output);
+}
+
+int fb_output(void)
+{
+    return (int)mmio_r32(FB_OUTPUT);
+}
+
 int fb_cols(void) { return cols; }
 int fb_rows(void) { return rows; }
 

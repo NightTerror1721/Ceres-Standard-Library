@@ -47,6 +47,10 @@ $LevelList = @(($Levels -join ',') -split '[,; ]+' | Where-Object { $_ } | ForEa
 
 . "$PSScriptRoot/common.ps1"    # $Root, $Ceresc, $CeresDir, the source lists, Invoke-Tool, Same, ...
 
+# A machine has a screen: without this, a program that shows a frame of the text framebuffer would open a window
+# (ceres, built with SDL, does). The tests compare the frames as text on the terminal, so they run without one.
+$env:CERES_HEADLESS = '1'
+
 # ---- reporting differences ----------------------------------------------------------------------
 
 function Show-Bytes([string]$s) {

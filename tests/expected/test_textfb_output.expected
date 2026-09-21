@@ -1,0 +1,11 @@
+-- the default
+ab  
+    
+-- asking for the window where there is none
+ab  
+cd  
+-- asking for the terminal
+....
+....
+-- back to the default, and what is not a mode
+ALL PASSED 9/9

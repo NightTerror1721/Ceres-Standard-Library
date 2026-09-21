@@ -24,6 +24,10 @@ param([int]$TimeoutSeconds = 300)
 
 . "$PSScriptRoot/common.ps1"
 
+# The menus are drawn into the text framebuffer, which a machine with a screen shows in a window: here they go to
+# the (hidden) console, where the check reads them.
+$env:CERES_HEADLESS = '1'
+
 $gxx = Get-Command g++ -ErrorAction SilentlyContinue
 if (-not $gxx) { Write-Host "SKIP: g++ is needed to build the console harness"; exit 0 }
 

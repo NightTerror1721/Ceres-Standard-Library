@@ -6,12 +6,17 @@
     Compiles examples/<Name>.c at -O2 (-Level) and links it against the library built at that level,
     build/lib/O<level>/libceres.car (rebuilt by tools/mklib.ps1 when a library source is newer than it): only
     the modules the program calls are linked, the optional ones (irq, fault) among them. Nothing of the library
-    is compiled again; ceresc gets the archive's declarations with --decls. With -Window the program opens the SDL window (ceres run --window), which
-    is how the games are played: the keyboard, mouse and gamepad go to the program and the display shows in
-    the window. Without it the program runs headless and its terminal output appears here; the games then
-    take their input from the terminal.
+    is compiled again; ceresc gets the archive's declarations with --decls.
+
+    A machine has a screen: the program's window opens when it first shows a frame (of the text framebuffer or
+    of the pixel display), so the games are played in it and the keyboard, mouse and gamepad go to the program.
+    A program that never shows a frame opens none, and its output appears here. -Window opens the window at
+    once (ceres run --window); -Terminal keeps it out of the way (ceres run --terminal), so text frames appear
+    here as text and the games take their input from the terminal.
 
 .EXAMPLE
+    tools\example.ps1 snake                            # the window opens with its first frame
+    tools\example.ps1 snake -Terminal                  # the frames as text, here
     tools\example.ps1 snake -Window
     tools\example.ps1 life -Define DEMO_FRAMES=100      # the demo build the tests compare
     tools\example.ps1 hello
@@ -20,6 +25,7 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)][string]$Name,
     [switch]$Window,
+    [switch]$Terminal,
     [string[]]$Define = @(),
     [int]$Level = 2,
     [switch]$NoRun,
@@ -59,5 +65,6 @@ if ($NoRun) { exit 0 }
 
 $runArgs = @("run", $cres)
 if ($Window) { $runArgs += "--window" }
+if ($Terminal) { $runArgs += "--terminal" }
 & $Ceres @runArgs
 exit $LASTEXITCODE
