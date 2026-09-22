@@ -103,5 +103,9 @@
 -- trie: each_prefix visits exactly the matching words, children sorted
 -- trie: clear resets everything, and the pool is reusable afterward
 -- trie: insert fails cleanly once the pool is full
+-- generic: DS_DEFAULT_HASH/EQ picks the right pair for hset - int, unsigned int
+-- generic: DS_DEFAULT_HASH/EQ with gmap - string and float keys
+-- generic: DS_DEFAULT_CMP with omap and flatmap - int and string keys
+-- generic: DS_DEFAULT_CMP with iheap - float priorities
 -- nothing leaked
-ALL PASSED 4275/4275
+ALL PASSED 4288/4288

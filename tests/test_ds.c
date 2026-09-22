@@ -30,6 +30,7 @@
 #include "ceres/ds/oset.h"
 #include "ceres/ds/skiplist.h"
 #include "ceres/ds/trie.h"
+#include "ceres/ds/generic.h"
 #include "ceres/hash.h"
 
 // ---- list ----
@@ -1673,6 +1674,68 @@ static void tries(void)
     CHECK(trie_find(&tiny, "ac") == NULL);
 }
 
+// ---- ds/generic.h ----
+
+static void generics(void)
+{
+    TEST_SECTION("generic: DS_DEFAULT_HASH/EQ picks the right pair for hset - int, unsigned int");
+    struct hset si;
+    hset_init(&si, sizeof(int), 0, DS_DEFAULT_HASH(int), DS_DEFAULT_EQ(int));
+    int ik = 7;
+    CHECK_EQ(hset_add(&si, &ik), 1);
+    CHECK(hset_has(&si, &ik));
+    hset_free(&si);
+
+    struct hset su;
+    hset_init(&su, sizeof(unsigned int), 0, DS_DEFAULT_HASH(unsigned int), DS_DEFAULT_EQ(unsigned int));
+    unsigned int uk = 9u;
+    CHECK_EQ(hset_add(&su, &uk), 1);
+    CHECK(hset_has(&su, &uk));
+    hset_free(&su);
+
+    TEST_SECTION("generic: DS_DEFAULT_HASH/EQ with gmap - string and float keys");
+    struct gmap gs;
+    gmap_init(&gs, sizeof(char*), sizeof(int), 0, DS_DEFAULT_HASH(char*), DS_DEFAULT_EQ(char*));
+    const char* name = "alpha";
+    int v = 42;
+    CHECK_EQ(gmap_set(&gs, &name, &v), 0);
+    CHECK_EQ(*(int*)gmap_get(&gs, &name), 42);
+    gmap_free(&gs);
+
+    struct gmap gf;
+    gmap_init(&gf, sizeof(float), sizeof(int), 0, DS_DEFAULT_HASH(float), DS_DEFAULT_EQ(float));
+    float fk = 2.5f;
+    int fv = 99;
+    CHECK_EQ(gmap_set(&gf, &fk, &fv), 0);
+    CHECK_EQ(*(int*)gmap_get(&gf, &fk), 99);
+    gmap_free(&gf);
+
+    TEST_SECTION("generic: DS_DEFAULT_CMP with omap and flatmap - int and string keys");
+    struct omap om;
+    omap_init(&om, sizeof(int), sizeof(int), DS_DEFAULT_CMP(int));
+    int a = 3, av = 30;
+    CHECK_EQ(omap_set(&om, &a, &av), 0);
+    CHECK_EQ(*(int*)omap_get(&om, &a), 30);
+    omap_free(&om);
+
+    struct flatmap fm;
+    fmap_init(&fm, sizeof(char*), sizeof(int), DS_DEFAULT_CMP(char*));
+    const char* fmk = "beta";
+    int fmv = 5;
+    CHECK_EQ(fmap_set(&fm, &fmk, &fmv), 0);
+    CHECK_EQ(*(int*)fmap_get(&fm, &fmk), 5);
+    fmap_free(&fm);
+
+    TEST_SECTION("generic: DS_DEFAULT_CMP with iheap - float priorities");
+    struct iheap ih;
+    ih_init(&ih, sizeof(float), DS_DEFAULT_CMP(float));
+    float f1 = 3.5f, f2 = 1.5f;
+    ih_push(&ih, &f1);
+    ih_push(&ih, &f2);
+    CHECK(*(const float*)ih_peek(&ih) < 2.0f);          // 1.5 sorts first
+    ih_free(&ih);
+}
+
 int main(void)
 {
     unsigned int baseline = heap_used();
@@ -1699,6 +1762,7 @@ int main(void)
     omaps();
     skiplists();
     tries();
+    generics();
 
     TEST_SECTION("nothing leaked");
     CHECK_EQ((int)heap_used(), (int)baseline);          // every allocation above was given back
