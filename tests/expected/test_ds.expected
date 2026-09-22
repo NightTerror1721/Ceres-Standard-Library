@@ -57,5 +57,19 @@
 -- bloom: a never-added key is reported absent
 -- bloom: an added key is always reported present
 -- bloom: clear forgets everything
+-- gmap: empty
+-- gmap: set, get, replace
+-- gmap: remove, growing back and forth
+-- gmap: string keys via a key that is itself a pointer
+-- hset: add, has, remove
+-- multimap: empty key has nothing
+-- multimap: several values on one key, most recent first
+-- multimap: each visits every value
+-- multimap: remove one match, the rest survive
+-- multimap: removing every value drops the key entirely
+-- slotmap: empty
+-- slotmap: insert and read back by handle
+-- slotmap: a removed handle goes stale, even if its slot is reused
+-- slotmap: removing the same handle twice is harmless
 -- nothing leaked
-ALL PASSED 2258/2258
+ALL PASSED 2764/2764

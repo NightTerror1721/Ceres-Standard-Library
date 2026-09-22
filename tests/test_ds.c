@@ -19,6 +19,11 @@
 #include "ceres/ds/flatmap.h"
 #include "ceres/ds/flatset.h"
 #include "ceres/ds/bloom.h"
+#include "ceres/ds/gmap.h"
+#include "ceres/ds/hset.h"
+#include "ceres/ds/multimap.h"
+#include "ceres/ds/slotmap.h"
+#include "ceres/hash.h"
 
 // ---- list ----
 
@@ -110,6 +115,17 @@ static int cmp_point_y(const void* a, const void* b)
 {
     return ((const struct point*)a)->y - ((const struct point*)b)->y;
 }
+
+// hash/eq pairs for gmap/hset/multimap - `key` always points at key_size bytes to hash or compare,
+// never at the key's own value directly, so a char* key has to be dereferenced once more than an
+// int key does to reach what it actually names.
+static unsigned int hash_int_key(const void* key, unsigned int len) { (void)len; return hash_fnv1a(key, sizeof(int)); }
+static int eq_int_key(const void* a, const void* b) { return *(const int*)a == *(const int*)b; }
+
+static unsigned int hash_cstr_key(const void* key, unsigned int len) { (void)len; return hash_str(*(const char* const*)key); }
+static int eq_cstr_key(const void* a, const void* b) { return strcmp(*(const char* const*)a, *(const char* const*)b) == 0; }
+
+static void sum_value(const void* value, void* ctx) { *(int*)ctx += *(const int*)value; }
 
 static void vectors(void)
 {
@@ -960,6 +976,173 @@ static void blooms(void)
         CHECK(!bloom_maybe_has(&b, keys[i], (unsigned int)strlen(keys[i])));
 }
 
+// ---- gmap / hset ----
+
+static void gmaps(void)
+{
+    struct gmap m;
+
+    TEST_SECTION("gmap: empty");
+    gmap_init(&m, sizeof(int), sizeof(int), 0, hash_int_key, eq_int_key);
+    CHECK_EQ((int)gmap_len(&m), 0);
+    int key = 3;
+    CHECK(gmap_get(&m, &key) == NULL);
+    CHECK(!gmap_has(&m, &key));
+
+    TEST_SECTION("gmap: set, get, replace");
+    for (int i = 0; i < 40; i++)
+    {
+        int value = i * 10;
+        CHECK_EQ(gmap_set(&m, &i, &value), 0);
+    }
+    CHECK_EQ((int)gmap_len(&m), 40);
+    for (int i = 0; i < 40; i++)
+        CHECK_EQ(*(int*)gmap_get(&m, &i), i * 10);
+    int replacement = 999;
+    CHECK_EQ(gmap_set(&m, &key, &replacement), 0);
+    CHECK_EQ((int)gmap_len(&m), 40);                    // replaced, not added
+    CHECK_EQ(*(int*)gmap_get(&m, &key), 999);
+
+    TEST_SECTION("gmap: remove, growing back and forth");
+    for (int i = 0; i < 40; i++)
+        if (i % 2 == 0)
+            CHECK_EQ(gmap_remove(&m, &i), 1);
+    CHECK_EQ((int)gmap_len(&m), 20);                    // the 20 odd keys survive; key 3 among them, holding 999
+    int already_gone = 4;                                // even: removed by the loop above already
+    CHECK_EQ(gmap_remove(&m, &already_gone), 0);
+    for (int i = 40; i < 200; i++)
+    {
+        int value = i;
+        CHECK_EQ(gmap_set(&m, &i, &value), 0);
+    }
+    CHECK_EQ((int)gmap_len(&m), 20 + 160);
+    for (int i = 1; i < 40; i += 2)
+        CHECK_EQ(*(int*)gmap_get(&m, &i), i == 3 ? 999 : i * 10);   // 3 still holds the replacement from above
+    for (int i = 40; i < 200; i++)
+        CHECK_EQ(*(int*)gmap_get(&m, &i), i);
+    gmap_free(&m);
+
+    TEST_SECTION("gmap: string keys via a key that is itself a pointer");
+    struct gmap sm;
+    gmap_init(&sm, sizeof(char*), sizeof(int), 0, hash_cstr_key, eq_cstr_key);
+    const char* names[] = { "alpha", "beta", "gamma" };
+    for (int i = 0; i < 3; i++)
+    {
+        int value = i;
+        CHECK_EQ(gmap_set(&sm, &names[i], &value), 0);
+    }
+    const char* lookup = "beta";
+    CHECK_EQ(*(int*)gmap_get(&sm, &lookup), 1);
+    gmap_free(&sm);
+
+    struct hset s;
+    TEST_SECTION("hset: add, has, remove");
+    hset_init(&s, sizeof(int), 0, hash_int_key, eq_int_key);
+    CHECK_EQ(hset_add(&s, &key), 1);                    // new
+    CHECK_EQ(hset_add(&s, &key), 0);                    // already there
+    CHECK_EQ((int)hset_len(&s), 1);
+    CHECK(hset_has(&s, &key));
+    for (int i = 0; i < 60; i++)
+        hset_add(&s, &i);
+    CHECK(hset_has(&s, &key));
+    CHECK_EQ((int)hset_len(&s), 60);                    // key (3) was already among 0..59
+    CHECK_EQ(hset_remove(&s, &key), 1);
+    CHECK(!hset_has(&s, &key));
+    hset_free(&s);
+}
+
+// ---- multimap ----
+
+static void multimaps(void)
+{
+    struct multimap m;
+
+    TEST_SECTION("multimap: empty key has nothing");
+    mm_init(&m, sizeof(int), sizeof(int), 0, hash_int_key, eq_int_key);
+    int key = 1;
+    CHECK_EQ((int)mm_count(&m, &key), 0);
+
+    TEST_SECTION("multimap: several values on one key, most recent first");
+    int values[3] = { 10, 20, 30 };
+    for (int i = 0; i < 3; i++)
+        CHECK_EQ(mm_add(&m, &key, &values[i]), 0);
+    CHECK_EQ((int)mm_count(&m, &key), 3);
+    CHECK_EQ((int)mm_key_count(&m), 1);
+    int other = 2;
+    int ov = 99;
+    mm_add(&m, &other, &ov);
+    CHECK_EQ((int)mm_key_count(&m), 2);
+
+    TEST_SECTION("multimap: each visits every value");
+    int sum = 0;
+    mm_each(&m, &key, sum_value, &sum);
+    CHECK_EQ(sum, 10 + 20 + 30);
+
+    TEST_SECTION("multimap: remove one match, the rest survive");
+    CHECK_EQ(mm_remove(&m, &key, &values[1]), 1);        // drop 20
+    CHECK_EQ((int)mm_count(&m, &key), 2);
+    CHECK_EQ(mm_remove(&m, &key, &values[1]), 0);        // already gone
+    sum = 0;
+    mm_each(&m, &key, sum_value, &sum);
+    CHECK_EQ(sum, 10 + 30);
+
+    TEST_SECTION("multimap: removing every value drops the key entirely");
+    CHECK_EQ(mm_remove(&m, &key, &values[0]), 1);
+    CHECK_EQ(mm_remove(&m, &key, &values[2]), 1);
+    CHECK_EQ((int)mm_count(&m, &key), 0);
+    CHECK_EQ((int)mm_key_count(&m), 1);                  // only `other` is left
+    mm_free(&m);
+}
+
+// ---- slotmap ----
+
+static void slotmaps(void)
+{
+    struct slotmap sm;
+
+    TEST_SECTION("slotmap: empty");
+    sm_init(&sm, sizeof(struct point));
+    CHECK_EQ((int)sm_len(&sm), 0);
+    struct sm_handle stale = { 0, 0 };
+    CHECK(!sm_valid(&sm, stale));
+    CHECK(sm_get(&sm, stale) == NULL);
+
+    TEST_SECTION("slotmap: insert and read back by handle");
+    struct sm_handle handles[5];
+    for (int i = 0; i < 5; i++)
+    {
+        struct point p = { i, i * 2, 'a' };
+        handles[i] = sm_insert(&sm, &p);
+    }
+    CHECK_EQ((int)sm_len(&sm), 5);
+    for (int i = 0; i < 5; i++)
+    {
+        struct point* p = (struct point*)sm_get(&sm, handles[i]);
+        CHECK(p != NULL);
+        CHECK_EQ(p->x, i);
+        CHECK_EQ(p->y, i * 2);
+    }
+
+    TEST_SECTION("slotmap: a removed handle goes stale, even if its slot is reused");
+    struct sm_handle doomed = handles[2];
+    sm_remove(&sm, doomed);
+    CHECK(!sm_valid(&sm, doomed));
+    CHECK(sm_get(&sm, doomed) == NULL);
+    CHECK_EQ((int)sm_len(&sm), 4);
+    struct point q = { 99, 99, 'z' };
+    struct sm_handle reused = sm_insert(&sm, &q);
+    CHECK_EQ((int)reused.index, (int)doomed.index);      // the freed slot comes back first
+    CHECK(reused.gen != doomed.gen);                      // but the old handle still does not see it
+    CHECK(!sm_valid(&sm, doomed));
+    CHECK(sm_valid(&sm, reused));
+    CHECK_EQ(((struct point*)sm_get(&sm, reused))->x, 99);
+
+    TEST_SECTION("slotmap: removing the same handle twice is harmless");
+    sm_remove(&sm, doomed);                              // doomed is stale (reused took its slot): a no-op
+    CHECK_EQ((int)sm_len(&sm), 5);                        // still 4 originals plus reused - nothing changed
+    sm_free(&sm);
+}
+
 int main(void)
 {
     unsigned int baseline = heap_used();
@@ -977,6 +1160,9 @@ int main(void)
     dsus();
     flatmaps();
     blooms();
+    gmaps();
+    multimaps();
+    slotmaps();
 
     TEST_SECTION("nothing leaked");
     CHECK_EQ((int)heap_used(), (int)baseline);          // every allocation above was given back
