@@ -82,5 +82,10 @@
 -- lru: over capacity evicts the least recently used
 -- lru: remove
 -- lru: capacity 0 means unbounded
+-- rbtree: empty
+-- rbtree: insert in scrambled order keeps sorted traversal and every invariant
+-- rbtree: find
+-- rbtree: remove the first half in scrambled order, invariants hold throughout
+-- rbtree: remove the rest, ending empty
 -- nothing leaked
-ALL PASSED 2802/2802
+ALL PASSED 3495/3495

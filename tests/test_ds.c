@@ -25,6 +25,7 @@
 #include "ceres/ds/slotmap.h"
 #include "ceres/ds/iheap.h"
 #include "ceres/ds/lru.h"
+#include "ceres/ds/rbtree.h"
 #include "ceres/hash.h"
 
 // ---- list ----
@@ -128,6 +129,38 @@ static unsigned int hash_cstr_key(const void* key, unsigned int len) { (void)len
 static int eq_cstr_key(const void* a, const void* b) { return strcmp(*(const char* const*)a, *(const char* const*)b) == 0; }
 
 static void sum_value(const void* value, void* ctx) { *(int*)ctx += *(const int*)value; }
+
+// rbtree: an independent invariant checker, walking left/right/red directly rather than trusting
+// rb_first/rb_next's sorted order alone to prove the tree is a correct red-black tree and not just
+// a correct BST that happens to still be one after every rotation.
+struct rbitem { int key; struct rb_node node; };
+
+static int rb_cmp_key(const struct rb_node* a, const struct rb_node* b)
+{
+    return rb_entry(a, struct rbitem, node)->key - rb_entry(b, struct rbitem, node)->key;
+}
+
+// The black-height of the subtree at n (NULL counts as a black leaf, height 1), or -1 the moment
+// any invariant breaks: a red node with a red child, or two children with unequal black-height.
+static int rb_black_height(const struct rb_node* n)
+{
+    if (n == NULL)
+        return 1;
+    if (n->red && ((n->left != NULL && n->left->red) || (n->right != NULL && n->right->red)))
+        return -1;
+    int lh = rb_black_height(n->left);
+    int rh = rb_black_height(n->right);
+    if (lh < 0 || rh < 0 || lh != rh)
+        return -1;
+    return lh + (n->red ? 0 : 1);
+}
+
+static int rb_invariants_hold(const struct rbtree* t)
+{
+    if (t->root != NULL && t->root->red)
+        return 0;                                    // the root is always black
+    return rb_black_height(t->root) >= 0;
+}
 
 static void vectors(void)
 {
@@ -1249,6 +1282,109 @@ static void lrus(void)
     lru_free(&u);
 }
 
+// ---- rbtree ----
+
+static void rbtrees(void)
+{
+    struct rbtree t;
+    static struct rbitem items[80];    // static: 80 struct rb_node-carrying objects is too big a stack frame to want
+    struct rbitem probe;
+    int n = 80;
+
+    TEST_SECTION("rbtree: empty");
+    rb_init(&t, rb_cmp_key);
+    CHECK_EQ((int)rb_count(&t), 0);
+    CHECK(rb_empty(&t));
+    CHECK(rb_first(&t) == NULL);
+    CHECK(rb_last(&t) == NULL);
+    probe.key = 5;
+    CHECK(rb_find(&t, &probe.node) == NULL);
+
+    TEST_SECTION("rbtree: insert in scrambled order keeps sorted traversal and every invariant");
+    for (int i = 0; i < n; i++)
+    {
+        int key = (i * 37) % n;                      // 37 is coprime to 80: a permutation of 0..79
+        items[key].key = key;
+        rb_insert(&t, &items[key].node);
+        CHECK_EQ((int)rb_count(&t), i + 1);
+        CHECK(rb_invariants_hold(&t));
+    }
+    {
+        struct rb_node* it = rb_first(&t);
+        int expect = 0, seen = 0;
+        while (it != NULL)
+        {
+            CHECK_EQ(rb_entry(it, struct rbitem, node)->key, expect);
+            expect++;
+            seen++;
+            it = rb_next(it);
+        }
+        CHECK_EQ(seen, n);
+    }
+    {
+        struct rb_node* it = rb_last(&t);              // and the same walk backwards
+        int expect = n - 1, seen = 0;
+        while (it != NULL)
+        {
+            CHECK_EQ(rb_entry(it, struct rbitem, node)->key, expect);
+            expect--;
+            seen++;
+            it = rb_prev(it);
+        }
+        CHECK_EQ(seen, n);
+    }
+
+    TEST_SECTION("rbtree: find");
+    for (int key = 0; key < n; key++)
+    {
+        probe.key = key;
+        struct rb_node* found = rb_find(&t, &probe.node);
+        CHECK(found != NULL);
+        if (found != NULL)
+            CHECK_EQ(rb_entry(found, struct rbitem, node)->key, key);
+    }
+    probe.key = 1000;
+    CHECK(rb_find(&t, &probe.node) == NULL);
+
+    TEST_SECTION("rbtree: remove the first half in scrambled order, invariants hold throughout");
+    for (int i = 0; i < 40; i++)
+    {
+        int key = (i * 13) % 40;                      // 13 is coprime to 40
+        rb_remove(&t, &items[key].node);
+        CHECK_EQ((int)rb_count(&t), n - i - 1);
+        CHECK(rb_invariants_hold(&t));
+    }
+    {
+        struct rb_node* it = rb_first(&t);
+        int expect = 40, seen = 0;
+        while (it != NULL)
+        {
+            CHECK_EQ(rb_entry(it, struct rbitem, node)->key, expect);
+            expect++;
+            seen++;
+            it = rb_next(it);
+        }
+        CHECK_EQ(seen, 40);
+    }
+    for (int key = 0; key < 40; key++)
+    {
+        probe.key = key;
+        CHECK(rb_find(&t, &probe.node) == NULL);
+    }
+
+    TEST_SECTION("rbtree: remove the rest, ending empty");
+    for (int i = 0; i < 40; i++)
+    {
+        int key = 40 + (i * 17) % 40;                 // 17 is coprime to 40; offset covers 40..79
+        rb_remove(&t, &items[key].node);
+        CHECK(rb_invariants_hold(&t));
+    }
+    CHECK_EQ((int)rb_count(&t), 0);
+    CHECK(rb_empty(&t));
+    CHECK(rb_first(&t) == NULL);
+    CHECK(rb_last(&t) == NULL);
+}
+
 int main(void)
 {
     unsigned int baseline = heap_used();
@@ -1271,6 +1407,7 @@ int main(void)
     slotmaps();
     iheaps();
     lrus();
+    rbtrees();
 
     TEST_SECTION("nothing leaked");
     CHECK_EQ((int)heap_used(), (int)baseline);          // every allocation above was given back
