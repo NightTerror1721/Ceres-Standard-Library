@@ -29,6 +29,7 @@
 #include "ceres/ds/omap.h"
 #include "ceres/ds/oset.h"
 #include "ceres/ds/skiplist.h"
+#include "ceres/ds/trie.h"
 #include "ceres/hash.h"
 
 // ---- list ----
@@ -132,6 +133,26 @@ static unsigned int hash_cstr_key(const void* key, unsigned int len) { (void)len
 static int eq_cstr_key(const void* a, const void* b) { return strcmp(*(const char* const*)a, *(const char* const*)b) == 0; }
 
 static void sum_value(const void* value, void* ctx) { *(int*)ctx += *(const int*)value; }
+
+// trie: records every word trie_each_prefix visits, in the order it visits them.
+struct trie_visit_log { char words[10][16]; int count; };
+
+static void log_word(const char* word, void* value, void* ctx)
+{
+    (void)value;
+    struct trie_visit_log* log = (struct trie_visit_log*)ctx;
+    if (log->count < 10)
+    {
+        int i = 0;
+        while (word[i] != '\0' && i < 15)
+        {
+            log->words[log->count][i] = word[i];
+            i++;
+        }
+        log->words[log->count][i] = '\0';
+        log->count++;
+    }
+}
 
 // rbtree: an independent invariant checker, walking left/right/red directly rather than trusting
 // rb_first/rb_next's sorted order alone to prove the tree is a correct red-black tree and not just
@@ -1559,6 +1580,99 @@ static void skiplists(void)
     skl_free(&sl);
 }
 
+// ---- trie ----
+
+static void tries(void)
+{
+    static struct trie_node storage[128];               // array sizes must be literals - see trie_init's byte count below
+    struct trie t;
+    int cat_v = 1, car_v = 2, care_v = 3, cart_v = 4, dog_v = 5, do_v = 6, dot_v = 7, cats_v = 8;
+    struct trie_visit_log log;
+
+    TEST_SECTION("trie: empty");
+    trie_init(&t, storage, 128);
+    CHECK(trie_find(&t, "cat") == NULL);
+    CHECK(!trie_has_prefix(&t, "c"));
+
+    TEST_SECTION("trie: insert and find distinguishes a prefix from a whole word");
+    CHECK_EQ(trie_insert(&t, "cat", &cat_v), 0);
+    CHECK_EQ(trie_insert(&t, "car", &car_v), 0);
+    CHECK_EQ(trie_insert(&t, "care", &care_v), 0);
+    CHECK_EQ(trie_insert(&t, "cart", &cart_v), 0);
+    CHECK_EQ(trie_insert(&t, "dog", &dog_v), 0);
+    CHECK_EQ(trie_insert(&t, "do", &do_v), 0);
+    CHECK_EQ(trie_insert(&t, "dot", &dot_v), 0);
+    CHECK_EQ(trie_insert(&t, "cats", &cats_v), 0);
+    CHECK_EQ(*(int*)trie_find(&t, "cat"), 1);
+    CHECK_EQ(*(int*)trie_find(&t, "car"), 2);
+    CHECK_EQ(*(int*)trie_find(&t, "care"), 3);
+    CHECK_EQ(*(int*)trie_find(&t, "cart"), 4);
+    CHECK_EQ(*(int*)trie_find(&t, "dog"), 5);
+    CHECK_EQ(*(int*)trie_find(&t, "do"), 6);
+    CHECK_EQ(*(int*)trie_find(&t, "dot"), 7);
+    CHECK_EQ(*(int*)trie_find(&t, "cats"), 8);
+    CHECK(trie_find(&t, "ca") == NULL);                 // walked, but never itself inserted as a word
+    CHECK(trie_find(&t, "d") == NULL);
+    CHECK(trie_find(&t, "catapult") == NULL);           // falls off the trie entirely
+
+    TEST_SECTION("trie: has_prefix");
+    CHECK(trie_has_prefix(&t, "ca"));
+    CHECK(trie_has_prefix(&t, "car"));
+    CHECK(trie_has_prefix(&t, "d"));
+    CHECK(trie_has_prefix(&t, ""));                     // the empty prefix matches everything
+    CHECK(!trie_has_prefix(&t, "x"));
+    CHECK(!trie_has_prefix(&t, "care2"));
+
+    TEST_SECTION("trie: each_prefix visits exactly the matching words, children sorted");
+    log.count = 0;
+    trie_each_prefix(&t, "ca", log_word, &log);
+    CHECK_EQ(log.count, 5);
+    CHECK_STR(log.words[0], "car");
+    CHECK_STR(log.words[1], "care");
+    CHECK_STR(log.words[2], "cart");
+    CHECK_STR(log.words[3], "cat");
+    CHECK_STR(log.words[4], "cats");
+
+    log.count = 0;
+    trie_each_prefix(&t, "do", log_word, &log);
+    CHECK_EQ(log.count, 3);
+    CHECK_STR(log.words[0], "do");
+    CHECK_STR(log.words[1], "dog");
+    CHECK_STR(log.words[2], "dot");
+
+    log.count = 0;
+    trie_each_prefix(&t, "", log_word, &log);           // the whole dictionary, alphabetical
+    CHECK_EQ(log.count, 8);
+    CHECK_STR(log.words[0], "car");
+    CHECK_STR(log.words[1], "care");
+    CHECK_STR(log.words[2], "cart");
+    CHECK_STR(log.words[3], "cat");
+    CHECK_STR(log.words[4], "cats");
+    CHECK_STR(log.words[5], "do");
+    CHECK_STR(log.words[6], "dog");
+    CHECK_STR(log.words[7], "dot");
+
+    log.count = 0;
+    trie_each_prefix(&t, "xyz", log_word, &log);
+    CHECK_EQ(log.count, 0);
+
+    TEST_SECTION("trie: clear resets everything, and the pool is reusable afterward");
+    trie_clear(&t);
+    CHECK(trie_find(&t, "cat") == NULL);
+    CHECK(!trie_has_prefix(&t, "c"));
+    CHECK_EQ(trie_insert(&t, "new", &cat_v), 0);
+    CHECK(trie_find(&t, "new") != NULL);
+
+    TEST_SECTION("trie: insert fails cleanly once the pool is full");
+    static struct trie_node tiny_storage[2];
+    struct trie tiny;
+    trie_init(&tiny, tiny_storage, 2);
+    CHECK_EQ(trie_insert(&tiny, "ab", &cat_v), 0);       // exactly 2 nodes: 'a' then 'b'
+    CHECK_EQ(trie_insert(&tiny, "ac", &cat_v), -1);      // 'a' is shared; 'c' needs a node the pool no longer has
+    CHECK(trie_find(&tiny, "ab") != NULL);               // the failed insert left what was already there intact
+    CHECK(trie_find(&tiny, "ac") == NULL);
+}
+
 int main(void)
 {
     unsigned int baseline = heap_used();
@@ -1584,6 +1698,7 @@ int main(void)
     rbtrees();
     omaps();
     skiplists();
+    tries();
 
     TEST_SECTION("nothing leaked");
     CHECK_EQ((int)heap_used(), (int)baseline);          // every allocation above was given back

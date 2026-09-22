@@ -97,5 +97,11 @@
 -- skiplist: find
 -- skiplist: remove half, in scrambled order
 -- skiplist: removing an absent key reports it, twice in a row
+-- trie: empty
+-- trie: insert and find distinguishes a prefix from a whole word
+-- trie: has_prefix
+-- trie: each_prefix visits exactly the matching words, children sorted
+-- trie: clear resets everything, and the pool is reusable afterward
+-- trie: insert fails cleanly once the pool is full
 -- nothing leaked
-ALL PASSED 4220/4220
+ALL PASSED 4275/4275
