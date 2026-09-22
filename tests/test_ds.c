@@ -26,6 +26,9 @@
 #include "ceres/ds/iheap.h"
 #include "ceres/ds/lru.h"
 #include "ceres/ds/rbtree.h"
+#include "ceres/ds/omap.h"
+#include "ceres/ds/oset.h"
+#include "ceres/ds/skiplist.h"
 #include "ceres/hash.h"
 
 // ---- list ----
@@ -1385,6 +1388,177 @@ static void rbtrees(void)
     CHECK(rb_last(&t) == NULL);
 }
 
+// ---- omap / oset ----
+
+static void omaps(void)
+{
+    struct omap m;
+
+    TEST_SECTION("omap: empty");
+    omap_init(&m, sizeof(int), sizeof(int), cmp_int);
+    CHECK_EQ((int)omap_len(&m), 0);
+    int key = 3;
+    CHECK(omap_get(&m, &key) == NULL);
+    CHECK(!omap_has(&m, &key));
+    CHECK(omap_first_key(&m) == NULL);
+
+    TEST_SECTION("omap: set keeps sorted order");
+    int n = 50;
+    for (int i = 0; i < n; i++)
+    {
+        int k = (i * 17) % n;                        // 17 is coprime to 50
+        int v = k * 10;
+        CHECK_EQ(omap_set(&m, &k, &v), 0);
+    }
+    CHECK_EQ((int)omap_len(&m), n);
+    {
+        const void* it = omap_first_key(&m);
+        int expect = 0, seen = 0;
+        while (it != NULL)
+        {
+            CHECK_EQ(*(const int*)it, expect);
+            CHECK_EQ(*(int*)omap_get(&m, it), expect * 10);
+            expect++;
+            seen++;
+            it = omap_next_key(&m, it);
+        }
+        CHECK_EQ(seen, n);
+    }
+
+    TEST_SECTION("omap: replace does not add a second entry");
+    int replacement = 999;
+    CHECK_EQ(omap_set(&m, &key, &replacement), 0);
+    CHECK_EQ((int)omap_len(&m), n);
+    CHECK_EQ(*(int*)omap_get(&m, &key), 999);
+
+    TEST_SECTION("omap: remove");
+    for (int i = 0; i < n; i += 2)
+        CHECK_EQ(omap_remove(&m, &i), 1);
+    CHECK_EQ((int)omap_len(&m), n / 2);
+    int already_gone = 4;                             // even: removed just above
+    CHECK_EQ(omap_remove(&m, &already_gone), 0);
+    CHECK_EQ(*(int*)omap_get(&m, &key), 999);           // 3 is odd: survived, still holding the replacement
+    {
+        const void* it = omap_first_key(&m);
+        int expect = 1, seen = 0;                      // the odd keys: 1 3 5 ... 49
+        while (it != NULL)
+        {
+            CHECK_EQ(*(const int*)it, expect);
+            expect += 2;
+            seen++;
+            it = omap_next_key(&m, it);
+        }
+        CHECK_EQ(seen, n / 2);
+    }
+    omap_free(&m);
+
+    TEST_SECTION("oset: add, has, remove, ordered walk");
+    struct oset s;
+    oset_init(&s, sizeof(int), cmp_int);
+    int vals[8] = { 5, 1, 8, 3, 7, 2, 6, 4 };
+    for (int i = 0; i < 8; i++)
+        CHECK_EQ(oset_add(&s, &vals[i]), 0);
+    CHECK_EQ((int)oset_len(&s), 8);
+    {
+        const void* it = oset_first(&s);
+        int expect = 1, seen = 0;
+        while (it != NULL)
+        {
+            CHECK_EQ(*(const int*)it, expect);
+            expect++;
+            seen++;
+            it = oset_next(&s, it);
+        }
+        CHECK_EQ(seen, 8);
+    }
+    int five = 5;
+    CHECK(oset_has(&s, &five));
+    CHECK_EQ(oset_remove(&s, &five), 1);
+    CHECK(!oset_has(&s, &five));
+    CHECK_EQ((int)oset_len(&s), 7);
+    oset_free(&s);
+}
+
+// ---- skiplist ----
+
+static void skiplists(void)
+{
+    struct skiplist sl;
+    int n = 60;
+    static int keys[60];
+    static int values[60];
+
+    TEST_SECTION("skiplist: empty");
+    CHECK_EQ(skl_init(&sl, cmp_int), 0);
+    CHECK_EQ((int)skl_len(&sl), 0);
+    CHECK(skl_first(&sl) == NULL);
+    int probe = 5;
+    CHECK(skl_find(&sl, &probe) == NULL);
+
+    TEST_SECTION("skiplist: insert in scrambled order keeps sorted traversal");
+    for (int i = 0; i < n; i++)
+    {
+        int key = (i * 23) % n;                       // 23 is coprime to 60
+        keys[key] = key;
+        values[key] = key * 100;
+        CHECK_EQ(skl_insert(&sl, &keys[key], &values[key]), 0);
+        CHECK_EQ((int)skl_len(&sl), i + 1);
+    }
+    {
+        struct skl_node* it = skl_first(&sl);
+        int expect = 0, seen = 0;
+        while (it != NULL)
+        {
+            CHECK_EQ(*(int*)it->key, expect);
+            CHECK_EQ(*(int*)it->value, expect * 100);
+            expect++;
+            seen++;
+            it = skl_next(it);
+        }
+        CHECK_EQ(seen, n);
+    }
+
+    TEST_SECTION("skiplist: find");
+    for (int key = 0; key < n; key++)
+    {
+        probe = key;
+        int* found = (int*)skl_find(&sl, &probe);
+        CHECK(found != NULL);
+        if (found != NULL)
+            CHECK_EQ(*found, key * 100);
+    }
+    probe = 1000;
+    CHECK(skl_find(&sl, &probe) == NULL);
+
+    TEST_SECTION("skiplist: remove half, in scrambled order");
+    for (int i = 0; i < 30; i++)
+    {
+        int key = (i * 7) % 30;                       // 7 is coprime to 30
+        probe = key;
+        CHECK_EQ(skl_remove(&sl, &probe), 1);
+        CHECK_EQ((int)skl_len(&sl), n - i - 1);
+    }
+    for (int key = 0; key < 30; key++)
+    {
+        probe = key;
+        CHECK(skl_find(&sl, &probe) == NULL);
+    }
+    for (int key = 30; key < n; key++)
+    {
+        probe = key;
+        CHECK(skl_find(&sl, &probe) != NULL);
+    }
+
+    TEST_SECTION("skiplist: removing an absent key reports it, twice in a row");
+    int missing = 10;                                 // was removed above (10 < 30)
+    CHECK_EQ(skl_remove(&sl, &missing), 0);
+    int present = 45;                                 // was not removed (45 >= 30)
+    CHECK_EQ(skl_remove(&sl, &present), 1);
+    CHECK_EQ((int)skl_len(&sl), n - 30 - 1);
+    CHECK_EQ(skl_remove(&sl, &present), 0);
+    skl_free(&sl);
+}
+
 int main(void)
 {
     unsigned int baseline = heap_used();
@@ -1408,6 +1582,8 @@ int main(void)
     iheaps();
     lrus();
     rbtrees();
+    omaps();
+    skiplists();
 
     TEST_SECTION("nothing leaked");
     CHECK_EQ((int)heap_used(), (int)baseline);          // every allocation above was given back

@@ -87,5 +87,15 @@
 -- rbtree: find
 -- rbtree: remove the first half in scrambled order, invariants hold throughout
 -- rbtree: remove the rest, ending empty
+-- omap: empty
+-- omap: set keeps sorted order
+-- omap: replace does not add a second entry
+-- omap: remove
+-- oset: add, has, remove, ordered walk
+-- skiplist: empty
+-- skiplist: insert in scrambled order keeps sorted traversal
+-- skiplist: find
+-- skiplist: remove half, in scrambled order
+-- skiplist: removing an absent key reports it, twice in a row
 -- nothing leaked
-ALL PASSED 3495/3495
+ALL PASSED 4220/4220
