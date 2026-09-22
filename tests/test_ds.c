@@ -11,6 +11,14 @@
 #include "ceres/ds/bitset.h"
 #include "ceres/ds/pqueue.h"
 #include "ceres/ds/strbuf.h"
+#include "ceres/ds/slist.h"
+#include "ceres/ds/stack.h"
+#include "ceres/ds/deque.h"
+#include "ceres/ds/cqueue.h"
+#include "ceres/ds/dsu.h"
+#include "ceres/ds/flatmap.h"
+#include "ceres/ds/flatset.h"
+#include "ceres/ds/bloom.h"
 
 // ---- list ----
 
@@ -679,6 +687,279 @@ static void builders(void)
     sb_free(&sb);                                       // twice is fine
 }
 
+// ---- slist ----
+
+static void slists(void)
+{
+    struct slist l;
+    struct job a, b, c;
+    a.id = 1; b.id = 2; c.id = 3;
+    slist_node_init(&a.link); slist_node_init(&b.link); slist_node_init(&c.link);
+
+    TEST_SECTION("slist: empty");
+    slist_init(&l);
+    CHECK(slist_empty(&l));
+    CHECK_EQ((int)slist_count(&l), 0);
+    CHECK(slist_pop_front(&l) == NULL);
+
+    TEST_SECTION("slist: push front and walk");
+    slist_push_front(&l, &c.link);                      // c
+    slist_push_front(&l, &b.link);                      // b c
+    slist_push_front(&l, &a.link);                      // a b c
+    CHECK_EQ((int)slist_count(&l), 3);
+    struct slist_node* it;
+    int order[3], n = 0;
+    SLIST_FOR_EACH(it, &l)
+        order[n++] = slist_entry(it, struct job, link)->id;
+    CHECK(n == 3 && order[0] == 1 && order[1] == 2 && order[2] == 3);
+
+    TEST_SECTION("slist: remove_after and pop_front");
+    slist_remove_after(&l, &a.link);                    // a c: removes b
+    CHECK_EQ((int)slist_count(&l), 2);
+    CHECK_EQ(slist_entry(slist_pop_front(&l), struct job, link)->id, 1);
+    CHECK_EQ(slist_entry(slist_pop_front(&l), struct job, link)->id, 3);
+    CHECK(slist_empty(&l));
+
+    TEST_SECTION("slist: removing while walking");
+    slist_init(&l);
+    struct job many[6];
+    for (int i = 5; i >= 0; i--) { many[i].id = i; slist_push_front(&l, &many[i].link); }  // 0 1 2 3 4 5
+    struct slist_node* nx;
+    struct slist_node* prev = NULL;
+    SLIST_FOR_EACH_SAFE(it, nx, &l)
+    {
+        if (slist_entry(it, struct job, link)->id % 2 == 0)
+        {
+            if (prev == NULL)
+                slist_pop_front(&l);
+            else
+                slist_remove_after(&l, prev);
+            // prev is unchanged: the node right after it is now nx either way
+        }
+        else
+        {
+            prev = it;
+        }
+    }
+    CHECK_EQ((int)slist_count(&l), 3);
+    n = 0;
+    SLIST_FOR_EACH(it, &l)
+        order[n++] = slist_entry(it, struct job, link)->id;
+    CHECK(n == 3 && order[0] == 1 && order[1] == 3 && order[2] == 5);
+}
+
+// ---- stack ----
+
+static void stacks(void)
+{
+    struct stack s;
+
+    TEST_SECTION("stack: empty");
+    stack_init(&s, sizeof(int));
+    CHECK(stack_empty(&s));
+    CHECK(stack_top(&s) == NULL);
+    int out;
+    CHECK_EQ(stack_pop(&s, &out), -1);
+
+    TEST_SECTION("stack: LIFO order");
+    for (int i = 0; i < 50; i++)
+        CHECK_EQ(stack_push(&s, &i), 0);
+    CHECK_EQ((int)stack_len(&s), 50);
+    CHECK_EQ(*(const int*)stack_top(&s), 49);
+    for (int i = 49; i >= 0; i--)
+    {
+        CHECK_EQ(stack_pop(&s, &out), 0);
+        CHECK_EQ(out, i);
+    }
+    CHECK(stack_empty(&s));
+    stack_free(&s);
+}
+
+// ---- deque ----
+
+static void deques(void)
+{
+    struct deque q;
+
+    TEST_SECTION("deque: empty");
+    dq_init(&q, sizeof(int));
+    CHECK(dq_empty(&q));
+    CHECK(dq_at(&q, 0) == NULL);
+    int out;
+    CHECK_EQ(dq_pop_front(&q, &out), -1);
+    CHECK_EQ(dq_pop_back(&q, &out), -1);
+
+    TEST_SECTION("deque: pushing both ends keeps logical order");
+    for (int i = 0; i < 5; i++) dq_push_back(&q, &i);    // 0 1 2 3 4
+    for (int i = 1; i <= 3; i++) dq_push_front(&q, &i);  // 3 2 1 0 1 2 3 4
+    CHECK_EQ((int)dq_len(&q), 8);
+    int expected[8] = { 3, 2, 1, 0, 1, 2, 3, 4 };
+    for (int i = 0; i < 8; i++)
+        CHECK_EQ(DEQUE_GET(&q, int, i), expected[i]);
+
+    TEST_SECTION("deque: popping both ends");
+    CHECK_EQ(dq_pop_front(&q, &out), 0); CHECK_EQ(out, 3);
+    CHECK_EQ(dq_pop_back(&q, &out), 0);  CHECK_EQ(out, 4);
+    CHECK_EQ((int)dq_len(&q), 6);
+    CHECK_EQ(DEQUE_GET(&q, int, 0), 2);
+    CHECK_EQ(DEQUE_GET(&q, int, 5), 3);
+
+    TEST_SECTION("deque: grows past its initial capacity, wrapping included");
+    dq_clear(&q);
+    for (int i = 0; i < 3; i++) dq_push_back(&q, &i);    // seed a wrap point
+    for (int i = 0; i < 3; i++) dq_pop_front(&q, &out);
+    for (int i = 0; i < 200; i++) CHECK_EQ(dq_push_back(&q, &i), 0);
+    CHECK_EQ((int)dq_len(&q), 200);
+    for (int i = 0; i < 200; i++)
+        CHECK_EQ(DEQUE_GET(&q, int, i), i);
+    dq_free(&q);
+}
+
+// ---- cqueue ----
+
+static void cqueues(void)
+{
+    struct cqueue q;
+    int storage[8];
+
+    TEST_SECTION("cqueue: capacity rounds down to a power of two");
+    cq_init(&q, storage, sizeof(int), 8);
+    CHECK_EQ((int)q.mask, 7);
+    CHECK_EQ((int)cq_count(&q), 0);
+    CHECK_EQ((int)cq_space(&q), 8);
+
+    TEST_SECTION("cqueue: fills, empties, wraps");
+    for (int i = 0; i < 8; i++)
+        CHECK_EQ(cq_put(&q, &i), 0);
+    int nine = 9;
+    CHECK_EQ(cq_put(&q, &nine), -1);                     // full
+    CHECK_EQ((int)cq_count(&q), 8);
+    int out;
+    for (int i = 0; i < 4; i++) { CHECK_EQ(cq_get(&q, &out), 0); CHECK_EQ(out, i); }
+    for (int i = 100; i < 104; i++)
+        CHECK_EQ(cq_put(&q, &i), 0);                     // wraps around the buffer
+    for (int i = 4; i < 8; i++) { CHECK_EQ(cq_get(&q, &out), 0); CHECK_EQ(out, i); }
+    for (int i = 100; i < 104; i++) { CHECK_EQ(cq_get(&q, &out), 0); CHECK_EQ(out, i); }
+    CHECK_EQ((int)cq_count(&q), 0);
+    CHECK_EQ(cq_get(&q, &out), -1);                      // empty
+
+    TEST_SECTION("cqueue: clear drops what was waiting");
+    cq_put(&q, &nine); cq_put(&q, &nine);
+    cq_clear(&q);
+    CHECK_EQ((int)cq_count(&q), 0);
+}
+
+// ---- dsu ----
+
+static void dsus(void)
+{
+    unsigned int parent[10];
+    unsigned char rank[10];
+    struct dsu d;
+
+    TEST_SECTION("dsu: starts with every element its own group");
+    dsu_init(&d, parent, rank, 10);
+    for (unsigned int i = 0; i < 10; i++)
+        CHECK_EQ((int)dsu_find(&d, i), (int)i);
+    CHECK(!dsu_connected(&d, 2, 5));
+
+    TEST_SECTION("dsu: union merges groups transitively");
+    dsu_union(&d, 2, 5);
+    dsu_union(&d, 5, 7);
+    CHECK(dsu_connected(&d, 2, 7));
+    CHECK(dsu_connected(&d, 2, 5));
+    CHECK(!dsu_connected(&d, 2, 3));
+    dsu_union(&d, 1, 3);
+    dsu_union(&d, 3, 7);                                 // joins {1,3} and {2,5,7} into one group
+    CHECK(dsu_connected(&d, 1, 2));
+    CHECK(dsu_connected(&d, 1, 5));
+
+    TEST_SECTION("dsu: union of an already-connected pair does nothing odd");
+    dsu_union(&d, 2, 7);
+    CHECK(dsu_connected(&d, 2, 7));
+    CHECK(!dsu_connected(&d, 2, 9));
+}
+
+// ---- flatmap / flatset ----
+
+static void flatmaps(void)
+{
+    struct flatmap m;
+
+    TEST_SECTION("flatmap: empty");
+    fmap_init(&m, sizeof(int), sizeof(int), cmp_int);
+    CHECK_EQ((int)fmap_len(&m), 0);
+    int key = 3;
+    CHECK(fmap_get(&m, &key) == NULL);
+    CHECK(!fmap_has(&m, &key));
+
+    TEST_SECTION("flatmap: set keeps pairs sorted by key");
+    int keys[6] = { 5, 1, 4, 2, 3, 0 };
+    for (int i = 0; i < 6; i++)
+    {
+        int value = keys[i] * 10;
+        CHECK_EQ(fmap_set(&m, &keys[i], &value), 0);
+    }
+    CHECK_EQ((int)fmap_len(&m), 6);
+    for (int i = 0; i < 6; i++)
+    {
+        const int* pair = (const int*)fmap_pair_at(&m, i);
+        CHECK_EQ(pair[0], i);                            // in key order: 0 1 2 3 4 5
+        CHECK_EQ(pair[1], i * 10);
+    }
+
+    TEST_SECTION("flatmap: get and replace");
+    int k = 3;
+    CHECK_EQ(*(int*)fmap_get(&m, &k), 30);
+    int replacement = 999;
+    CHECK_EQ(fmap_set(&m, &k, &replacement), 0);
+    CHECK_EQ((int)fmap_len(&m), 6);                      // still 6: replaced, not added
+    CHECK_EQ(*(int*)fmap_get(&m, &k), 999);
+
+    TEST_SECTION("flatmap: remove");
+    CHECK_EQ(fmap_remove(&m, &k), 1);
+    CHECK_EQ((int)fmap_len(&m), 5);
+    CHECK(fmap_get(&m, &k) == NULL);
+    CHECK_EQ(fmap_remove(&m, &k), 0);                    // already gone
+    fmap_free(&m);
+
+    struct flatset s;
+    TEST_SECTION("flatset: add, has, remove");
+    fset_init(&s, sizeof(int), cmp_int);
+    for (int i = 0; i < 5; i++)
+        CHECK_EQ(fset_add(&s, &keys[i]), 0);
+    CHECK_EQ((int)fset_len(&s), 5);
+    CHECK(fset_has(&s, &k));
+    CHECK_EQ(fset_remove(&s, &k), 1);
+    CHECK(!fset_has(&s, &k));
+    CHECK_EQ((int)fset_len(&s), 4);
+    fset_free(&s);
+}
+
+// ---- bloom ----
+
+static void blooms(void)
+{
+    unsigned int words[64];                              // bitset_words(2048): array sizes must be literals
+    struct bloom b;
+
+    TEST_SECTION("bloom: a never-added key is reported absent");
+    bloom_init(&b, words, 2048, 5);
+    CHECK(!bloom_maybe_has(&b, "nope", 4));
+
+    TEST_SECTION("bloom: an added key is always reported present");
+    const char* keys[] = { "alpha", "beta", "gamma", "delta", "epsilon" };
+    for (int i = 0; i < 5; i++)
+        bloom_add(&b, keys[i], (unsigned int)strlen(keys[i]));
+    for (int i = 0; i < 5; i++)
+        CHECK(bloom_maybe_has(&b, keys[i], (unsigned int)strlen(keys[i])));
+
+    TEST_SECTION("bloom: clear forgets everything");
+    bloom_clear(&b);
+    for (int i = 0; i < 5; i++)
+        CHECK(!bloom_maybe_has(&b, keys[i], (unsigned int)strlen(keys[i])));
+}
+
 int main(void)
 {
     unsigned int baseline = heap_used();
@@ -689,6 +970,13 @@ int main(void)
     queues();
     bitsets();
     builders();
+    slists();
+    stacks();
+    deques();
+    cqueues();
+    dsus();
+    flatmaps();
+    blooms();
 
     TEST_SECTION("nothing leaked");
     CHECK_EQ((int)heap_used(), (int)baseline);          // every allocation above was given back

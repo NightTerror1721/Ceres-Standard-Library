@@ -33,5 +33,29 @@
 -- strbuf: printf-style
 -- strbuf: growing a long way
 -- strbuf: taking the memory
+-- slist: empty
+-- slist: push front and walk
+-- slist: remove_after and pop_front
+-- slist: removing while walking
+-- stack: empty
+-- stack: LIFO order
+-- deque: empty
+-- deque: pushing both ends keeps logical order
+-- deque: popping both ends
+-- deque: grows past its initial capacity, wrapping included
+-- cqueue: capacity rounds down to a power of two
+-- cqueue: fills, empties, wraps
+-- cqueue: clear drops what was waiting
+-- dsu: starts with every element its own group
+-- dsu: union merges groups transitively
+-- dsu: union of an already-connected pair does nothing odd
+-- flatmap: empty
+-- flatmap: set keeps pairs sorted by key
+-- flatmap: get and replace
+-- flatmap: remove
+-- flatset: add, has, remove
+-- bloom: a never-added key is reported absent
+-- bloom: an added key is always reported present
+-- bloom: clear forgets everything
 -- nothing leaked
-ALL PASSED 1557/1557
+ALL PASSED 2258/2258
