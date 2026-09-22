@@ -71,5 +71,16 @@
 -- slotmap: insert and read back by handle
 -- slotmap: a removed handle goes stale, even if its slot is reused
 -- slotmap: removing the same handle twice is harmless
+-- iheap: empty
+-- iheap: push maintains min-heap order
+-- iheap: decrease moves an element up
+-- iheap: decrease also handles a raise (a general update, not just decrease)
+-- iheap: remove takes a specific element out early
+-- iheap: pops in sorted order
+-- lru: empty
+-- lru: put and get
+-- lru: over capacity evicts the least recently used
+-- lru: remove
+-- lru: capacity 0 means unbounded
 -- nothing leaked
-ALL PASSED 2764/2764
+ALL PASSED 2802/2802

@@ -23,6 +23,8 @@
 #include "ceres/ds/hset.h"
 #include "ceres/ds/multimap.h"
 #include "ceres/ds/slotmap.h"
+#include "ceres/ds/iheap.h"
+#include "ceres/ds/lru.h"
 #include "ceres/hash.h"
 
 // ---- list ----
@@ -1143,6 +1145,110 @@ static void slotmaps(void)
     sm_free(&sm);
 }
 
+// ---- iheap ----
+
+static void iheaps(void)
+{
+    struct iheap h;
+
+    TEST_SECTION("iheap: empty");
+    ih_init(&h, sizeof(int), cmp_int);
+    CHECK_EQ((int)ih_len(&h), 0);
+    CHECK(ih_peek(&h) == NULL);
+    int out;
+    CHECK_EQ(ih_pop(&h, &out), -1);
+
+    TEST_SECTION("iheap: push maintains min-heap order");
+    int values[6] = { 5, 3, 8, 1, 9, 4 };
+    unsigned int handles[6];
+    for (int i = 0; i < 6; i++)
+        handles[i] = ih_push(&h, &values[i]);
+    CHECK_EQ((int)ih_len(&h), 6);
+    CHECK_EQ(*(const int*)ih_peek(&h), 1);
+
+    TEST_SECTION("iheap: decrease moves an element up");
+    int lower = 0;
+    ih_decrease(&h, handles[2], &lower);                 // 8 -> 0: the new minimum
+    CHECK_EQ(*(const int*)ih_peek(&h), 0);
+
+    TEST_SECTION("iheap: decrease also handles a raise (a general update, not just decrease)");
+    int higher = 100;
+    ih_decrease(&h, handles[2], &higher);                // 0 -> 100: no longer the minimum
+    CHECK_EQ(*(const int*)ih_peek(&h), 1);                // back to the original minimum
+
+    TEST_SECTION("iheap: remove takes a specific element out early");
+    ih_remove(&h, handles[3]);                           // takes the 1 out
+    CHECK_EQ((int)ih_len(&h), 5);
+    CHECK_EQ(*(const int*)ih_peek(&h), 3);                // smallest of what is left: 5 3 100 9 4
+
+    TEST_SECTION("iheap: pops in sorted order");
+    int sorted[5];
+    for (int i = 0; i < 5; i++)
+        CHECK_EQ(ih_pop(&h, &sorted[i]), 0);
+    CHECK(sorted[0] == 3 && sorted[1] == 4 && sorted[2] == 5 && sorted[3] == 9 && sorted[4] == 100);
+    CHECK_EQ(ih_pop(&h, &out), -1);
+    ih_free(&h);
+}
+
+// ---- lru ----
+
+static void lrus(void)
+{
+    struct lru c;
+
+    TEST_SECTION("lru: empty");
+    lru_init(&c, sizeof(int), sizeof(int), 3, hash_int_key, eq_int_key);
+    CHECK_EQ((int)lru_len(&c), 0);
+    int k = 1;
+    CHECK(lru_get(&c, &k) == NULL);
+    CHECK(!lru_has(&c, &k));
+
+    TEST_SECTION("lru: put and get");
+    for (int i = 1; i <= 3; i++)
+    {
+        int v = i * 10;
+        CHECK_EQ(lru_put(&c, &i, &v), 0);
+    }
+    CHECK_EQ((int)lru_len(&c), 3);
+    for (int i = 1; i <= 3; i++)
+        CHECK_EQ(*(int*)lru_get(&c, &i), i * 10);
+
+    TEST_SECTION("lru: over capacity evicts the least recently used");
+    // order is now (front to back) 3 2 1 from the puts above; the gets above touched 1 2 3 in
+    // turn, so the order is 3 2 1 again - reading every key does not change WHICH one is oldest
+    // when they are all read once in the same order they were written. Touch 1 once more so it is
+    // provably not the one about to be evicted.
+    int one = 1;
+    CHECK(lru_get(&c, &one) != NULL);                     // order: 1 3 2
+    int four = 4, four_v = 40;
+    CHECK_EQ(lru_put(&c, &four, &four_v), 0);             // order: 4 1 3 - 2 evicted
+    CHECK_EQ((int)lru_len(&c), 3);
+    int two = 2;
+    CHECK(!lru_has(&c, &two));
+    CHECK(lru_has(&c, &one));
+    int three = 3;
+    CHECK(lru_has(&c, &three));
+    CHECK(lru_has(&c, &four));
+
+    TEST_SECTION("lru: remove");
+    CHECK_EQ(lru_remove(&c, &three), 1);
+    CHECK(!lru_has(&c, &three));
+    CHECK_EQ((int)lru_len(&c), 2);
+    CHECK_EQ(lru_remove(&c, &three), 0);
+    lru_free(&c);
+
+    TEST_SECTION("lru: capacity 0 means unbounded");
+    struct lru u;
+    lru_init(&u, sizeof(int), sizeof(int), 0, hash_int_key, eq_int_key);
+    for (int i = 0; i < 50; i++)
+    {
+        int v = i;
+        lru_put(&u, &i, &v);
+    }
+    CHECK_EQ((int)lru_len(&u), 50);                       // nothing was ever evicted
+    lru_free(&u);
+}
+
 int main(void)
 {
     unsigned int baseline = heap_used();
@@ -1163,6 +1269,8 @@ int main(void)
     gmaps();
     multimaps();
     slotmaps();
+    iheaps();
+    lrus();
 
     TEST_SECTION("nothing leaked");
     CHECK_EQ((int)heap_used(), (int)baseline);          // every allocation above was given back
