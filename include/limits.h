@@ -1,6 +1,7 @@
 #pragma once
 
-// Ceres is a 32-bit machine: `long` and `long long` are `int` (the compiler caps them, with W2001).
+// Ceres is a 32-bit machine: `long` is `int` (32 bits). `long long` is a real 8-byte type, so its
+// limits below are the true 64-bit ones.
 
 #define CHAR_BIT    8
 #define SCHAR_MIN   (-128)
@@ -15,7 +16,7 @@
 
 // INT_MIN is spelled (-INT_MAX - 1): 2147483648 does not fit an int, so the literal form only
 // works by accident. UINT_MAX needs its `u` - without it the constant is -1 and `UINT_MAX > 0`
-// is false.
+// is false. The 64-bit spellings likewise come from their max plus a `ll`/`ull` suffix.
 #define INT_MAX     2147483647
 #define INT_MIN     (-2147483647 - 1)
 #define UINT_MAX    4294967295u
@@ -24,9 +25,9 @@
 #define LONG_MIN    INT_MIN
 #define ULONG_MAX   UINT_MAX
 
-#define LLONG_MAX   INT_MAX
-#define LLONG_MIN   INT_MIN
-#define ULLONG_MAX  UINT_MAX
+#define LLONG_MAX   9223372036854775807LL
+#define LLONG_MIN   (-9223372036854775807LL - 1)
+#define ULLONG_MAX  18446744073709551615ULL
 
 #define SIZE_MAX    UINT_MAX
 #define MB_LEN_MAX  1

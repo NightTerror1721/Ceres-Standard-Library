@@ -3,14 +3,15 @@
 #include "stdlib.h"
 #include "errno.h"
 #include "stdio.h"
+#include "inttypes.h"
 #include "ceres.h"
 
 // ---- arithmetic ----
 
 int abs(int v)   { return v < 0 ? (int)(0u - (unsigned int)v) : v; }   // wraps for INT_MIN, on purpose
 int labs(int v)  { return abs(v); }
-int llabs(int v) { return abs(v); }
-int imaxabs(int v) { return abs(v); }
+long long llabs(long long v) { return v < 0 ? (long long)(0ULL - (unsigned long long)v) : v; }   // wraps for LLONG_MIN
+intmax_t imaxabs(intmax_t v) { return llabs(v); }
 
 div_t div(int num, int den)
 {
@@ -21,7 +22,22 @@ div_t div(int num, int den)
 }
 
 div_t ldiv(int num, int den)  { return div(num, den); }
-div_t lldiv(int num, int den) { return div(num, den); }
+
+lldiv_t lldiv(long long num, long long den)
+{
+    lldiv_t r;
+    r.quot = num / den;
+    r.rem = num % den;
+    return r;
+}
+
+imaxdiv_t imaxdiv(intmax_t num, intmax_t den)
+{
+    imaxdiv_t r;
+    r.quot = num / den;
+    r.rem = num % den;
+    return r;
+}
 
 // ---- rand ----
 

@@ -4,6 +4,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "ctype.h"
+#include "stdint.h"
 #include "stdarg.h"
 #include "file_priv.h"
 
@@ -264,12 +265,13 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
             width = width * 10 + (fmt[i] - '0');
             i++;
         }
-        int narrow = 0;                                  // 'H' = hh, 'h' = h, 0 = anything wider
+        int narrow = 0;                                  // 'H' = hh, 'h' = h, 'W' = ll (64-bit), 0 = 32 bits
         for (;;)
         {
             char m = fmt[i];
             if (m == 'h') narrow = (narrow == 'h') ? 'H' : 'h';
-            else if (m == 'l' || m == 'z' || m == 't' || m == 'j' || m == 'L' || m == 'q') { }
+            else if (m == 'l') narrow = (narrow == 'l') ? 'W' : 'l';
+            else if (m == 'z' || m == 't' || m == 'j' || m == 'L' || m == 'q') { }
             else break;
             i++;
         }
@@ -350,6 +352,15 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
                 continue;
             char* end;
             int is_signed = (conv == 'd' || conv == 'i');
+            if (narrow == 'W' && conv != 'p')
+            {
+                // A 64-bit destination: parse the whole field as `long long` and store through the
+                // caller's pointer. `%p` has no wide form, so it stays on the 32-bit path above.
+                if (is_signed) *va_arg(ap, long long*) = strtoll(field, &end, base);
+                else           *va_arg(ap, unsigned long long*) = strtoull(field, &end, base);
+                assigned++;
+                continue;
+            }
             unsigned int u = 0;
             int v = 0;
             if (is_signed) v = strtol(field, &end, base);

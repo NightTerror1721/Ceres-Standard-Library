@@ -23,6 +23,11 @@ extern int __t_failed;
     do { __t_total++; if ((a) != (b)) { __t_failed++; \
         printf("FAIL %s:%d (%s): %s == %s (%d vs %d)\n", __FILE__, __LINE__, __func__, #a, #b, (int)(a), (int)(b)); } } while (0)
 
+// The same, for a 64-bit value: CHECK_EQ() casts to int, which would hide a wrong high word.
+#define CHECK_EQ64(a, b) \
+    do { __t_total++; if ((a) != (b)) { __t_failed++; \
+        printf("FAIL %s:%d (%s): %s == %s (%lld vs %lld)\n", __FILE__, __LINE__, __func__, #a, #b, (long long)(a), (long long)(b)); } } while (0)
+
 #define CHECK_STR(a, b) \
     do { __t_total++; if (strcmp((a), (b)) != 0) { __t_failed++; \
         printf("FAIL %s:%d (%s): \"%s\" != \"%s\"\n", __FILE__, __LINE__, __func__, (a), (b)); } } while (0)

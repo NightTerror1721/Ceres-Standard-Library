@@ -2,8 +2,8 @@
 
 #include "stddef.h"
 
-// General utilities. On this machine `long` and `long long` are `int` (32 bits), so labs/ldiv and the
-// *ll* names below are aliases of the int versions, and `double` is `float`.
+// General utilities. `long` is 32 bits (`labs`/`ldiv` are the int versions), but `long long` is a
+// real 64-bit type, so `llabs`/`lldiv` and `strtoll`/`strtoull`/`atoll` are 64-bit for real.
 
 #define EXIT_SUCCESS  0
 #define EXIT_FAILURE  1
@@ -13,7 +13,8 @@
 struct __div_s { int quot; int rem; };
 typedef struct __div_s div_t;
 typedef struct __div_s ldiv_t;
-typedef struct __div_s lldiv_t;
+struct __lldiv_s { long long quot; long long rem; };
+typedef struct __lldiv_s lldiv_t;
 
 // ---- dynamic memory (src/malloc.c; the diagnostics are in ceres/heap.h) ----
 void* malloc(size_t n);
@@ -27,14 +28,14 @@ void  free(void* p);
 // returns the nearest limit. A base of 0 means "look at the prefix": 0x is 16, a bare 0 is 8.
 int          atoi(const char* s);
 int          atol(const char* s);
+long long    atoll(const char* s);
 float        atof(const char* s);
 int          strtol(const char* s, char** end, int base);
 unsigned int strtoul(const char* s, char** end, int base);
+long long    strtoll(const char* s, char** end, int base);
+unsigned long long strtoull(const char* s, char** end, int base);
 float        strtof(const char* s, char** end);    // decimal, inf/infinity and nan; no hex floats
 float        strtod(const char* s, char** end);    // == strtof
-#define atoll     atol
-#define strtoll   strtol
-#define strtoull  strtoul
 #define strtold   strtof
 
 // ---- pseudo-random numbers: a 32-bit linear congruential generator ----
@@ -46,10 +47,10 @@ void  srand(unsigned int seed);
 // ---- arithmetic ----
 int   abs(int v);              // abs(INT_MIN) is INT_MIN: the negation wraps
 int   labs(int v);
-int   llabs(int v);
+long long llabs(long long v);
 div_t div(int num, int den);   // quotient truncated toward zero; a zero divisor sets the Trap flag
 div_t ldiv(int num, int den);
-div_t lldiv(int num, int den);
+lldiv_t lldiv(long long num, long long den);
 
 // ---- searching and sorting ----
 // qsort is not stable. Elements of any size; the comparator receives pointers to two elements.

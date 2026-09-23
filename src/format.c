@@ -4,8 +4,9 @@
 //
 // Conversions: %d %i %u %o %x %X %b %c %s %p %n %f %F %e %E %g %G %%
 // Flags: - + space # 0; width and precision, either digits or *; length modifiers hh h l ll z t j L
-// (everything is at most 32 bits, so only hh and h change what is read). A float argument is read as
-// the f32 it is: there is no double promotion (see stdarg.h).
+// (a `long` is 32 bits, `long long` is 64: `ll` reads a wide argument as two words, `hh`/`h` narrow
+// the 32-bit read, and everything else is 32 bits). A float argument is read as the f32 it is: there
+// is no double promotion (see stdarg.h).
 //
 // Accuracy: a float has a 24-bit mantissa, so about 7 significant digits are exact; the digits
 // after those are deterministic noise, where C would print the exact binary value. %.0f rounds
@@ -14,6 +15,7 @@
 #include "stdarg.h"
 #include "string.h"
 #include "stddef.h"
+#include "stdint.h"
 #include "math.h"
 #include "ceres/terminal.h"
 
@@ -127,6 +129,45 @@ static void fmt_integer(struct __sink* s, unsigned int v, int is_signed, int neg
     if ((flags & F_ALT) && base == 8 && v != 0 && prec <= n) { prec = n + 1; }
     prefix[np] = 0;
     if (prec == 0 && v == 0) n = 0;                    // "%.0d" of 0 prints nothing
+    int zeros = prec > n ? prec - n : 0;
+    put_field(s, prefix, digits, n, zeros, width, flags, prec < 0);
+}
+
+// The wide counterpart: same shape, but the magnitude is 64 bits. Two words divide down one digit at
+// a time; digit count is bounded by 64 for base 2.
+static int utoa_base64(uint64_t v, int base, int upper, char* out)
+{
+    char tmp[66];
+    int n = 0;
+    if (v == 0ULL) { tmp[0] = '0'; n = 1; }
+    while (v != 0ULL)
+    {
+        unsigned int d = (unsigned int)(v % (uint64_t)base);
+        tmp[n] = (char)(d < 10u ? '0' + (int)d : (upper ? 'A' : 'a') + ((int)d - 10));
+        n++;
+        v = v / (uint64_t)base;
+    }
+    for (int i = 0; i < n; i++) out[i] = tmp[n - 1 - i];
+    return n;
+}
+
+static void fmt_integer64(struct __sink* s, uint64_t v, int is_signed, int neg, int base, int upper,
+                          int width, int prec, int flags)
+{
+    char digits[66];
+    char prefix[4];
+    int np = 0;
+    if (is_signed)
+    {
+        if (neg) prefix[np++] = '-';
+        else if (flags & F_PLUS) prefix[np++] = '+';
+        else if (flags & F_SPACE) prefix[np++] = ' ';
+    }
+    int n = utoa_base64(v, base, upper, digits);
+    if ((flags & F_ALT) && base == 16 && v != 0ULL) { prefix[np++] = '0'; prefix[np++] = upper ? 'X' : 'x'; }
+    if ((flags & F_ALT) && base == 8 && v != 0ULL && prec <= n) { prec = n + 1; }
+    prefix[np] = 0;
+    if (prec == 0 && v == 0ULL) n = 0;
     int zeros = prec > n ? prec - n : 0;
     put_field(s, prefix, digits, n, zeros, width, flags, prec < 0);
 }
@@ -338,12 +379,13 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
             if (fmt[i] == '*') { prec = va_arg(ap, int); i++; }
             else while (fmt[i] >= '0' && fmt[i] <= '9') { prec = prec * 10 + (fmt[i] - '0'); i++; }
         }
-        int lenmod = 0;                                // 'H' = hh, 'h', 0 = everything else (32 bits)
+        int lenmod = 0;                                // 'H' = hh, 'h', 'W' = ll (64-bit), 0 = 32 bits
         for (;;)
         {
             c = fmt[i];
             if (c == 'h') { lenmod = (lenmod == 'h') ? 'H' : 'h'; }
-            else if (c == 'l' || c == 'z' || c == 't' || c == 'j' || c == 'L' || c == 'q') { }
+            else if (c == 'l') { lenmod = (lenmod == 'l') ? 'W' : 'l'; }
+            else if (c == 'z' || c == 't' || c == 'j' || c == 'L' || c == 'q') { }
             else break;
             i++;
         }
@@ -365,20 +407,44 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
         }
         else if (c == 'd' || c == 'i')
         {
-            int v = va_arg(ap, int);
-            if (lenmod == 'H') v = (int)((signed char)v);
-            else if (lenmod == 'h') v = (int)((short)v);
-            int neg = v < 0;
-            unsigned int mag = neg ? (unsigned int)(-(v + 1)) + 1u : (unsigned int)v;
-            fmt_integer(s, mag, 1, neg, 10, 0, width, prec, flags);
+            if (lenmod == 'W')
+            {
+                // A 64-bit argument travels through `...` as two words, low first; read both and
+                // reassemble. The sign is taken from the assembled value's top bit.
+                unsigned int lo = va_arg(ap, unsigned int);
+                unsigned int hi = va_arg(ap, unsigned int);
+                uint64_t v = ((uint64_t)hi << 32) | (uint64_t)lo;
+                int neg = ((int64_t)v) < 0;
+                uint64_t mag = neg ? (uint64_t)(-(int64_t)v) : v;
+                fmt_integer64(s, mag, 1, neg, 10, 0, width, prec, flags);
+            }
+            else
+            {
+                int v = va_arg(ap, int);
+                if (lenmod == 'H') v = (int)((signed char)v);
+                else if (lenmod == 'h') v = (int)((short)v);
+                int neg = v < 0;
+                unsigned int mag = neg ? (unsigned int)(-(v + 1)) + 1u : (unsigned int)v;
+                fmt_integer(s, mag, 1, neg, 10, 0, width, prec, flags);
+            }
         }
         else if (c == 'u' || c == 'x' || c == 'X' || c == 'o' || c == 'b')
         {
-            unsigned int v = va_arg(ap, unsigned int);
-            if (lenmod == 'H') v = v & 255u;
-            else if (lenmod == 'h') v = v & 65535u;
             int base = c == 'u' ? 10 : (c == 'o' ? 8 : (c == 'b' ? 2 : 16));
-            fmt_integer(s, v, 0, 0, base, c == 'X', width, prec, flags);
+            if (lenmod == 'W')
+            {
+                unsigned int lo = va_arg(ap, unsigned int);
+                unsigned int hi = va_arg(ap, unsigned int);
+                uint64_t v = ((uint64_t)hi << 32) | (uint64_t)lo;
+                fmt_integer64(s, v, 0, 0, base, c == 'X', width, prec, flags);
+            }
+            else
+            {
+                unsigned int v = va_arg(ap, unsigned int);
+                if (lenmod == 'H') v = v & 255u;
+                else if (lenmod == 'h') v = v & 65535u;
+                fmt_integer(s, v, 0, 0, base, c == 'X', width, prec, flags);
+            }
         }
         else if (c == 'p')
         {

@@ -1,8 +1,9 @@
-// Text to number: atoi, atol, atof, strtol, strtoul, strtof, strtod.
+// Text to number: atoi, atol, atoll, atof, strtol, strtoul, strtoll, strtoull, strtof, strtod.
 #include "stdlib.h"
 #include "ctype.h"
 #include "errno.h"
 #include "limits.h"
+#include "stdint.h"
 #include "math.h"
 
 // ---- integers ----
@@ -97,6 +98,97 @@ int strtol(const char* s, char** end, int base)
 
 int atoi(const char* s) { return strtol(s, 0, 10); }
 int atol(const char* s) { return strtol(s, 0, 10); }
+
+// ---- 64-bit integers ----
+
+// The same parse as parse_magnitude(), but accumulating into a 64-bit magnitude, so a value the 32-bit
+// one would call overflow is the answer here. *overflow is set only past 2^64-1.
+static uint64_t parse_magnitude64(const char* s, char** end, int base, int* negative, int* overflow)
+{
+    const char* p = s;
+    *negative = 0;
+    *overflow = 0;
+    if (end != 0)
+        *end = (char*)s;
+    if (base < 0 || base == 1 || base > 36)
+    {
+        errno = EINVAL;
+        return 0;
+    }
+
+    while (isspace((unsigned char)*p))
+        p++;
+    if (*p == '-')      { *negative = 1; p++; }
+    else if (*p == '+') { p++; }
+
+    if ((base == 0 || base == 16) && p[0] == '0' && (p[1] == 'x' || p[1] == 'X') && isxdigit((unsigned char)p[2]))
+    {
+        p += 2;
+        base = 16;
+    }
+    else if (base == 0)
+    {
+        base = (p[0] == '0') ? 8 : 10;
+    }
+
+    uint64_t value = 0;
+    int any = 0;
+    for (;; p++)
+    {
+        int c = (unsigned char)*p;
+        int digit;
+        if (c >= '0' && c <= '9')      digit = c - '0';
+        else if (c >= 'a' && c <= 'z') digit = c - 'a' + 10;
+        else if (c >= 'A' && c <= 'Z') digit = c - 'A' + 10;
+        else break;
+        if (digit >= base)
+            break;
+        any = 1;
+        // The magnitude is unsigned 64-bit; the boundary is 2^64-1, spelled as the max value.
+        if (value > (0xFFFFFFFFFFFFFFFFULL - (uint64_t)digit) / (uint64_t)base)
+            *overflow = 1;
+        else
+            value = value * (uint64_t)base + (uint64_t)digit;
+    }
+    if (any && end != 0)
+        *end = (char*)p;
+    return value;
+}
+
+unsigned long long strtoull(const char* s, char** end, int base)
+{
+    int negative, overflow;
+    uint64_t v = parse_magnitude64(s, end, base, &negative, &overflow);
+    if (overflow)
+    {
+        errno = ERANGE;
+        return 0xFFFFFFFFFFFFFFFFULL;
+    }
+    return negative ? (uint64_t)(0ULL - v) : v;   // "-1" is ULLONG_MAX, as in C
+}
+
+long long strtoll(const char* s, char** end, int base)
+{
+    int negative, overflow;
+    uint64_t v = parse_magnitude64(s, end, base, &negative, &overflow);
+    if (negative)
+    {
+        if (overflow || v > 0x8000000000000000ULL)
+        {
+            errno = ERANGE;
+            return (-9223372036854775807LL - 1);   // LLONG_MIN
+        }
+        return (long long)(0ULL - v);
+    }
+    if (overflow || v > 0x7FFFFFFFFFFFFFFFULL)
+    {
+        errno = ERANGE;
+        return 9223372036854775807LL;              // LLONG_MAX
+    }
+    return (long long)v;
+}
+
+long long atoll(const char* s) { return strtoll(s, 0, 10); }
 
 // ---- floating point ----
 

@@ -1,0 +1,10 @@
+-- the limits
+-- the constant macros give a 64-bit value
+-- arithmetic on the real type
+-- printf reads a 64-bit argument as two words
+-- the inttypes.h PRI macros name the width
+-- scanf writes a 64-bit value back as two words
+-- strtoll, strtoull and atoll
+-- strtoll reports overflow at the 64-bit limit
+-- llabs, lldiv, imaxabs and imaxdiv
+ALL PASSED 67/67

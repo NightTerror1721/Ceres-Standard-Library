@@ -1,5 +1,21 @@
-// 64-bit counts in two words. See ceres/ns64.h.
+// 64-bit counts. See ceres/ns64.h. The arithmetic runs on the real 64-bit integer type the compiler
+// lowers as a word pair; the struct stays the public shape so existing callers keep working.
 #include "ceres/ns64.h"
+#include "stdint.h"
+
+// The two public words and the 64-bit value have the same layout: low word at offset 0, high at 4.
+static uint64_t to_u64(struct ns64 a)
+{
+    return ((uint64_t)a.hi << 32) | (uint64_t)a.lo;
+}
+
+static struct ns64 from_u64(uint64_t v)
+{
+    struct ns64 r;
+    r.lo = (unsigned int)v;
+    r.hi = (unsigned int)(v >> 32);
+    return r;
+}
 
 struct ns64 ns64_make(unsigned int lo, unsigned int hi)
 {
@@ -16,161 +32,62 @@ struct ns64 ns64_from_u32(unsigned int v)
 
 struct ns64 ns64_add(struct ns64 a, struct ns64 b)
 {
-    struct ns64 r;
-    r.lo = a.lo + b.lo;
-    r.hi = a.hi + b.hi + (r.lo < a.lo ? 1u : 0u);      // the carry out of the low word
-    return r;
+    return from_u64(to_u64(a) + to_u64(b));       // wraps at 2^64, as the caller expects
 }
 
 struct ns64 ns64_sub(struct ns64 a, struct ns64 b)
 {
-    struct ns64 r;
-    r.lo = a.lo - b.lo;
-    r.hi = a.hi - b.hi - (a.lo < b.lo ? 1u : 0u);      // the borrow from the high word
-    return r;
+    return from_u64(to_u64(a) - to_u64(b));       // a - b, modulo 2^64
 }
 
 int ns64_cmp(struct ns64 a, struct ns64 b)
 {
-    if (a.hi != b.hi)
-        return a.hi < b.hi ? -1 : 1;
-    if (a.lo != b.lo)
-        return a.lo < b.lo ? -1 : 1;
-    return 0;
+    uint64_t x = to_u64(a), y = to_u64(b);
+    return x == y ? 0 : (x < y ? -1 : 1);         // unsigned counts
 }
 
 int ns64_is_zero(struct ns64 a)
 {
-    return a.lo == 0u && a.hi == 0u;
-}
-
-// x * y in full, from four 16-bit partial products: each fits a word, and the pieces are added with
-// their carries by hand.
-static struct ns64 mul_full(unsigned int x, unsigned int y)
-{
-    unsigned int xl = x & 0xFFFFu, xh = x >> 16;
-    unsigned int yl = y & 0xFFFFu, yh = y >> 16;
-    unsigned int ll = xl * yl;
-    unsigned int lh = xl * yh;
-    unsigned int hl = xh * yl;
-    unsigned int hh = xh * yh;
-    unsigned int mid = lh + hl;
-    unsigned int mid_carry = mid < lh ? 1u : 0u;       // the middle sum is 33 bits wide
-    struct ns64 r;
-    r.lo = ll + (mid << 16);
-    r.hi = hh + (mid >> 16) + (mid_carry << 16) + (r.lo < ll ? 1u : 0u);
-    return r;
+    return to_u64(a) == 0ULL;
 }
 
 struct ns64 ns64_mul_u32(struct ns64 a, unsigned int m)
 {
-    struct ns64 r = mul_full(a.lo, m);
-    r.hi += a.hi * m;                                  // the high word's product only matters modulo 2^32
-    return r;
-}
-
-// Long division by 16 bits at a time: while d fits 16 bits, a remainder shifted up by 16 still fits a
-// word and the machine's own division does each step.
-static struct ns64 div_small(struct ns64 a, unsigned int d, unsigned int* rem)
-{
-    struct ns64 q;
-    q.hi = a.hi / d;
-    unsigned int r = a.hi % d;
-    unsigned int t = (r << 16) | (a.lo >> 16);
-    unsigned int q1 = t / d;
-    r = t % d;
-    t = (r << 16) | (a.lo & 0xFFFFu);
-    unsigned int q0 = t / d;
-    r = t % d;
-    q.lo = (q1 << 16) | q0;
-    *rem = r;
-    return q;
-}
-
-// One bit at a time, for a divisor of more than 16 bits. The remainder can carry out of its word when it
-// is shifted; that bit means the true remainder is beyond any divisor, so the divisor comes off.
-static struct ns64 div_large(struct ns64 a, unsigned int d, unsigned int* rem)
-{
-    struct ns64 q = ns64_make(0u, 0u);
-    unsigned int r = 0u;
-    for (int i = 63; i >= 0; i--)
-    {
-        unsigned int bit = i >= 32 ? (a.hi >> (i - 32)) & 1u : (a.lo >> i) & 1u;
-        unsigned int top = r >> 31;
-        r = (r << 1) | bit;
-        if (top != 0u || r >= d)
-        {
-            r -= d;
-            if (i >= 32)
-                q.hi |= 1u << (i - 32);
-            else
-                q.lo |= 1u << i;
-        }
-    }
-    *rem = r;
-    return q;
+    return from_u64(to_u64(a) * (uint64_t)m);     // modulo 2^64
 }
 
 struct ns64 ns64_div_u32(struct ns64 a, unsigned int d, unsigned int* rem)
 {
-    unsigned int scratch;
-    if (rem == 0)
-        rem = &scratch;
+    uint64_t v = to_u64(a);
     if (d == 0u)
     {
-        *rem = 0u;
-        return ns64_make(0xFFFFFFFFu, 0xFFFFFFFFu);
+        if (rem != 0)
+            *rem = 0u;
+        return ns64_make(0xFFFFFFFFu, 0xFFFFFFFFu);   // the largest count, as before
     }
-    if (d <= 0xFFFFu)
-        return div_small(a, d, rem);
-    return div_large(a, d, rem);
+    if (rem != 0)
+        *rem = (unsigned int)(v % (uint64_t)d);
+    return from_u64(v / (uint64_t)d);
 }
 
-struct ns64 ns64_from_us(unsigned int us)
-{
-    return mul_full(us, 1000u);
-}
+struct ns64 ns64_from_us(unsigned int us)  { return from_u64((uint64_t)us * 1000ULL); }
+struct ns64 ns64_from_ms(unsigned int ms)  { return from_u64((uint64_t)ms * 1000000ULL); }
+struct ns64 ns64_from_sec(unsigned int sec){ return from_u64((uint64_t)sec * 1000000000ULL); }
 
-struct ns64 ns64_from_ms(unsigned int ms)
-{
-    return mul_full(ms, 1000000u);
-}
-
-struct ns64 ns64_from_sec(unsigned int sec)
-{
-    return mul_full(sec, 1000000000u);
-}
-
-// Divides by 1000 `steps` times, which is division by 10^(3*steps) without a divisor that needs the slow path.
+// Divides by 1000 `steps` times, then saturates at 0xFFFFFFFF when the result still has a high word.
 static unsigned int to_unit(struct ns64 a, int steps)
 {
-    unsigned int rem;
+    uint64_t v = to_u64(a);
     for (int i = 0; i < steps; i++)
-        a = div_small(a, 1000u, &rem);
-    return a.hi != 0u ? 0xFFFFFFFFu : a.lo;
+        v /= 1000ULL;
+    return (v >> 32) != 0ULL ? 0xFFFFFFFFu : (unsigned int)v;
 }
 
-unsigned int ns64_to_us(struct ns64 a)
-{
-    return to_unit(a, 1);
-}
-
-unsigned int ns64_to_ms(struct ns64 a)
-{
-    return to_unit(a, 2);
-}
-
-unsigned int ns64_to_sec(struct ns64 a)
-{
-    return to_unit(a, 3);
-}
+unsigned int ns64_to_us(struct ns64 a)  { return to_unit(a, 1); }
+unsigned int ns64_to_ms(struct ns64 a)  { return to_unit(a, 2); }
+unsigned int ns64_to_sec(struct ns64 a) { return to_unit(a, 3); }
 
 float ns64_to_float(struct ns64 a)
 {
-    // A word at a time from the top, sixteen bits per step, so nothing is converted that a float cannot hold.
-    float f = (float)(a.hi >> 16);
-    f = f * 65536.0f + (float)(a.hi & 0xFFFFu);
-    f = f * 65536.0f + (float)(a.lo >> 16);
-    f = f * 65536.0f + (float)(a.lo & 0xFFFFu);
-    return f;
+    return (float)to_u64(a);                      // the compiler's own 64-bit -> float conversion
 }

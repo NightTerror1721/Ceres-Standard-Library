@@ -1,6 +1,7 @@
 #include "time.h"
 #include "stdio.h"
 #include "string.h"
+#include "stdint.h"
 #include "ceres/timer.h"
 
 // ---- clocks ----
@@ -30,10 +31,12 @@ int timespec_get(struct timespec* ts, int base)
     }
     if (base == TIME_MONOTONIC)
     {
-        unsigned int nanos;
-        struct ns64 sec = ns64_div_u32(timer_nanos(), 1000000000u, &nanos);
-        ts->tv_sec = sec.lo;                             // a machine that has run for 136 years has other troubles
-        ts->tv_nsec = (long)nanos;
+        // The clock is a real 64-bit nanosecond count now, so one divide splits it into whole seconds
+        // and the nanoseconds left over.
+        struct ns64 now = timer_nanos();
+        uint64_t total = ((uint64_t)now.hi << 32) | (uint64_t)now.lo;
+        ts->tv_sec = (time_t)(total / 1000000000ULL);    // a machine that has run for 136 years has other troubles
+        ts->tv_nsec = (long)(total % 1000000000ULL);
         return base;
     }
     return 0;

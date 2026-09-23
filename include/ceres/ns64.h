@@ -1,14 +1,17 @@
 #pragma once
 
-// A 64-bit unsigned count, in two words: the machine is 32-bit and `long long` is not 64 bits here, but
-// a count of nanoseconds needs them (32 bits of nanoseconds wrap every 4.29 seconds; 64 last 584 years).
-// Meant for the clock - ceres/timer.h's timer_nanos() returns one - but it is plain arithmetic and knows
-// nothing of the machine.
+// A 64-bit unsigned count, in two words: the machine is 32-bit, but `long long` is a real 8-byte type
+// and the arithmetic below runs on it. 32 bits of nanoseconds wrap every 4.29 seconds; 64 last 584
+// years. Meant for the clock - ceres/timer.h's timer_nanos() returns one - but it is plain arithmetic
+// and knows nothing of the machine.
 //
 //   struct ns64 start = timer_nanos();
 //   ...
 //   struct ns64 spent = ns64_sub(timer_nanos(), start);
 //   printf("%u us\n", ns64_to_us(spent));
+//
+// The struct keeps its two-word shape (the same layout a `uint64_t` has: low word first), so a caller
+// that predates the 64-bit type still links; the implementation is real 64-bit arithmetic now.
 //
 // Add and subtract wrap at 2^64, so a difference is right whichever of the two readings wrapped. A
 // conversion that does not fit 32 bits gives 0xFFFFFFFF rather than a number that is wrong.

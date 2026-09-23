@@ -37,10 +37,15 @@ int main(void)
     CHECK_EQ((int)sizeof(uint16_t), 2);
     CHECK_EQ((int)sizeof(int32_t), 4);
     CHECK_EQ((int)sizeof(uint32_t), 4);
+    CHECK_EQ((int)sizeof(int64_t), 8);                  // long long is a real 8-byte type (F3.5)
+    CHECK_EQ((int)sizeof(uint64_t), 8);
     CHECK_EQ((int)sizeof(intptr_t), 4);
-    CHECK_EQ((int)sizeof(uintmax_t), 4);
+    CHECK_EQ((int)sizeof(intmax_t), 8);
+    CHECK_EQ((int)sizeof(uintmax_t), 8);
     CHECK_EQ((int)sizeof(int_fast8_t), 4);              // fast types are register-sized
     CHECK_EQ((int)sizeof(int_least8_t), 1);
+    CHECK_EQ((int)sizeof(int_least64_t), 8);
+    CHECK_EQ((int)sizeof(int_fast64_t), 8);             // a 64-bit value needs the wide bank
 
     TEST_SECTION("stdint.h limits");
     CHECK(INT8_MIN == -128 && INT8_MAX == 127 && UINT8_MAX == 255);
@@ -74,6 +79,16 @@ int main(void)
     CHECK_STR(PRIo32, "o");
     CHECK_STR(PRIuPTR, "u");
     CHECK_STR(SCNu32, "u");
+    CHECK_STR(PRId64, "lld");                           // the 64-bit forms carry `ll` (F3.5)
+    CHECK_STR(PRIu64, "llu");
+    CHECK_STR(PRIx64, "llx");
+    CHECK_STR(PRIX64, "llX");
+    CHECK_STR(PRIo64, "llo");
+    CHECK_STR(PRIdMAX, "lld");
+    CHECK_STR(PRIuMAX, "llu");
+    CHECK_STR(SCNd64, "lld");
+    CHECK_STR(SCNu64, "llu");
+    CHECK_STR(SCNx64, "llx");
 
     TEST_SECTION("errno.h");
     CHECK_EQ(errno, 0);                                 // starts clear
