@@ -89,6 +89,13 @@ int main(void)
     CHECK_STR(SCNd64, "lld");
     CHECK_STR(SCNu64, "llu");
     CHECK_STR(SCNx64, "llx");
+    CHECK_STR(PRIoMAX, "llo");                          // the whole 64-bit family is present
+    CHECK_STR(PRIXMAX, "llX");
+    CHECK_STR(PRIdLEAST64, "lld");
+    CHECK_STR(PRIxFAST64, "llx");
+    CHECK_STR(SCNiMAX, "lli");
+    CHECK_STR(SCNoLEAST64, "llo");
+    CHECK_STR(SCNuFAST64, "llu");
 
     TEST_SECTION("errno.h");
     CHECK_EQ(errno, 0);                                 // starts clear

@@ -26,7 +26,7 @@ int main(void)
     CHECK_EQ64(LLONG_MIN, (-9223372036854775807LL - 1));
     CHECK((uint64_t)UINT64_MAX == 18446744073709551615ULL);
     CHECK((uint64_t)ULLONG_MAX == 18446744073709551615ULL);
-    CHECK_EQ64((long long)(INT64_MAX + 1), INT64_MIN);          // wraps, as two's complement says
+    CHECK_EQ64((long long)((uint64_t)INT64_MAX + 1u), INT64_MIN); // the wrapped bit pattern is INT64_MIN
     CHECK_EQ64(INT_LEAST64_MAX, INT64_MAX);
     CHECK_EQ64(INT_FAST64_MIN, INT64_MIN);
     CHECK_EQ64(INTMAX_MAX, INT64_MAX);
@@ -93,7 +93,8 @@ int main(void)
     n = sscanf("deadbeef", "%llx", &u);
     CHECK_EQ(n, 1);
     CHECK(u == 0xDEADBEEFULL);
-    n = sscanf("7 4294967298 9", "%d %lld %d", &n, &s, &u);     // reuse n as a scratch int
+    int scratch = 0;
+    n = sscanf("7 4294967298 9", "%d %lld %d", &scratch, &s, &u); // `n` stays the return value alone
     CHECK_EQ(n, 3);
 
     TEST_SECTION("strtoll, strtoull and atoll");
