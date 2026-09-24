@@ -25,22 +25,33 @@ unsigned int timer_millis_elapsed(unsigned int since)
     return mmio_r32(TIMER_MILLIS_REG) - since;
 }
 
-void timer_wait_ms(unsigned int ms)
+// The 64-bit counts are read as pairs: the low word first takes the moment and latches the high half, so the
+// two reads are one instant however much the count moves in between (CeresASM e5fc11e for the ticks).
+uint64_t timer_ticks64(void)
 {
-    timer_wait_until_ns(ns64_add(timer_nanos(), ns64_from_ms(ms)));
+    unsigned int lo = mmio_r32(TIMER_TICKS_REG);
+    unsigned int hi = mmio_r32(TIMER_TICKS_HIGH_REG);
+    return ((uint64_t)hi << 32) | lo;
 }
 
+uint64_t timer_nanos64(void)
+{
+    unsigned int lo = mmio_r32(TIMER_NANOS_LOW_REG);
+    unsigned int hi = mmio_r32(TIMER_NANOS_HIGH_REG);
+    return ((uint64_t)hi << 32) | lo;
+}
+
+// The ns64 forms, kept for code written before the uint64_t ones.
 struct ns64 timer_nanos(void)
 {
-    struct ns64 now;
-    now.lo = mmio_r32(TIMER_NANOS_LOW_REG);          // the low word first: it takes the instant and keeps the high half
-    now.hi = mmio_r32(TIMER_NANOS_HIGH_REG);
-    return now;
+    uint64_t now = timer_nanos64();
+    return ns64_make((unsigned int)now, (unsigned int)(now >> 32));
 }
 
 struct ns64 timer_nanos_elapsed(struct ns64 since)
 {
-    return ns64_sub(timer_nanos(), since);
+    uint64_t now = timer_nanos64();
+    return ns64_sub(ns64_make((unsigned int)now, (unsigned int)(now >> 32)), since);
 }
 
 unsigned int timer_nanos_resolution(void)
@@ -53,55 +64,64 @@ unsigned int timer_halt_clock(void)
     return mmio_r32(TIMER_HALT_CLOCK_REG);
 }
 
-void timer_alarm_at(struct ns64 at)
+void timer_alarm_at(uint64_t at)
 {
-    mmio_w32(TIMER_ALARM_LOW_REG, at.lo);        // the low word first: the high one arms it
-    mmio_w32(TIMER_ALARM_HIGH_REG, at.hi);
+    mmio_w32(TIMER_ALARM_LOW_REG, (unsigned int)at);          // the low word first: the high one arms it
+    mmio_w32(TIMER_ALARM_HIGH_REG, (unsigned int)(at >> 32));
 }
 
-struct ns64 timer_alarm(void)
+uint64_t timer_alarm(void)
 {
-    struct ns64 at;                               // 0:0 when disarmed (CeresASM 4ad3dcf)
-    at.lo = mmio_r32(TIMER_ALARM_LOW_REG);
-    at.hi = mmio_r32(TIMER_ALARM_HIGH_REG);
-    return at;
+    unsigned int lo = mmio_r32(TIMER_ALARM_LOW_REG);          // 0:0 when disarmed (CeresASM 4ad3dcf)
+    unsigned int hi = mmio_r32(TIMER_ALARM_HIGH_REG);
+    return ((uint64_t)hi << 32) | lo;
 }
 
 // One halt with the alarm at `deadline`. A request raised before the halt runs - the alarm's among them -
 // keeps it from sleeping (CeresASM 551cdbd), so an instant that comes between the look at the clock and the
 // halt is not slept through. The program's own alarm is kept: one due first stays armed (and fires on time,
 // ending this halt early), and one due later is put back afterwards.
-int timer_halt_until_ns(struct ns64 deadline)
+int timer_halt_until_ns(uint64_t deadline)
 {
-    if (ns64_cmp(timer_nanos(), deadline) >= 0)
+    if (timer_nanos64() >= deadline)
         return 1;
     if (timer_halt_clock() == 0u)
         return 0;                                   // no real time while halted: nothing would wake it at the instant
-    struct ns64 saved = timer_alarm();
-    int keep = !ns64_is_zero(saved) && ns64_cmp(saved, deadline) <= 0;
+    uint64_t saved = timer_alarm();
+    int keep = saved != 0u && saved <= deadline;
     if (!keep)
         timer_alarm_at(deadline);
     __builtin_halt();
     if (!keep)
         timer_alarm_at(saved);                      // 0 disarms; a later one of the program's is armed again
-    return ns64_cmp(timer_nanos(), deadline) >= 0;
+    return timer_nanos64() >= deadline;
 }
 
-void timer_wait_until_ns(struct ns64 deadline)
+void timer_wait_until_ns64(uint64_t deadline)
 {
     while (!timer_halt_until_ns(deadline))
     {
     }
 }
 
+void timer_wait_until_ns(struct ns64 deadline)
+{
+    timer_wait_until_ns64(((uint64_t)deadline.hi << 32) | deadline.lo);
+}
+
+void timer_wait_ms(unsigned int ms)
+{
+    timer_wait_until_ns64(timer_nanos64() + (uint64_t)ms * 1000000u);
+}
+
 void timer_wait_us(unsigned int us)
 {
-    timer_wait_until_ns(ns64_add(timer_nanos(), ns64_from_us(us)));
+    timer_wait_until_ns64(timer_nanos64() + (uint64_t)us * 1000u);
 }
 
 void timer_wait_ns(unsigned int ns)
 {
-    timer_wait_until_ns(ns64_add(timer_nanos(), ns64_from_u32(ns)));
+    timer_wait_until_ns64(timer_nanos64() + ns);
 }
 
 void timer_arm(unsigned int ticks, int periodic)

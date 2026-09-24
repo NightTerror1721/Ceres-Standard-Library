@@ -2,13 +2,14 @@
 
 #include "stddef.h"
 
-// Calendar time. There are no time zones: localtime() is gmtime(). time_t is an UNSIGNED 32-bit count
-// of seconds since 1970-01-01T00:00:00Z, so it runs out on 2106-02-07 (a signed one would stop at 2038)
-// and cannot hold a date before 1970.
+// Calendar time. There are no time zones: localtime() is gmtime(). time_t is a SIGNED 64-bit count of
+// seconds since 1970-01-01T00:00:00Z: a date before 1970 is negative, and the calendar functions take any
+// date within about five million years of it. (The machine's clock register counts in 32 unsigned bits, so
+// time() itself is right until 2106.)
 
-typedef unsigned int time_t;
-typedef unsigned int clock_t;
-#define CLOCKS_PER_SEC 1000000     // nominal: clock() counts INSTRUCTIONS, not microseconds (see below)
+typedef long long time_t;
+typedef long long clock_t;
+#define CLOCKS_PER_SEC 1000000     // clock() counts microseconds of real time (see below)
 
 struct tm
 {
@@ -28,10 +29,13 @@ _Static_assert(sizeof(struct tm) == 36, "struct tm is nine words");
 // the machine, so a test must not depend on what it returns.
 time_t time(time_t* out);
 
-// clock() is the number of instructions executed so far: the same on every run of the same program.
+// clock() is the real time since the machine started, in microseconds - CLOCKS_PER_SEC a second, as C says.
+// The machine runs one program, so its time is the program's. (For the instructions executed, the count that
+// is the same on every run, use timer_ticks64() in ceres/timer.h.)
 clock_t clock(void);
 float   difftime(time_t end, time_t start);
 
+// gmtime and localtime return NULL (errno EOVERFLOW) for a time whose year an int cannot hold.
 struct tm* gmtime(const time_t* t);                  // points at ONE static struct, overwritten by the next call
 struct tm* localtime(const time_t* t);               // == gmtime
 struct tm* gmtime_r(const time_t* t, struct tm* out);
@@ -39,7 +43,8 @@ struct tm* localtime_r(const time_t* t, struct tm* out);
 
 // Normalizes the fields (month 12 is January of the next year, day 0 the last of the previous month,
 // second -1 the last second of the minute before...), fills tm_wday and tm_yday, and returns the time.
-// (time_t)-1 when the date is before 1970 or after 2106.
+// (time_t)-1 when the date is more than about five million years away - which is also, as C has it,
+// 1969-12-31 23:59:59.
 time_t mktime(struct tm* tm);
 
 char*  asctime(const struct tm* tm);                 // "Thu Jan  1 00:00:00 1970\n", in a static buffer
@@ -59,7 +64,7 @@ struct timespec
     long tv_nsec;    // 0..999999999
 };
 
-_Static_assert(sizeof(struct timespec) == 8, "a timespec is two words");
+_Static_assert(sizeof(struct timespec) == 16, "a timespec is a time_t and a long, padded to the time_t");
 
 #define TIME_UTC       1
 #define TIME_MONOTONIC 2

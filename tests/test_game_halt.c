@@ -38,7 +38,7 @@ int main(void)
     CHECK(timer_clock() - s0 <= 2u);                    // about 200 ms of wall time
 
     TEST_SECTION("the alarm is left disarmed");
-    CHECK(ns64_is_zero(timer_alarm()));
+    CHECK(timer_alarm() == 0u);
 
     return test_summary();
 }

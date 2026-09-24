@@ -65,11 +65,11 @@ void audio_play_tune(const struct audio_note* tune, int count, unsigned int volu
             timer_wait_ms(tune[i].ms);                   // a rest: silence for the time
             continue;
         }
-        struct ns64 ends = ns64_add(timer_nanos(), ns64_from_ms(tune[i].ms));
+        uint64_t ends = timer_nanos64() + (uint64_t)tune[i].ms * 1000000u;
         audio_play(hz, tune[i].ms, volume, wave);
         audio_wait();
         // With no speakers the tone is never busy: the note still takes its time, so a tune lasts as long as it
         // says whether or not anything plays it.
-        timer_wait_until_ns(ends);
+        timer_wait_until_ns64(ends);
     }
 }

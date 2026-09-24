@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ceres.h"
+#include "../stdint.h"
 #include "ns64.h"
 
 // Timer device (0xFF010000). See CeresASM docs/07-IO-Devices-and-Ports.md.
@@ -13,7 +14,9 @@
 // machine that is not deterministic - and so is the millisecond register: real time, for the code that wants
 // to keep a rhythm on the wall clock.
 //
-// The nanosecond clock is the exact one: 64 bits, read as a pair (ceres/ns64.h), from the host's steady clock.
+// The nanosecond clock is the exact one: 64 bits, from the host's steady clock, read with timer_nanos64() as a
+// uint64_t. (timer_nanos() and the rest of the struct ns64 forms are kept for code written before, and are
+// deprecated: a uint64_t does the same arithmetic with the ordinary operators.)
 // It is real time too, so it is as non-deterministic as the millisecond one, and a debugger replays it. What it
 // can tell apart is the host clock's step, timer_nanos_resolution(): often 100 ns, so two reads a few
 // instructions apart may return the same count.
@@ -33,7 +36,7 @@
 // does not keep real time while halted (timer_halt_clock() == 0, a debugger replaying) cannot wake a halt at an
 // instant, and there they spin. The task table (timer_after/every) is driven by timer_poll().
 
-#define TIMER_TICKS_REG  (TIMER_BASE + 0x00)   // R: ticks: instructions executed, and halted-clock ticks (truncated to 32 bits)
+#define TIMER_TICKS_REG  (TIMER_BASE + 0x00)   // R: the low word of the ticks: instructions executed, and halted-clock ticks; latches the high word
 #define TIMER_CLOCK_REG  (TIMER_BASE + 0x04)   // R: wall-clock seconds since 1970
 #define TIMER_CMD_REG    (TIMER_BASE + 0x08)   // W: N instructions until it fires; bit 31 = periodic; 0 disarms
 #define TIMER_MILLIS_REG (TIMER_BASE + 0x0C)   // R: milliseconds since the machine started (wraps at 49 days)
@@ -44,16 +47,19 @@
 #define TIMER_ALARM_LOW_REG  (TIMER_BASE + 0x20)   // RW: the low word of the alarm instant (nanoseconds, NANOS' clock)
 #define TIMER_ALARM_HIGH_REG (TIMER_BASE + 0x24)   // RW: the high word; writing it arms the alarm (0:0 disarms)
 #define IRQ_ALARM        24                    // what the alarm raises when its instant comes, once
+#define TIMER_TICKS_HIGH_REG (TIMER_BASE + 0x28)   // R: the high word of the ticks latched by the last low read
 #define TIMER_PERIODIC   0x80000000u
 #define TIMER_MAX_TICKS  0x7FFFFFFFu           // the longest period the command register can hold
 
-unsigned int timer_ticks(void);                          // ticks so far: instructions, and halted time (wraps at 2^32)
+unsigned int timer_ticks(void);                          // ticks so far: instructions, and halted time (wraps at 2^32, about 43 s)
+uint64_t     timer_ticks64(void);                        // the same, all 64 bits: the count of instructions a run can compare
+uint64_t     timer_nanos64(void);                        // nanoseconds since the machine started (584 years before it wraps)
 unsigned int timer_clock(void);                          // wall-clock seconds since 1970
 unsigned int timer_elapsed(unsigned int since);          // ticks since `since`, correct across the wrap
 unsigned int timer_millis(void);                         // wall-clock milliseconds since the machine started
 unsigned int timer_millis_elapsed(unsigned int since);   // milliseconds since `since`, correct across the wrap
-struct ns64  timer_nanos(void);                          // nanoseconds since the machine started: 584 years before it wraps
-struct ns64  timer_nanos_elapsed(struct ns64 since);     // nanoseconds since `since`
+struct ns64  timer_nanos(void) __attribute__((__deprecated__));                       // timer_nanos64(), as an ns64
+struct ns64  timer_nanos_elapsed(struct ns64 since) __attribute__((__deprecated__));   // timer_nanos64() - since
 unsigned int timer_nanos_resolution(void);               // the clock's step in nanoseconds (never 0)
 unsigned int timer_halt_clock(void);                     // ticks per second while halted (0: the host does not keep real time)
 
@@ -72,13 +78,14 @@ void timer_wait_until(unsigned int deadline);            // return once timer_ti
 void timer_wait_ms(unsigned int ms);                     // return after `ms` real milliseconds
 void timer_wait_us(unsigned int us);                     // return after `us` real microseconds
 void timer_wait_ns(unsigned int ns);                     // return after `ns` real nanoseconds (at most 4.29 s)
-void timer_wait_until_ns(struct ns64 deadline);          // return once timer_nanos() has reached `deadline`
-int  timer_halt_until_ns(struct ns64 deadline);          // one halt, until `deadline` or any request; nonzero once it has passed
+void timer_wait_until_ns64(uint64_t deadline);           // return once timer_nanos64() has reached `deadline`
+int  timer_halt_until_ns(uint64_t deadline);             // one halt, until `deadline` or any request; nonzero once it has passed
+void timer_wait_until_ns(struct ns64 deadline) __attribute__((__deprecated__));       // timer_wait_until_ns64, from an ns64
 
 // The alarm itself. The waits above use it and put back whatever it was set to, so a program may keep one of
 // its own: one due before a wait's instant still fires on time.
-void        timer_alarm_at(struct ns64 at);              // raise IRQ_ALARM once timer_nanos() reaches `at` (0 disarms)
-struct ns64 timer_alarm(void);                           // the armed instant, 0 when disarmed
+void     timer_alarm_at(uint64_t at);                    // raise IRQ_ALARM once timer_nanos64() reaches `at` (0 disarms)
+uint64_t timer_alarm(void);                              // the armed instant, 0 when disarmed
 
 // A table of software timers driven by polling: call timer_poll() from the main loop and every
 // task whose time has come runs, in the order they fell due. Up to TIMER_MAX_TASKS at once.

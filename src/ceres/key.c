@@ -73,7 +73,7 @@ static int following_byte(void)
         return next_byte();
     if (term_eof())
         return -1;
-    struct ns64 deadline = ns64_add(timer_nanos(), ns64_from_ms(FOLLOW_MS));
+    uint64_t deadline = timer_nanos64() + (uint64_t)FOLLOW_MS * 1000000u;
     for (;;)
     {
         if (term_read_ready())

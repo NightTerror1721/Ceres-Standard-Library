@@ -24,7 +24,7 @@
 //                            to the clock's step rather than the host's sleep's. Both are about 60 frames a second.
 
 #include "../stddef.h"
-#include "ns64.h"
+#include "../stdint.h"
 
 struct game
 {
@@ -34,7 +34,7 @@ struct game
     unsigned int frame_start;          // timer_ticks() when the frame began
     unsigned int work_last;            // instructions the last frame spent before waiting
     unsigned int wait_ms;              // 0: pace by instructions; otherwise the frame period in milliseconds
-    struct ns64 frame_start_ns;        // the nanosecond clock when the frame began
+    uint64_t frame_start_ns;           // timer_nanos64() when the frame began
     void (*wait)(struct game* g);      // what game_frame_end runs to pass the rest of the frame; 0 spins on the budget
 };
 

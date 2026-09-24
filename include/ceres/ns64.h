@@ -10,8 +10,10 @@
 //   struct ns64 spent = ns64_sub(timer_nanos(), start);
 //   printf("%u us\n", ns64_to_us(spent));
 //
-// The struct keeps its two-word shape (the same layout a `uint64_t` has: low word first), so a caller
-// that predates the 64-bit type still links; the implementation is real 64-bit arithmetic now.
+// DEPRECATED: a uint64_t does all of this with the ordinary operators, and the timer reads one directly
+// (timer_nanos64, timer_ticks64). The struct keeps its two-word shape (the same layout a `uint64_t` has: low
+// word first) so that code written before still builds and links; the timer functions that hand one out are
+// marked deprecated, and nothing in the library uses them any more.
 //
 // Add and subtract wrap at 2^64, so a difference is right whichever of the two readings wrapped. A
 // conversion that does not fit 32 bits gives 0xFFFFFFFF rather than a number that is wrong.

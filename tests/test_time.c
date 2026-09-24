@@ -4,6 +4,7 @@
 #include "time.h"
 #include "ceres/timer.h"
 #include "string.h"
+#include "errno.h"
 
 static void expect_date(time_t t, int year, int mon, int mday, int hour, int min, int sec, int wday, int yday)
 {
@@ -14,14 +15,14 @@ static void expect_date(time_t t, int year, int mon, int mday, int hour, int min
         tm.tm_min != min || tm.tm_sec != sec || tm.tm_wday != wday || tm.tm_yday != yday)
     {
         __t_failed++;
-        printf("FAIL gmtime(%u): got %d-%d-%d %d:%d:%d wday %d yday %d\n", t, tm.tm_year + 1900, tm.tm_mon + 1,
+        printf("FAIL gmtime(%lld): got %d-%d-%d %d:%d:%d wday %d yday %d\n", t, tm.tm_year + 1900, tm.tm_mon + 1,
                tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_wday, tm.tm_yday);
     }
     __t_total++;
     if (mktime(&tm) != t)                            // and back again
     {
         __t_failed++;
-        printf("FAIL mktime does not return %u\n", t);
+        printf("FAIL mktime does not return %lld\n", t);
     }
 }
 
@@ -58,10 +59,15 @@ int main(void)
     expect_date(1234567890u, 2009, 2,  13, 23, 31, 30, 5,   43);
     expect_date(1709164800u, 2024, 2,  29, 0,  0,  0,  4,   59);
     expect_date(1735689599u, 2024, 12, 31, 23, 59, 59, 2,   365);
-    expect_date(2147483647u, 2038, 1,  19, 3,  14, 7,  2,   18);      // where a signed time_t would stop
+    expect_date(2147483647u, 2038, 1,  19, 3,  14, 7,  2,   18);      // where a 32-bit signed time_t stopped
     expect_date(4107456000u, 2100, 2,  28, 0,  0,  0,  0,   58);
     expect_date(4107542400u, 2100, 3,  1,  0,  0,  0,  1,   59);      // 2100 is NOT a leap year: no Feb 29
-    expect_date(4294967295u, 2106, 2,  7,  6,  28, 15, 0,   37);      // the last second time_t has
+    expect_date(4294967295u, 2106, 2,  7,  6,  28, 15, 0,   37);      // the last second the clock register counts
+    expect_date(4294967296LL, 2106, 2, 7,  6,  28, 16, 0,   37);      // and time_t goes on (M12)
+    expect_date(253402300799LL, 9999, 12, 31, 23, 59, 59, 5, 364);
+    expect_date(-1LL,        1969, 12, 31, 23, 59, 59, 3,   364);     // before 1970 is a negative time
+    expect_date(-2208988800LL, 1900, 1, 1, 0,  0,  0,  1,   0);       // 1900 was not a leap year
+    expect_date(-62135596800LL, 1, 1,  1,  0,  0,  0,  1,   0);       // the first day of year 1, proleptic Gregorian
 
     TEST_SECTION("mktime normalizes");
     struct tm a = make(2024, 12, 32, 0, 0, 0);                       // December 32nd
@@ -88,14 +94,16 @@ int main(void)
     CHECK(g.tm_year + 1900 == 1999 && g.tm_mon == 10);
     struct tm h = make(1970, 1, 1, 0, 0, 0);
     CHECK_EQ((int)mktime(&h), 0);
-    struct tm before = make(1969, 12, 31, 23, 59, 59);
-    CHECK(mktime(&before) == (time_t)-1);                            // before the epoch
+    struct tm before = make(1969, 12, 31, 23, 59, 58);
+    CHECK(mktime(&before) == -2);                                    // before the epoch: a negative time
     struct tm after = make(2106, 2, 7, 6, 28, 16);
-    CHECK(mktime(&after) == (time_t)-1);                             // one second past the end
+    CHECK(mktime(&after) == 4294967296LL);                           // 2106 is not the end any more
     struct tm last = make(2106, 2, 7, 6, 28, 15);
-    CHECK(mktime(&last) == 4294967295u);
+    CHECK(mktime(&last) == 4294967295LL);
     struct tm distant = make(2200, 1, 1, 0, 0, 0);
-    CHECK(mktime(&distant) == (time_t)-1);
+    CHECK(mktime(&distant) == 7258118400LL);
+    struct tm too_far = make(6000000, 1, 1, 0, 0, 0);
+    CHECK(mktime(&too_far) == (time_t)-1);                           // past what the calendar keeps
 
     TEST_SECTION("gmtime, localtime and ctime");
     time_t when = 1234567890u;
@@ -109,6 +117,11 @@ int main(void)
     CHECK_STR(ctime(&zero), "Thu Jan  1 00:00:00 1970\n");           // the day is padded with a space
     time_t mid = 951782400u;
     CHECK_STR(ctime(&mid), "Tue Feb 29 00:00:00 2000\n");
+    time_t huge = 9000000000000000000LL;                             // no int holds its year
+    errno = 0;
+    CHECK(gmtime(&huge) == 0);
+    CHECK_EQ(errno, EOVERFLOW);
+    CHECK(ctime(&huge) == 0);
 
     TEST_SECTION("strftime");
     struct tm tm;
@@ -147,6 +160,10 @@ int main(void)
     gmtime_r(&sunday, &tm);
     strftime(buf, sizeof(buf), "%u %w", &tm);
     CHECK_STR(buf, "7 0");                                           // Sunday is 7 in %u and 0 in %w
+    time_t early = -1;
+    gmtime_r(&early, &tm);
+    strftime(buf, sizeof(buf), "%s %F %T", &tm);
+    CHECK_STR(buf, "-1 1969-12-31 23:59:59");
     gmtime_r(&sample, &tm);
     CHECK_EQ((int)strftime(buf, 5, "%Y-%m", &tm), 0);                // does not fit: nothing, and a NUL
     CHECK_EQ(buf[0], 0);
@@ -164,18 +181,25 @@ int main(void)
     time_t now = 0;
     time_t returned = time(&now);
     CHECK(now == returned);
-    CHECK(now > 1600000000u);                                        // after September 2020: the clock is set
+    CHECK(now > 1600000000);                                         // after September 2020: the clock is set
     CHECK(time(0) >= now);
     clock_t c1 = clock();
+    timer_wait_ms(3);
     clock_t c2 = clock();
-    CHECK(c2 > c1);                                                  // instructions were executed in between
+    CHECK(c2 - c1 >= 3000);                                          // microseconds of real time (M12)
+    CHECK(c2 - c1 < 1000000);
     CHECK_EQ((int)CLOCKS_PER_SEC, 1000000);
+    CHECK(sizeof(time_t) == 8 && sizeof(clock_t) == 8 && (time_t)-1 < 0);
     CHECK_EQ((int)sleep(0), 0);
 
     TEST_SECTION("timer ticks");
     unsigned int t0 = timer_ticks();
     unsigned int t1 = timer_ticks();
     CHECK(t1 > t0);
+    uint64_t w0 = timer_ticks64();
+    uint64_t w1 = timer_ticks64();
+    CHECK(w1 > w0);                                                  // all 64 bits, read as one moment
+    CHECK((unsigned int)w1 - t1 < 100000u);                          // whose low word is timer_ticks()
     CHECK(timer_elapsed(t0) >= t1 - t0);
     CHECK(timer_elapsed(t1 + 1000000u) > 0xFFF00000u);               // a "since" in the future wraps: that is the arithmetic
     unsigned int before_wait = timer_ticks();

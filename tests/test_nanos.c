@@ -3,6 +3,9 @@
 // what was asked and not absurdly longer.
 #include "ceres/test.h"
 #include "ceres/timer.h"
+// This test is about the ns64 forms of the clock, which are deprecated in favour of timer_nanos64 (M12) but
+// kept for code written before: it calls them on purpose.
+#pragma warning(disable: 3003)
 #include "ceres/game.h"
 #include "time.h"
 

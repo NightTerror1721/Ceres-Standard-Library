@@ -17,7 +17,7 @@ time_t time(time_t* out)
 
 clock_t clock(void)
 {
-    return timer_ticks();
+    return (clock_t)(timer_nanos64() / 1000u);
 }
 
 int timespec_get(struct timespec* ts, int base)
@@ -34,9 +34,8 @@ int timespec_get(struct timespec* ts, int base)
     {
         // The clock is a real 64-bit nanosecond count now, so one divide splits it into whole seconds
         // and the nanoseconds left over.
-        struct ns64 now = timer_nanos();
-        uint64_t total = ((uint64_t)now.hi << 32) | (uint64_t)now.lo;
-        ts->tv_sec = (time_t)(total / 1000000000ULL);    // a machine that has run for 136 years has other troubles
+        uint64_t total = timer_nanos64();
+        ts->tv_sec = (time_t)(total / 1000000000ULL);
         ts->tv_nsec = (long)(total % 1000000000ULL);
         return base;
     }
@@ -65,7 +64,7 @@ int timespec_getres(struct timespec* ts, int base)
 
 float difftime(time_t end, time_t start)
 {
-    return end >= start ? (float)(end - start) : -(float)(start - end);
+    return (float)(end - start);
 }
 
 unsigned int sleep(unsigned int seconds)
@@ -83,9 +82,11 @@ int nanosleep(const struct timespec* req, struct timespec* rem)
         errno = EINVAL;
         return -1;
     }
-    struct ns64 span = ns64_add(ns64_mul_u32(ns64_from_u32(1000000000u), (unsigned int)req->tv_sec),
-                                ns64_from_u32((unsigned int)req->tv_nsec));
-    timer_wait_until_ns(ns64_add(timer_nanos(), span));
+    // Past about 584 years the sum would wrap: a sleep that long ends when the clock does.
+    uint64_t now = timer_nanos64();
+    uint64_t span = (uint64_t)req->tv_sec > 18000000000ull ? ~(uint64_t)0
+                  : (uint64_t)req->tv_sec * 1000000000ull + (uint64_t)req->tv_nsec;
+    timer_wait_until_ns64(span > ~(uint64_t)0 - now ? ~(uint64_t)0 : now + span);
     if (rem != 0)
     {
         rem->tv_sec = 0;
@@ -128,15 +129,30 @@ static int floor_div(int a, int b)
     return (a % b != 0 && ((a < 0) != (b < 0))) ? q - 1 : q;
 }
 
+static long long floor_div64(long long a, long long b)
+{
+    long long q = a / b;
+    return (a % b != 0 && ((a < 0) != (b < 0))) ? q - 1 : q;
+}
+
+// The days either side of 1970 the calendar works with: an int, with room for the algorithms' own offsets
+// (about 5.4 million years).
+#define MAX_DAYS 2000000000LL
+
 struct tm* gmtime_r(const time_t* t, struct tm* out)
 {
-    unsigned int secs = *t;
-    int days = (int)(secs / 86400u);                     // at most 49710
-    unsigned int rest = secs % 86400u;
-    out->tm_hour = (int)(rest / 3600u);
-    out->tm_min = (int)((rest % 3600u) / 60u);
-    out->tm_sec = (int)(rest % 60u);
-    out->tm_wday = (days + 4) % 7;                       // 1970-01-01 was a Thursday
+    long long days64 = floor_div64(*t, 86400);
+    if (days64 > MAX_DAYS || days64 < -MAX_DAYS)
+    {
+        errno = EOVERFLOW;
+        return 0;
+    }
+    int days = (int)days64;
+    int rest = (int)(*t - days64 * 86400);               // 0..86399, before 1970 as after
+    out->tm_hour = rest / 3600;
+    out->tm_min = (rest % 3600) / 60;
+    out->tm_sec = rest % 60;
+    out->tm_wday = ((days + 4) % 7 + 7) % 7;             // 1970-01-01 was a Thursday
     int year, month, day;
     civil_from_days(days, &year, &month, &day);
     out->tm_year = year - 1900;
@@ -155,26 +171,22 @@ struct tm* localtime_r(const time_t* t, struct tm* out) { return gmtime_r(t, out
 
 time_t mktime(struct tm* tm)
 {
-    int year = tm->tm_year + 1900;
+    long long year = (long long)tm->tm_year + 1900;
     int mon = tm->tm_mon;
     year += floor_div(mon, 12);
     mon -= floor_div(mon, 12) * 12;                      // 0..11
-    if (year < 1970 || year > 2106)
+    if (year > 5000000 || year < -5000000)
         return (time_t)-1;
 
     // Everything below a day is folded into a second-of-day and a number of whole days to carry.
-    int seconds = tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec;
-    int carry = floor_div(seconds, 86400);
-    int second_of_day = seconds - carry * 86400;
-    int days = days_from_civil(year, mon + 1, 1) + (tm->tm_mday - 1) + carry;
-    if (days < 0 || days > 49710)
+    long long seconds = (long long)tm->tm_hour * 3600 + (long long)tm->tm_min * 60 + tm->tm_sec;
+    long long carry = floor_div64(seconds, 86400);
+    long long second_of_day = seconds - carry * 86400;
+    long long days = (long long)days_from_civil((int)year, mon + 1, 1) + ((long long)tm->tm_mday - 1) + carry;
+    if (days > MAX_DAYS || days < -MAX_DAYS)
         return (time_t)-1;
 
-    unsigned int base = (unsigned int)days * 86400u;
-    time_t t = base + (unsigned int)second_of_day;
-    if (t < base)
-        return (time_t)-1;                               // past 2106-02-07 06:28:15
-
+    time_t t = days * 86400 + second_of_day;
     gmtime_r(&t, tm);                                    // normalize the fields and fill wday/yday
     return t;
 }
@@ -197,7 +209,10 @@ char* asctime(const struct tm* tm)
 
 char* ctime(const time_t* t)
 {
-    return asctime(localtime(t));
+    struct tm* tm = localtime(t);
+    if (tm == 0)
+        return 0;                                        // a year an int cannot hold
+    return asctime(tm);
 }
 
 struct out
@@ -279,8 +294,8 @@ static void format_one(struct out* o, char spec, const struct tm* tm)
     {
         struct tm copy = *tm;
         time_t t = mktime(&copy);
-        char text[12];
-        snprintf(text, sizeof(text), "%u", t);
+        char text[24];
+        snprintf(text, sizeof(text), "%lld", t);
         put_text(o, text);
         break;
     }

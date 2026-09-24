@@ -11,7 +11,7 @@ void game_init(struct game* g, unsigned int ticks_per_frame)
     g->frame_start = timer_ticks();
     g->work_last = 0;
     g->wait_ms = 0;
-    g->frame_start_ns = timer_nanos();
+    g->frame_start_ns = timer_nanos64();
     g->wait = 0;
     input_init();
 }
@@ -25,7 +25,7 @@ void game_frame_begin(struct game* g)
 {
     input_update();
     g->frame_start = timer_ticks();
-    g->frame_start_ns = timer_nanos();
+    g->frame_start_ns = timer_nanos64();
 }
 
 void game_frame_end(struct game* g)
@@ -44,23 +44,23 @@ void game_frame_end(struct game* g)
 
 // The frame ends `wait_ms` after it began. A frame already past that does not wait, and the next one starts
 // from now: a slow frame is not repaid with a burst of fast ones.
-static struct ns64 frame_deadline(const struct game* g)
+static uint64_t frame_deadline(const struct game* g)
 {
-    return ns64_add(g->frame_start_ns, ns64_from_ms(g->wait_ms));
+    return g->frame_start_ns + (uint64_t)g->wait_ms * 1000000u;
 }
 
 static void spin_nanos(struct game* g)
 {
-    struct ns64 deadline = frame_deadline(g);
-    while (ns64_cmp(timer_nanos(), deadline) < 0)
+    uint64_t deadline = frame_deadline(g);
+    while (timer_nanos64() < deadline)
     {
     }
 }
 
-// A key or the mouse ends a halt early; timer_wait_until_ns halts again for the time that is left.
+// A key or the mouse ends a halt early; timer_wait_until_ns64 halts again for the time that is left.
 static void sleep_nanos(struct game* g)
 {
-    timer_wait_until_ns(frame_deadline(g));
+    timer_wait_until_ns64(frame_deadline(g));
 }
 
 void game_pace_real(struct game* g, unsigned int ms)
