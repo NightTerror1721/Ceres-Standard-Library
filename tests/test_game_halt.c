@@ -1,6 +1,6 @@
 // USE: irq
 // Frame pacing by halting: game_pace_ms waits with the timer armed, so the machine sleeps (a halted
-// machine keeps time at one tick per millisecond) instead of spinning on a budget.
+// machine's clock runs on at timer_halt_clock() ticks per second) instead of spinning on a budget.
 #include "ceres/test.h"
 #include "ceres/game.h"
 #include "ceres/timer.h"
@@ -21,6 +21,8 @@ int main(void)
     game_pace_ms(&g, 20);
 
     TEST_SECTION("frames pass on the clock, not on instructions");
+    CHECK_EQ((int)timer_halt_clock(), 100000000);       // the default rate of `ceres run`
+    unsigned int per_ms = timer_halt_clock() / 1000u;
     unsigned int s0 = timer_clock();
     int long_enough = 1, short_enough = 1;
     for (int i = 0; i < 10; i++)
@@ -29,8 +31,8 @@ int main(void)
         unsigned int t0 = timer_ticks();
         game_frame_end(&g);
         unsigned int waited = timer_elapsed(t0);
-        if (waited < 12u) long_enough = 0;              // about 20 ticks of sleep
-        if (waited > 100000u) short_enough = 0;         // the interrupt handler costs thousands at -O0, but nowhere near the 100000000 a spin would need
+        if (waited < 12u * per_ms) long_enough = 0;     // about 20 ms of the halted clock
+        if (waited > 60u * per_ms) short_enough = 0;    // and not much more: the frame is 20 ms
     }
     CHECK_EQ((int)g.frame, 10);
     CHECK(long_enough);

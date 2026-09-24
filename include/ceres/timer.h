@@ -17,6 +17,12 @@
 // can tell apart is the host clock's step, timer_nanos_resolution(): often 100 ns, so two reads a few
 // instructions apart may return the same count.
 //
+// A program that HALTs with the timer armed does not stop the count: while the CPU is halted the clock runs
+// on at timer_halt_clock() ticks per second (100 000 000 by default, about what the machine executes), so a
+// tick is an instruction's worth of time either way. That is how a real-time wait becomes ticks for a halt:
+// 16 ms is timer_halt_clock() / 1000 * 16 of them. A host that does not run the halted clock in real time (a
+// debugger replaying) reports 0.
+//
 // Nothing here needs an interrupt handler, so this module never binds a vector: the waits spin on
 // the tick register and the task table (timer_after/every) is driven by timer_poll().
 
@@ -27,6 +33,7 @@
 #define TIMER_NANOS_LOW_REG  (TIMER_BASE + 0x10)   // R: the low word of the nanoseconds since the machine started; latches the high word
 #define TIMER_NANOS_HIGH_REG (TIMER_BASE + 0x14)   // R: the high word latched by the last read of the low one
 #define TIMER_NANOS_RES_REG  (TIMER_BASE + 0x18)   // R: the smallest step the nanosecond clock is seen to take, in nanoseconds
+#define TIMER_HALT_CLOCK_REG (TIMER_BASE + 0x1C)   // R: ticks per second while the CPU is halted; 0 when not in real time
 #define TIMER_PERIODIC   0x80000000u
 #define TIMER_MAX_TICKS  0x7FFFFFFFu           // the longest period the command register can hold
 
@@ -38,6 +45,7 @@ unsigned int timer_millis_elapsed(unsigned int since);   // milliseconds since `
 struct ns64  timer_nanos(void);                          // nanoseconds since the machine started: 584 years before it wraps
 struct ns64  timer_nanos_elapsed(struct ns64 since);     // nanoseconds since `since`
 unsigned int timer_nanos_resolution(void);               // the clock's step in nanoseconds (never 0)
+unsigned int timer_halt_clock(void);                     // ticks per second while halted (0: the host does not keep real time)
 
 // The hardware timer raises interrupt 16 (IRQ_TIMER) when it expires; it is masked unless the
 // program has done sti and attached a handler (ceres/irq.h).

@@ -51,6 +51,11 @@ unsigned int timer_nanos_resolution(void)
     return mmio_r32(TIMER_NANOS_RES_REG);
 }
 
+unsigned int timer_halt_clock(void)
+{
+    return mmio_r32(TIMER_HALT_CLOCK_REG);
+}
+
 void timer_wait_until_ns(struct ns64 deadline)
 {
     while (ns64_cmp(timer_nanos(), deadline) < 0)

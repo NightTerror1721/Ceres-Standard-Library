@@ -1,9 +1,9 @@
 // __game_sleep(ticks): arm the timer for `ticks`, enable interrupts and halt. The store, the sti and the halt
-// take three ticks, so the machine sleeps for the rest of them - a halted machine advances the timer one tick
-// per step, about a millisecond. `sti` takes effect after the next instruction, so a timer that expired
-// before the halt is delivered after it and wakes it; nothing is lost whatever `ticks` is. Returns when any
-// interrupt has been handled, the timer's or another's. Part of the irq module: it goes with
-// src/ceres/game_halt.c.
+// take three ticks, so the machine sleeps for the rest of them - a halted machine's clock runs on at the
+// timer's HaltClockRegister rate, so the sleep lasts that many ticks of real time. `sti` takes effect after
+// the next instruction, so a timer that expired before the halt is delivered after it and wakes it; nothing
+// is lost whatever `ticks` is. Returns when any interrupt has been handled, the timer's or another's. Part
+// of the irq module: it goes with src/ceres/game_halt.c.
 @text
 
 global __game_sleep:                // r0 = ticks
