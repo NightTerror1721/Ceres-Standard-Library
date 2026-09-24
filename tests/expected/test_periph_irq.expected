@@ -1,0 +1,4 @@
+-- attach
+-- the events of the media plugged in before the start
+-- pulling a medium out raises the interrupt
+ALL PASSED 12/12

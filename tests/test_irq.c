@@ -23,7 +23,10 @@ int main(void)
     CHECK_EQ(irq_attach(16, on_tick), 0);
     CHECK(irq_handler(16) == on_tick);
     CHECK_EQ(irq_attach(3, on_tick), -1);         // no stub is bound to a fault number
-    CHECK_EQ(irq_attach(23, on_tick), -1);         // the audio device's number, 22, is the last a device raises
+    CHECK_EQ(irq_attach(24, on_tick), -1);         // the peripheral ports, 23, are the last number a device raises
+    CHECK_EQ(irq_attach(23, on_tick), 0);
+    CHECK_STR(irq_name(23), "Periph");
+    irq_detach(23);
     CHECK_EQ(irq_attach(22, on_tick), 0);
     CHECK_STR(irq_name(22), "Audio");
     irq_detach(22);

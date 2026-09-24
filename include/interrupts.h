@@ -7,7 +7,7 @@
 #define IRQ_COUNT        64     // the size of the vector table
 #define IRQ_USER_FIRST   16     // 0-15 are exceptions, always deliverable; 16-63 are masked unless sti
 #define IRQ_USER_LAST    63
-#define IRQ_DEVICE_LAST  22     // the last number a device raises today (the audio device)
+#define IRQ_DEVICE_LAST  23     // the last number a device raises today (the peripheral ports)
 
 enum IRQ
 {

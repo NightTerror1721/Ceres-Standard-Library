@@ -6,7 +6,7 @@
 //
 // The hardware vector table is bound at LINK time (`__interrupt_vector`), one owner per number for
 // the whole program, and a running program cannot write it (everything below 0x400 is read-only).
-// So the module in src/ceres/irq.c owns the device vectors (16-22) once, and dispatches to a table
+// So the module in src/ceres/irq.c owns the device vectors (16-23) once, and dispatches to a table
 // of function pointers in RAM that irq_attach() fills in. No privilege is needed.
 //
 // irq_attach() is OPTIONAL to link: the module binds vectors, and a program that binds one of
@@ -18,7 +18,7 @@
 
 typedef void (*irq_handler_t)(int irq);
 
-int  irq_attach(int irq, irq_handler_t handler);   // 16..22; -1 for any other number
+int  irq_attach(int irq, irq_handler_t handler);   // 16..23; -1 for any other number
 void irq_detach(int irq);
 irq_handler_t irq_handler(int irq);                // the attached handler, or NULL
 const char* irq_name(int irq);                     // "Timer", "Terminal", "AlignmentFault", ...

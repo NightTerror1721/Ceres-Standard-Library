@@ -49,6 +49,7 @@ IRQ_STUB(19)   // keyboard event
 IRQ_STUB(20)   // mouse motion
 IRQ_STUB(21)   // gamepad state change
 IRQ_STUB(22)   // a tone has finished
+IRQ_STUB(23)   // a medium was plugged in or pulled out
 
 const char* irq_name(int n)
 {
@@ -70,6 +71,7 @@ const char* irq_name(int n)
         case 20: return "Mouse";
         case 21: return "Gamepad";
         case 22: return "Audio";
+        case 23: return "Periph";
         default: break;
     }
     if (n >= IRQ_USER_FIRST && n < IRQ_COUNT)
