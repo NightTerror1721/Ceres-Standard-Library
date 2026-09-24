@@ -479,6 +479,22 @@ static void section_rounding(void)
 
 static void section_remainder_fdim_nan(void)
 {
+    TEST_SECTION("llround and llrint: 64 bits");
+    CHECK_EQ64(llround(3.0e9f), 3000000000LL);                  // past what an int holds
+    CHECK_EQ64(llround(-3.0e9f), -3000000000LL);
+    CHECK_EQ64(llround(2.5f), 3LL);                             // halves away from zero
+    CHECK_EQ64(llround(-2.5f), -3LL);
+    CHECK_EQ64(llrint(2.5f), 2LL);                              // halves to even
+    CHECK_EQ64(llrint(3.5f), 4LL);
+    CHECK_EQ64(llrint(1.0e18f), (long long)1.0e18f);
+    CHECK_EQ64(llround(-9223372036854775808.0f), -9223372036854775807LL - 1);   // the bottom edge fits
+    CHECK_ERRNO(llround(9223372036854775808.0f), ERANGE);         // 2^63 does not
+    CHECK_EQ64(llround(9223372036854775808.0f), 9223372036854775807LL);
+    CHECK_EQ64(llrint(-1.0e19f), -9223372036854775807LL - 1);
+    CHECK_ERRNO(llrint(-1.0e19f), ERANGE);
+    CHECK_ERRNO(llround(NAN), EDOM);
+    CHECK_ERRNO(llrint(3.0e9f), 0);
+
     TEST_SECTION("remainder, fdim, nan");
     CHECK(remainder(5.0f, 3.0f) == -1.0f);                // 5/3 rounds to 2
     CHECK(remainder(7.0f, 2.0f) == -1.0f);                // 3.5 rounds to the even 4

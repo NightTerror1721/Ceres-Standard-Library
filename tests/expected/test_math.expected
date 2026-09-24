@@ -11,6 +11,7 @@
 -- hyperbolic, roots and hypot
 -- ldexp, frexp, modf
 -- rounding
+-- llround and llrint: 64 bits
 -- remainder, fdim, nan
 -- aliases
-ALL PASSED 2112/2112
+ALL PASSED 2126/2126

@@ -101,11 +101,11 @@ float nearbyint(float x);                  // to the nearest integer, halves to 
 float rint(float x);                       // same as nearbyint here (no inexact exception to raise)
 int   lround(float x);                     // to the nearest int, halves away from zero
 int   lrint(float x);                      // to the nearest int, halves to even
+long long llround(float x);                // as lround, to the nearest 64-bit integer
+long long llrint(float x);                 // as lrint, to the nearest 64-bit integer
 float nan(const char* tag);                // a quiet NaN (the tag is ignored)
 
 #define scalbn    ldexp
-#define llround   lround
-#define llrint    lrint
 
 // ---- the f-suffixed names ----
 #define sinf sin
@@ -151,3 +151,5 @@ float nan(const char* tag);                // a quiet NaN (the tag is ignored)
 #define rintf rint
 #define lroundf lround
 #define lrintf lrint
+#define llroundf llround
+#define llrintf llrint
