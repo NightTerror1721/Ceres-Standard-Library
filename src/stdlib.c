@@ -1,4 +1,4 @@
-// Arithmetic, pseudo-random numbers, sorting and searching, and the environment. (Text to number is in
+// Arithmetic, pseudo-random numbers, searching, and the environment. (Text to number is in
 // strtox.c, dynamic memory in malloc.c.)
 #include "stdlib.h"
 #include "errno.h"
@@ -54,79 +54,7 @@ int rand(void)
     return (int)((rand_state >> 16) & 0x7FFF);
 }
 
-// ---- qsort ----
-// Median-of-three quicksort that recurses into the smaller half (so the stack is O(log n)) and
-// finishes runs of 12 or fewer with insertion sort.
-
-static void swap_elements(char* a, char* b, size_t n)
-{
-    if ((((unsigned int)a | (unsigned int)b | (unsigned int)n) & 3u) == 0)
-    {
-        // aligned and a multiple of 4 bytes: move a word at a time
-        unsigned int* x = (unsigned int*)a;
-        unsigned int* y = (unsigned int*)b;
-        for (size_t i = 0; i < n / 4; i++)
-        {
-            unsigned int t = x[i];
-            x[i] = y[i];
-            y[i] = t;
-        }
-        return;
-    }
-    for (size_t i = 0; i < n; i++)
-    {
-        char t = a[i];
-        a[i] = b[i];
-        b[i] = t;
-    }
-}
-
-static void insertion_sort(char* base, size_t n, size_t sz, int (*cmp)(const void*, const void*))
-{
-    for (size_t i = 1; i < n; i++)
-        for (size_t j = i; j > 0 && cmp(base + (j - 1) * sz, base + j * sz) > 0; j--)
-            swap_elements(base + (j - 1) * sz, base + j * sz, sz);
-}
-
-static void quick_sort(char* base, size_t n, size_t sz, int (*cmp)(const void*, const void*))
-{
-    while (n > 12)
-    {
-        char* lo = base;
-        char* mid = base + (n / 2) * sz;
-        char* hi = base + (n - 1) * sz;
-        if (cmp(mid, lo) < 0) swap_elements(mid, lo, sz);
-        if (cmp(hi, lo) < 0)  swap_elements(hi, lo, sz);
-        if (cmp(hi, mid) < 0) swap_elements(hi, mid, sz);
-        // lo <= mid <= hi now; the median becomes the pivot, parked next to the end, and lo and hi
-        // act as sentinels for the two scans below.
-        char* pivot = hi - sz;
-        swap_elements(mid, pivot, sz);
-        char* i = lo;
-        char* j = pivot;
-        for (;;)
-        {
-            do { i += sz; } while (cmp(i, pivot) < 0);
-            do { j -= sz; } while (cmp(j, pivot) > 0);
-            if (i >= j)
-                break;
-            swap_elements(i, j, sz);
-        }
-        swap_elements(i, pivot, sz);                    // the pivot is now in its final place
-        size_t left = (size_t)(i - base) / sz;
-        size_t right = n - left - 1;
-        if (left < right) { quick_sort(base, left, sz, cmp); base = i + sz; n = right; }
-        else              { quick_sort(i + sz, right, sz, cmp); n = left; }
-    }
-    insertion_sort(base, n, sz, cmp);
-}
-
-void qsort(void* base, size_t n, size_t size, int (*cmp)(const void*, const void*))
-{
-    if (n < 2 || size == 0)
-        return;
-    quick_sort((char*)base, n, size, cmp);
-}
+// ---- searching ---- (qsort and qsort_r are in qsort.c)
 
 void* bsearch(const void* key, const void* base, size_t n, size_t size, int (*cmp)(const void*, const void*))
 {

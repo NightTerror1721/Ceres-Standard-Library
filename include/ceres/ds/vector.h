@@ -33,6 +33,8 @@ int   vector_insert(struct vector* v, unsigned int i, const void* item);   // be
 void  vector_remove(struct vector* v, unsigned int i);          // shifts the rest down; nothing for a bad index
 void  vector_clear(struct vector* v);                           // len = 0, keeps the storage
 void  vector_sort(struct vector* v, int (*cmp)(const void*, const void*));   // qsort: not stable
+void  vector_sort_r(struct vector* v, int (*cmp)(const void*, const void*, void*), void* ctx);   // qsort_r
+int   vector_sort_stable(struct vector* v, int (*cmp)(const void*, const void*));   // equal elements keep their order; 0 ok, -1 out of memory
 
 static inline unsigned int vector_len(const struct vector* v) { return v->len; }
 

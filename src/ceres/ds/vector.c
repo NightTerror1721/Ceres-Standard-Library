@@ -1,5 +1,6 @@
 // Growable array. See ceres/ds/vector.h.
 #include "ceres/ds/vector.h"
+#include "ceres/sort.h"
 #include "stdlib.h"
 #include "string.h"
 
@@ -111,4 +112,15 @@ void vector_sort(struct vector* v, int (*cmp)(const void*, const void*))
 {
     if (v->len > 1)
         qsort(v->data, v->len, v->elem, cmp);
+}
+
+void vector_sort_r(struct vector* v, int (*cmp)(const void*, const void*, void*), void* ctx)
+{
+    if (v->len > 1)
+        qsort_r(v->data, v->len, v->elem, cmp, ctx);
+}
+
+int vector_sort_stable(struct vector* v, int (*cmp)(const void*, const void*))
+{
+    return sort_stable(v->data, v->len, v->elem, cmp);
 }

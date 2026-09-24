@@ -1,0 +1,6 @@
+-- qsort: every shape and length
+-- qsort: element sizes and alignments
+-- qsort: a worst case built against it stays O(n log n)
+-- qsort_r: the comparator gets the context
+-- sort_stable: in order, and equal keys keep their order
+ALL PASSED 16/16
