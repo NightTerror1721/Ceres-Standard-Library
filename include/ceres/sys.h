@@ -12,6 +12,9 @@
 #define SYS_CTRL_STACK_LIMIT  (SYS_CTRL_BASE + 0x0C)   // read/write: the lowest address the stack may reach
 #define SYS_CTRL_FAULT_ADDR   (SYS_CTRL_BASE + 0x10)   // read: the data address of the last memory fault
 #define SYS_CTRL_FAULT_ACCESS (SYS_CTRL_BASE + 0x14)   // read: its access (FAULT_READ/WRITE/FETCH) | size << 8
+#define SYS_CTRL_ARGC         (SYS_CTRL_BASE + 0x18)   // read: argc, what main was started with
+#define SYS_CTRL_ARGV         (SYS_CTRL_BASE + 0x1C)   // read: the address of argv
+#define SYS_CTRL_ENVP         (SYS_CTRL_BASE + 0x20)   // read: the address of envp
 #define FAULT_READ   1u
 #define FAULT_WRITE  2u
 #define FAULT_FETCH  3u
@@ -26,6 +29,13 @@ unsigned int sys_memory_size(void);  // how many bytes of RAM the machine has
 unsigned int sys_features(void);     // the features register (0 unless something switched a feature on)
 void sys_set_features(unsigned int features);
 void sys_panic(const char* msg) __attribute__((__noreturn__));   // print "panic: <msg>" on the terminal and shut down
+
+// What the program was started with (`ceres run prog.cres --env NAME=value -- a b`, CeresASM 9c6afbb): main(int
+// argc, char** argv, char** envp) receives the same three, and these reach them anywhere (src/env.c). argv[0] is
+// the program's path; argv[argc] and the envp entry after the last are NULL. 0 and NULL on an older machine.
+int    sys_argc(void);
+char** sys_argv(void);
+char** sys_envp(void);
 
 unsigned int sys_sp(void);           // the stack pointer, as seen by this call (asm/sys.casm) ...
 #define sys_sp() ((unsigned int)__builtin_stack_pointer())   // ... read in place, with no call

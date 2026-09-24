@@ -73,7 +73,9 @@ void  exit(int status) __attribute__((__noreturn__));    // runs the atexit func
 void  _Exit(int status) __attribute__((__noreturn__));   // stops at once
 void  abort(void) __attribute__((__noreturn__));         // prints "abort" and stops with status 134, without running the atexit functions
 int   atexit(void (*fn)(void)); // 0 on success, -1 when the 32 slots are taken
-char* getenv(const char* name); // there is no environment: always NULL
+char* getenv(const char* name); // what `ceres run --env NAME=value` gave the program, or NULL (src/env.c)
+int   setenv(const char* name, const char* value, int overwrite);   // 0, or -1 with errno EINVAL/ENOMEM
+int   unsetenv(const char* name);
 int   system(const char* cmd);  // there is no shell: 0 for system(NULL), else -1 with errno = ENOSYS
 
 // ---- common non-standard helpers ----

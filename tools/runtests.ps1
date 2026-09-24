@@ -21,6 +21,9 @@
     `--port 0=build/ports/stick.img` or `--cart 1=tests/data/game.cart` per line (a stick's file is created when
     it is not there, and is new for every level).
 
+    A test with a tests/expected/<name>.run file passes what it holds to `ceres run`: `--env NAME=value`, and
+    `-- a b` for main's arguments.
+
     A test with a tests/expected/<name>.flags file sets a compile-time option of the LIBRARY (-DCERES_...), so
     the library is compiled again with it, together with the test, as before. -FromSources does that for every
     test: the slow path, and the one that proves the archive changes nothing.
@@ -229,6 +232,14 @@ foreach ($name in $tests) {
             foreach ($spec in (Get-Content $portsFile | Where-Object { $_.Trim() })) {
                 $pair = $spec.Trim() -split '\s+', 2
                 $cmdLine += " --run-arg $($pair[0]) --run-arg $($pair[1])"
+            }
+        }
+        # tests/expected/<name>.run: more for `ceres run`, one or more words a line - `--env NAME=value`, and last
+        # `-- a b` for the program's own arguments.
+        $runFile = "tests/expected/$name.run"
+        if (Test-Path $runFile) {
+            foreach ($word in ((Get-Content $runFile) -join ' ').Trim() -split '\s+') {
+                if ($word) { $cmdLine += " --run-arg $word" }
             }
         }
         $stdin = "tests/expected/$name.stdin"        # what the program reads from the terminal, if it reads

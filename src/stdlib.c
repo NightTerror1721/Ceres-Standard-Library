@@ -73,12 +73,7 @@ void* bsearch(const void* key, const void* base, size_t n, size_t size, int (*cm
     return 0;
 }
 
-// ---- the process ---- (exit, _Exit, abort and atexit are in exit.c)
-
-char* getenv(const char* name)
-{
-    return 0;
-}
+// ---- the process ---- (exit, _Exit, abort and atexit are in exit.c; the environment in env.c)
 
 int system(const char* cmd)
 {
