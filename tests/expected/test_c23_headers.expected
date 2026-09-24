@@ -1,0 +1,4 @@
+-- stdbit.h: every function at every width
+-- stdckdint.h: exact results, wrapped stores
+-- stdalign.h and stdnoreturn.h
+ALL PASSED 44/44

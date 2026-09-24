@@ -15,4 +15,4 @@
 typedef unsigned int jmp_buf[16];       // r8-r11, fp, sp, pc, f8-f15 (15 words used)
 
 int  setjmp(jmp_buf env);               // 0 when called directly, else the value given to longjmp
-void longjmp(jmp_buf env, int val) __attribute__((noreturn));   // longjmp(env, 0) makes setjmp return 1
+void longjmp(jmp_buf env, int val) __attribute__((__noreturn__));   // longjmp(env, 0) makes setjmp return 1

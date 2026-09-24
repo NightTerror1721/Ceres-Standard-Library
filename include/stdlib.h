@@ -67,9 +67,9 @@ void* bsearch(const void* key, const void* base, size_t n, size_t size,
 
 // ---- the process ----
 // The status is the exit status of `ceres run` (its low eight bits), and returning n from main is exit(n).
-void  exit(int status) __attribute__((noreturn));    // runs the atexit functions (last registered first), then stops
-void  _Exit(int status) __attribute__((noreturn));   // stops at once
-void  abort(void) __attribute__((noreturn));         // prints "abort" and stops with status 134, without running the atexit functions
+void  exit(int status) __attribute__((__noreturn__));    // runs the atexit functions (last registered first), then stops
+void  _Exit(int status) __attribute__((__noreturn__));   // stops at once
+void  abort(void) __attribute__((__noreturn__));         // prints "abort" and stops with status 134, without running the atexit functions
 int   atexit(void (*fn)(void)); // 0 on success, -1 when the 32 slots are taken
 char* getenv(const char* name); // there is no environment: always NULL
 int   system(const char* cmd);  // there is no shell: 0 for system(NULL), else -1 with errno = ENOSYS

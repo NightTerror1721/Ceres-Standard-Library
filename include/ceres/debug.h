@@ -12,7 +12,7 @@
 
 void log_set_level(int level);                       // messages above this level are dropped; the default is LOG_INFO
 int  log_level(void);
-void log_msg(int level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));   // "[warn] text\n"
+void log_msg(int level, const char* fmt, ...) __attribute__((__format__(__printf__, 2, 3)));   // "[warn] text\n"
 
 #define LOGE(...) log_msg(LOG_ERROR, __VA_ARGS__)
 #define LOGW(...) log_msg(LOG_WARN,  __VA_ARGS__)

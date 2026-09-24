@@ -22,7 +22,7 @@ void sb_free(struct strbuf* s);
 int  sb_append(struct strbuf* s, const char* text);
 int  sb_append_n(struct strbuf* s, const char* text, unsigned int n);   // at most n characters
 int  sb_append_char(struct strbuf* s, char c);
-int  sb_appendf(struct strbuf* s, const char* fmt, ...) __attribute__((format(printf, 2, 3)));   // printf-style
+int  sb_appendf(struct strbuf* s, const char* fmt, ...) __attribute__((__format__(__printf__, 2, 3)));   // printf-style
 const char* sb_cstr(const struct strbuf* s);                           // never NULL: "" when empty
 char* sb_take(struct strbuf* s);                                       // hands the memory to the caller (free it); the strbuf is empty again. NULL when out of memory
 void sb_clear(struct strbuf* s);                                       // empties it, keeps the memory

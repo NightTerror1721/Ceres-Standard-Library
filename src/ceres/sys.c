@@ -8,7 +8,7 @@
 
 // After a command the machine stops (or starts over) before the next instruction. Only a machine with
 // no system-control device gets past the store, and there the halt, with interrupts masked, is the stop.
-static void stop_here(void) __attribute__((noreturn));
+static void stop_here(void) __attribute__((__noreturn__));
 static void stop_here(void)
 {
     __builtin_cli();
