@@ -2,6 +2,7 @@
 -- text
 -- floats: %f
 -- floats: %e and %g
+-- floats: precision past the digits a float has
 -- floats: inf and nan
 -- snprintf and sprintf
 -- the v forms
@@ -38,4 +39,4 @@ answer=42
 10000000000.0
 0.500000000
 -- input
-ALL PASSED 116/116
+ALL PASSED 125/125

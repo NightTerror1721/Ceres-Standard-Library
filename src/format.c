@@ -175,8 +175,12 @@ static void fmt_integer64(struct __sink* s, uint64_t v, int is_signed, int neg, 
 // ---- floating point -------------------------------------------------------------
 union fbits { float f; unsigned int u; };
 
-// `nd` significant decimal digits of a positive finite v, rounded; *exp10 = decimal exponent.
-// Good for ~7 exact digits (a float has a 24-bit mantissa); later digits are deterministic noise.
+// The most significant digits float_digits produces. A float has about 7 exact ones and the largest
+// is below 10^39, so a longer request gets these and zeros after them.
+#define FLOAT_DIGITS_MAX 38
+
+// `nd` (1..FLOAT_DIGITS_MAX) significant decimal digits of a positive finite v, rounded; *exp10 = decimal
+// exponent. Good for ~7 exact digits (a float has a 24-bit mantissa); later digits are deterministic noise.
 static void float_digits(float v, int nd, char* out, int* exp10)
 {
     int e = 0;
@@ -185,8 +189,8 @@ static void float_digits(float v, int nd, char* out, int* exp10)
         while (v >= 10.0f) { v = v / 10.0f; e++; }
         while (v < 1.0f)   { v = v * 10.0f; e--; }
     }
-    int d[40];
-    if (nd > 38) nd = 38;
+    int d[FLOAT_DIGITS_MAX + 1];
+    if (nd > FLOAT_DIGITS_MAX) nd = FLOAT_DIGITS_MAX;
     float m = v;
     for (int i = 0; i <= nd; i++)
     {
@@ -219,6 +223,26 @@ static int put_special(struct __sink* s, float v, int upper, int width, int flag
     if (neg) prefix[0] = '-'; else if (flags & F_PLUS) prefix[0] = '+'; else if (flags & F_SPACE) prefix[0] = ' ';
     put_field(s, prefix, txt, 3, 0, width, flags & ~F_ZERO, 0);
     return 1;
+}
+
+// A number laid out as prefix, body, `zeros` zero digits, then tail, padded to `width` (with zeros
+// between the prefix and the body for the 0 flag). The zeros go straight to the sink, so a precision
+// of any size needs no buffer to hold it: "%.60e" is 38 real digits, 23 zeros and the exponent.
+static void put_number(struct __sink* s, const char* prefix, const char* body, int blen, int zeros,
+                       const char* tail, int tlen, int width, int flags)
+{
+    int plen = 0;
+    while (prefix[plen] != 0) plen++;
+    int total = plen + blen + zeros + tlen;
+    int fill = width > total ? width - total : 0;
+    int zero_fill = (flags & F_ZERO) != 0 && (flags & F_LEFT) == 0;
+    if ((flags & F_LEFT) == 0 && !zero_fill) pad(s, fill, ' ');
+    puts_n(s, prefix, plen);
+    if (zero_fill) pad(s, fill, '0');
+    puts_n(s, body, blen);
+    pad(s, zeros, '0');
+    puts_n(s, tail, tlen);
+    if (flags & F_LEFT) pad(s, fill, ' ');
 }
 
 static void fmt_float(struct __sink* s, float v, int conv, int width, int prec, int flags)
@@ -294,53 +318,58 @@ static void fmt_float(struct __sink* s, float v, int conv, int width, int prec, 
             for (int i = nf; i < pr; i++) { body[n] = '0'; n++; }
             for (int i = 0; i < nf; i++) { body[n] = fs[i]; n++; }
         }
-        for (int i = pr; i < prec && n < 78; i++) { body[n] = '0'; n++; }
-        put_field(s, prefix, body, n, 0, width, flags, 1);
+        // Digits past the ninth are always zeros here: they go out as a count, not through body.
+        put_number(s, prefix, body, n, prec - pr, "", 0, width, flags);
         return;
     }
 
-    // e / g
+    // e / g: P significant digits. float_digits makes at most FLOAT_DIGITS_MAX of them (`sig`); the
+    // rest of a longer precision are zeros, put out after body by put_number.
     int P = prec;
     if (lc == 'g') { if (P == 0) P = 1; }
     else P = prec + 1;
-    char dg[40];
+    int sig = P < FLOAT_DIGITS_MAX ? P : FLOAT_DIGITS_MAX;
+    char dg[FLOAT_DIGITS_MAX];
     int X = 0;
-    float_digits(v, P, dg, &X);
+    float_digits(v, sig, dg, &X);
     int use_exp = 1;
     if (lc == 'g') use_exp = !(X >= -4 && X < P);
     if (lc == 'g' && !(flags & F_ALT))                 // strip trailing zeros of the significant digits
     {
-        int keep = P;
+        int keep = sig;                                // (the ones past sig are zeros, so they go too)
         while (keep > 1 && dg[keep - 1] == '0') keep--;
         P = keep;
+        sig = keep;
     }
+    int zeros = P - sig;
+    char tail[8];
+    int nt = 0;
     if (use_exp)
     {
         body[n] = dg[0]; n++;
         if (P > 1 || (flags & F_ALT)) { body[n] = '.'; n++; }
-        for (int i = 1; i < P; i++) { body[n] = dg[i]; n++; }
-        body[n] = upper ? 'E' : 'e'; n++;
+        for (int i = 1; i < sig; i++) { body[n] = dg[i]; n++; }
+        tail[nt] = upper ? 'E' : 'e'; nt++;
         int ex = X < 0 ? -X : X;
-        body[n] = X < 0 ? '-' : '+'; n++;
-        if (ex < 10) { body[n] = '0'; n++; }
-        char es[8];
-        int ne = utoa_base((unsigned int)ex, 10, 0, es);
-        for (int i = 0; i < ne; i++) { body[n] = es[i]; n++; }
+        tail[nt] = X < 0 ? '-' : '+'; nt++;
+        if (ex < 10) { tail[nt] = '0'; nt++; }
+        nt += utoa_base((unsigned int)ex, 10, 0, tail + nt);
     }
-    else if (X >= 0)                                   // 123.456 : the point goes after X+1 digits
+    else if (X >= 0)                                   // 123.456 : the point goes after X+1 digits (X < P here)
     {
-        for (int i = 0; i <= X; i++) { body[n] = i < P ? dg[i] : '0'; n++; }
+        for (int i = 0; i <= X; i++) { body[n] = i < sig ? dg[i] : '0'; n++; }
         if (P > X + 1 || (flags & F_ALT)) { body[n] = '.'; n++; }
-        for (int i = X + 1; i < P; i++) { body[n] = dg[i]; n++; }
+        for (int i = X + 1; i < sig; i++) { body[n] = dg[i]; n++; }
+        zeros = P - (sig > X + 1 ? sig : X + 1);       // the fraction digits past the real ones
     }
     else                                               // 0.000123
     {
         body[n] = '0'; n++;
         body[n] = '.'; n++;
         for (int i = 0; i < -X - 1; i++) { body[n] = '0'; n++; }
-        for (int i = 0; i < P; i++) { body[n] = dg[i]; n++; }
+        for (int i = 0; i < sig; i++) { body[n] = dg[i]; n++; }
     }
-    put_field(s, prefix, body, n, 0, width, flags, 1);
+    put_number(s, prefix, body, n, zeros, tail, nt, width, flags);
 }
 
 // ---- the interpreter ----------------------------------------------------------------

@@ -10,6 +10,18 @@
 
 static char buf[160];
 
+// `head`, then `zeros` zero digits, then `tail`: the text of a long precision, built in its own buffer.
+static char want[160];
+static const char* zeros_between(const char* head, int zeros, const char* tail)
+{
+    strcpy(want, head);
+    int n = (int)strlen(want);
+    for (int i = 0; i < zeros; i++) want[n + i] = '0';
+    want[n + zeros] = 0;
+    strcat(want, tail);
+    return want;
+}
+
 // Wrappers that forward their `...`, the way a user's own logging function would.
 static int via_vsnprintf(char* out, size_t n, const char* fmt, ...)
 {
@@ -103,7 +115,21 @@ int main(void)
     FMT("2.5|3.14159", "%g|%g", 2.5f, 3.14159f);
     FMT("1.50000", "%#g", 1.5f);
 
+    TEST_SECTION("floats: precision past the digits a float has");
+    // A float yields at most 38 significant digits here; a longer precision is completed with zeros.
+    // These used to read past the digit buffer and overrun the text one. 2.5, 1 and 0.5 have exact digits.
+    FMT(zeros_between("2.5", 44, "e+00"), "%.45e", 2.5f);
+    FMT(zeros_between("1.", 100, "e+00"), "%.100e", 1.0f);
+    FMT(zeros_between("0.", 100, "e+00"), "%.100e", 0.0f);
+    FMT(zeros_between("  1.", 100, "E+00"), "%108.100E", 1.0f);
+    FMT(zeros_between("2.5", 43, ""), "%#.45g", 2.5f);
+    FMT(zeros_between("1.", 99, ""), "%#.100g", 1.0f);
+    FMT("2.5|1", "%.45g|%.100g", 2.5f, 1.0f);           // without # the zeros are stripped
+    FMT(zeros_between("0.5", 89, ""), "%.90f", 0.5f);   // used to stop at 78 characters
+    FMT(zeros_between("-0.5", 89, "|"), "%.90f|", -0.5f);
+
     TEST_SECTION("floats: inf and nan");
+
     FMT("inf -inf nan INF", "%f %f %f %F", INFINITY, -INFINITY, NAN, INFINITY);
     FMT("  inf|inf   |  inf", "%5.1f|%-6f|%05f", INFINITY, INFINITY, INFINITY);
     FMT("inf|nan|+inf", "%e|%g|%+f", INFINITY, NAN, INFINITY);
