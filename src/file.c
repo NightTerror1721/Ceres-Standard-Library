@@ -195,15 +195,36 @@ int fputs(const char* s, FILE* f)
     return 1;
 }
 
+// size * count as a byte count, or 0 with the stream's error set when the product does not fit: a wrapped
+// product would move fewer bytes than asked and report a count that matches neither.
+static size_t byte_total(FILE* f, size_t size, size_t count)
+{
+    if (count > (size_t)-1 / size)
+    {
+        f->error = 1;
+        errno = EOVERFLOW;
+        return 0;
+    }
+    return size * count;
+}
+
 size_t fwrite(const void* buf, size_t size, size_t count, FILE* f)
 {
     if (f == 0 || !f->writable || size == 0 || count == 0)
         return 0;
-    size_t total = size * count;
+    size_t total = byte_total(f, size, count);
+    if (total == 0)
+        return 0;
     const unsigned char* p = (const unsigned char*)buf;
     if (__file_is_terminal_out(f))
     {
-        term_write((const char*)p, (int)total);
+        for (size_t left = total; left > 0;)
+        {
+            int part = left > 0x40000000u ? 0x40000000 : (int)left;   // term_write takes an int
+            term_write((const char*)p, part);
+            p += part;
+            left -= (size_t)part;
+        }
         return count;
     }
     size_t done = 0;
@@ -308,7 +329,7 @@ size_t fread(void* buf, size_t size, size_t count, FILE* f)
 {
     if (f == 0 || !f->readable || size == 0 || count == 0)
         return 0;
-    size_t total = size * count;
+    size_t total = byte_total(f, size, count);
     unsigned char* p = (unsigned char*)buf;
     size_t done = 0;
     while (done < total)

@@ -89,6 +89,13 @@ int main(void)
     fseek(r, -3, SEEK_END);
     CHECK_EQ((int)fread(block, 1, 8, r), 3);                      // a short read reports what it got
     CHECK(memcmp(block, "ird", 3) == 0);
+    rewind(r);
+    errno = 0;
+    CHECK_EQ((int)fread(block, 0x10000u, 0x10001u, r), 0);        // 2^32 + 2^16 bytes: the product wraps
+    CHECK_EQ(errno, EOVERFLOW);
+    CHECK(ferror(r) != 0);
+    clearerr(r);
+    CHECK_EQ(fgetc(r), 'f');                                      // and nothing was read
     CHECK_EQ(fclose(r), 0);
 
     TEST_SECTION("fscanf and getline on memory");
