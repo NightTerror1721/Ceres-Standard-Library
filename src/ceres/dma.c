@@ -23,11 +23,11 @@ unsigned int dma_transferred(void)
     return mmio_r32(DMA_TRANSFERRED);
 }
 
+// The controller raises its request when a transfer lands, and that ends a halt whether or not it is taken.
 void dma_wait(void)
 {
     while ((mmio_r32(DMA_STATUS) & DMA_BUSY) != 0)
-    {
-    }
+        __builtin_halt();
 }
 
 unsigned int dma_copy(void* dst, const void* src, unsigned int n)
@@ -36,7 +36,6 @@ unsigned int dma_copy(void* dst, const void* src, unsigned int n)
         return 0;
     dma_copy_async(dst, src, n);
     while ((mmio_r32(DMA_STATUS) & DMA_DONE) == 0)
-    {
-    }
+        __builtin_halt();
     return mmio_r32(DMA_TRANSFERRED);
 }

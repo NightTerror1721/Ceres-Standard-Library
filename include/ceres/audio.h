@@ -42,7 +42,7 @@ void audio_play(unsigned int hz, unsigned int ms, unsigned int volume, enum audi
                                    // starts a tone, replacing one already playing; ms 0 plays until audio_stop
 void audio_stop(void);
 int  audio_busy(void);             // 1 while a tone is playing
-void audio_wait(void);             // returns when the tone has ended (at once when nothing is playing)
+void audio_wait(void);             // returns when the tone has ended (at once when nothing is playing); halts meanwhile
 void audio_beep(void);             // a short square-wave beep, 880 Hz for 100 ms, and returns at once
 
 // Notes by MIDI number (60 = middle C, 69 = the A of 440 Hz). audio_note_hz() is the frequency of a note in

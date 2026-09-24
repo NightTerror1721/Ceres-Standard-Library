@@ -1,4 +1,3 @@
-// USE: irq
 // The Mandelbrot set on the 320 x 200 pixel display, in single-precision float.
 //
 //   arrows          pan             Z / +   zoom in        X / -   zoom out

@@ -1,10 +1,9 @@
-// USE: irq
-// Frame pacing by halting: game_pace_ms waits with the timer armed, so the machine sleeps (a halted
-// machine's clock runs on at timer_halt_clock() ticks per second) instead of spinning on a budget.
+// Frame pacing by sleeping: game_pace_ms halts with the timer's alarm at the frame's end, so the machine sleeps
+// (a halted machine's clock runs on at timer_halt_clock() ticks per second) instead of spinning on a budget. It
+// needs no handler and no module (CeresASM 551cdbd: a halt ends on any request, taken or not).
 #include "ceres/test.h"
 #include "ceres/game.h"
 #include "ceres/timer.h"
-#include "ceres/irq.h"
 
 int main(void)
 {
@@ -15,7 +14,6 @@ int main(void)
     game_pace_ms(&g, 20);
     CHECK_EQ((int)g.wait_ms, 20);
     CHECK(g.wait != 0);
-    CHECK(irq_handler(IRQ_TIMER) != 0);
     game_pace_ms(&g, 0);                                // the shortest period is a millisecond
     CHECK_EQ((int)g.wait_ms, 1);
     game_pace_ms(&g, 20);
@@ -39,10 +37,8 @@ int main(void)
     CHECK(short_enough);
     CHECK(timer_clock() - s0 <= 2u);                    // about 200 ms of wall time
 
-    TEST_SECTION("the timer is left disarmed");
-    unsigned int before = timer_ticks();
-    for (int i = 0; i < 50; i++) { }
-    CHECK(timer_elapsed(before) < 5000u);               // no stray timer wait is pending
+    TEST_SECTION("the alarm is left disarmed");
+    CHECK(ns64_is_zero(timer_alarm()));
 
     return test_summary();
 }

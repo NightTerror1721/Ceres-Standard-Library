@@ -26,11 +26,11 @@ int audio_busy(void)
     return status != 0xFFFFFFFFu && (status & AUDIO_BUSY) != 0;
 }
 
+// The device raises its request when a tone ends, and that ends a halt whether or not it is taken.
 void audio_wait(void)
 {
     while (audio_busy())
-    {
-    }
+        __builtin_halt();
 }
 
 void audio_beep(void)
@@ -65,13 +65,11 @@ void audio_play_tune(const struct audio_note* tune, int count, unsigned int volu
             timer_wait_ms(tune[i].ms);                   // a rest: silence for the time
             continue;
         }
-        unsigned int started = timer_millis();
+        struct ns64 ends = ns64_add(timer_nanos(), ns64_from_ms(tune[i].ms));
         audio_play(hz, tune[i].ms, volume, wave);
         audio_wait();
-        while (timer_millis_elapsed(started) < tune[i].ms)
-        {
-            // With no speakers the tone is never busy: the note still takes its time, so a tune lasts as long
-            // as it says whether or not anything plays it.
-        }
+        // With no speakers the tone is never busy: the note still takes its time, so a tune lasts as long as it
+        // says whether or not anything plays it.
+        timer_wait_until_ns(ends);
     }
 }

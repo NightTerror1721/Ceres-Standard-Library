@@ -27,10 +27,7 @@ unsigned int timer_millis_elapsed(unsigned int since)
 
 void timer_wait_ms(unsigned int ms)
 {
-    unsigned int start = mmio_r32(TIMER_MILLIS_REG);
-    while (mmio_r32(TIMER_MILLIS_REG) - start < ms)
-    {
-    }
+    timer_wait_until_ns(ns64_add(timer_nanos(), ns64_from_ms(ms)));
 }
 
 struct ns64 timer_nanos(void)
@@ -56,9 +53,43 @@ unsigned int timer_halt_clock(void)
     return mmio_r32(TIMER_HALT_CLOCK_REG);
 }
 
+void timer_alarm_at(struct ns64 at)
+{
+    mmio_w32(TIMER_ALARM_LOW_REG, at.lo);        // the low word first: the high one arms it
+    mmio_w32(TIMER_ALARM_HIGH_REG, at.hi);
+}
+
+struct ns64 timer_alarm(void)
+{
+    struct ns64 at;                               // 0:0 when disarmed (CeresASM 4ad3dcf)
+    at.lo = mmio_r32(TIMER_ALARM_LOW_REG);
+    at.hi = mmio_r32(TIMER_ALARM_HIGH_REG);
+    return at;
+}
+
+// One halt with the alarm at `deadline`. A request raised before the halt runs - the alarm's among them -
+// keeps it from sleeping (CeresASM 551cdbd), so an instant that comes between the look at the clock and the
+// halt is not slept through. The program's own alarm is kept: one due first stays armed (and fires on time,
+// ending this halt early), and one due later is put back afterwards.
+int timer_halt_until_ns(struct ns64 deadline)
+{
+    if (ns64_cmp(timer_nanos(), deadline) >= 0)
+        return 1;
+    if (timer_halt_clock() == 0u)
+        return 0;                                   // no real time while halted: nothing would wake it at the instant
+    struct ns64 saved = timer_alarm();
+    int keep = !ns64_is_zero(saved) && ns64_cmp(saved, deadline) <= 0;
+    if (!keep)
+        timer_alarm_at(deadline);
+    __builtin_halt();
+    if (!keep)
+        timer_alarm_at(saved);                      // 0 disarms; a later one of the program's is armed again
+    return ns64_cmp(timer_nanos(), deadline) >= 0;
+}
+
 void timer_wait_until_ns(struct ns64 deadline)
 {
-    while (ns64_cmp(timer_nanos(), deadline) < 0)
+    while (!timer_halt_until_ns(deadline))
     {
     }
 }

@@ -24,8 +24,14 @@
 // 16 ms is timer_halt_clock() / 1000 * 16 of them. A host that does not run the halted clock in real time (a
 // debugger replaying) reports 0.
 //
-// Nothing here needs an interrupt handler, so this module never binds a vector: the waits spin on
-// the tick register and the task table (timer_after/every) is driven by timer_poll().
+// Nothing here needs an interrupt handler, so this module never binds a vector. The tick waits (timer_wait,
+// timer_wait_until) spin on the tick register, exact to a few instructions. The real-time waits (timer_wait_ms,
+// _us, _ns, _until_ns, and sleep() and nanosleep() above them) SLEEP: they arm the timer's ALARM - an absolute
+// instant on the nanosecond clock, which raises interrupt 24 - and halt. A halt ends on any request a device
+// raises, taken or not, with interrupts masked or enabled (CeresASM 551cdbd), so the host is not kept busy and
+// no handler is needed; the wait looks at the clock each time and halts again until its instant. A host that
+// does not keep real time while halted (timer_halt_clock() == 0, a debugger replaying) cannot wake a halt at an
+// instant, and there they spin. The task table (timer_after/every) is driven by timer_poll().
 
 #define TIMER_TICKS_REG  (TIMER_BASE + 0x00)   // R: ticks: instructions executed, and halted-clock ticks (truncated to 32 bits)
 #define TIMER_CLOCK_REG  (TIMER_BASE + 0x04)   // R: wall-clock seconds since 1970
@@ -35,6 +41,9 @@
 #define TIMER_NANOS_HIGH_REG (TIMER_BASE + 0x14)   // R: the high word latched by the last read of the low one
 #define TIMER_NANOS_RES_REG  (TIMER_BASE + 0x18)   // R: the smallest step the nanosecond clock is seen to take, in nanoseconds
 #define TIMER_HALT_CLOCK_REG (TIMER_BASE + 0x1C)   // R: ticks per second while the CPU is halted; 0 when not in real time
+#define TIMER_ALARM_LOW_REG  (TIMER_BASE + 0x20)   // RW: the low word of the alarm instant (nanoseconds, NANOS' clock)
+#define TIMER_ALARM_HIGH_REG (TIMER_BASE + 0x24)   // RW: the high word; writing it arms the alarm (0:0 disarms)
+#define IRQ_ALARM        24                    // what the alarm raises when its instant comes, once
 #define TIMER_PERIODIC   0x80000000u
 #define TIMER_MAX_TICKS  0x7FFFFFFFu           // the longest period the command register can hold
 
@@ -53,13 +62,23 @@ unsigned int timer_halt_clock(void);                     // ticks per second whi
 void timer_arm(unsigned int ticks, int periodic);        // fire in `ticks` instructions (1..TIMER_MAX_TICKS)
 void timer_disarm(void);
 
-// Waiting: a spin on the tick register, so it needs no interrupt and is exact to a few instructions.
+// Waiting on ticks: a spin on the tick register, so it needs no interrupt and is exact to a few instructions.
 void timer_wait(unsigned int ticks);                     // return after `ticks` instructions have passed
 void timer_wait_until(unsigned int deadline);            // return once timer_ticks() has reached `deadline`
-void timer_wait_ms(unsigned int ms);                     // return after `ms` real milliseconds: a spin on the clock
+
+// Waiting in real time: the machine sleeps (see above), and wakes at the instant or a little after - the host
+// sleeps in its own steps, often a millisecond. timer_halt_until_ns is one halt of such a wait, for a loop that
+// also waits for something else: it returns early when any device raises a request (a key, a transfer done).
+void timer_wait_ms(unsigned int ms);                     // return after `ms` real milliseconds
 void timer_wait_us(unsigned int us);                     // return after `us` real microseconds
-void timer_wait_ns(unsigned int ns);                     // return after `ns` real nanoseconds (at most 4.29 s; the clock's step limits how exactly)
+void timer_wait_ns(unsigned int ns);                     // return after `ns` real nanoseconds (at most 4.29 s)
 void timer_wait_until_ns(struct ns64 deadline);          // return once timer_nanos() has reached `deadline`
+int  timer_halt_until_ns(struct ns64 deadline);          // one halt, until `deadline` or any request; nonzero once it has passed
+
+// The alarm itself. The waits above use it and put back whatever it was set to, so a program may keep one of
+// its own: one due before a wait's instant still fires on time.
+void        timer_alarm_at(struct ns64 at);              // raise IRQ_ALARM once timer_nanos() reaches `at` (0 disarms)
+struct ns64 timer_alarm(void);                           // the armed instant, 0 when disarmed
 
 // A table of software timers driven by polling: call timer_poll() from the main loop and every
 // task whose time has come runs, in the order they fell due. Up to TIMER_MAX_TASKS at once.

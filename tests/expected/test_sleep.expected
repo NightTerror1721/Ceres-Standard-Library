@@ -1,0 +1,5 @@
+-- the waits take at least what they are asked for
+-- nanosleep
+-- the program's own alarm is kept
+-- one halt at a time
+ALL PASSED 19/19

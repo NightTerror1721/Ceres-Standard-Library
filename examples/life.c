@@ -1,4 +1,3 @@
-// USE: irq
 // Conway's Game of Life on the pixel display: a 40 x 25 torus of 8-pixel cells.
 //
 //   Space  pause / resume        S  one step (while paused)
@@ -6,7 +5,7 @@
 //   Esc    quit (closing the window also ends it)
 //
 // It starts from the R-pentomino, which grows for over a thousand generations. The frame loop is paced by
-// halting (game_pace_ms), so the host sleeps between frames; that is why it links the irq module.
+// sleeping (game_pace_ms), so the host rests between frames.
 //
 // Built with -DDEMO_FRAMES=100 it plays itself for that many generations without a window or a pause,
 // printing the population every ten: that is what examples/expected/life.expected records.

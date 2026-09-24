@@ -1,12 +1,11 @@
-// USE: irq
 // Snake on the pixel display: a 40 x 25 grid of 8-pixel cells.
 //
 //   arrows / W A S D / the gamepad's d-pad   steer
 //   Enter                                    play again after a crash
 //   Esc                                      quit (closing the window also ends it)
 //
-// Eating the food grows the snake and speeds the game up a little. The frame loop is paced by halting
-// (game_pace_ms), which is why it links the irq module.
+// Eating the food grows the snake and speeds the game up a little. The frame loop is paced by sleeping
+// (game_pace_ms).
 //
 // Built with -DDEMO_FRAMES=1200 a bot plays instead of you - no window, no pacing, a move per frame - and
 // the program prints how it did: that is what examples/expected/snake.expected records.

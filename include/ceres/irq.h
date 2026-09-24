@@ -46,8 +46,10 @@ void         irq_enable_all(void);                 // sti
 
 // Wait for an interrupt. irq_wait() is `sti` followed by `halt`, and the machine takes no interrupt
 // between the two (`sti` takes effect after the next instruction), so an interrupt that arrives just
-// before the halt wakes it rather than being handled first and leaving the halt to sleep on. A wait
-// also needs a handler: a halt is only woken by an interrupt that is actually dispatched.
+// before the halt wakes it rather than being handled first and leaving the halt to sleep on. A halt ends
+// on any request a device raises, taken or not (CeresASM 551cdbd), so a program that only wants to sleep
+// until something happens needs neither this module nor a handler: `__builtin_halt()` with interrupts
+// masked does it, and the library's waits (timer_wait_ms, getchar, key_wait, audio_wait) work that way.
 // irq_wait_flag() sleeps until *flag is set, by a handler: it reads the flag with interrupts masked,
 // so it cannot miss the interrupt that sets it.
 void irq_wait(void);

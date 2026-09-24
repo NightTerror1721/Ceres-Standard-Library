@@ -1,4 +1,3 @@
-// USE: irq
 // Pong on the pixel display, first to 5 wins.
 //
 //   W / S, Up / Down, or the gamepad's left stick   move your paddle (the left one)
@@ -8,7 +7,7 @@
 // The ball's position and speed are 16.16 fixed-point numbers (ceres/fixed.h): the same game plays out the
 // same way at every optimization level. Where the ball meets the paddle decides its return angle, and every
 // return is a little faster. The right paddle is a simple computer player. The frame loop is paced by
-// halting (game_pace_ms), which is why it links the irq module.
+// sleeping (game_pace_ms).
 //
 // Built with -DDEMO_FRAMES=4000 a bot plays your side as well - no window, no pacing - and the program
 // prints the record of the matches: that is what examples/expected/pong.expected holds.

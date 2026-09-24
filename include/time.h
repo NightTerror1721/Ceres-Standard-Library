@@ -67,6 +67,11 @@ _Static_assert(sizeof(struct timespec) == 8, "a timespec is two words");
 int timespec_get(struct timespec* ts, int base);      // `base` on success, 0 for a base that is not supported
 int timespec_getres(struct timespec* ts, int base);   // the same, for the clock's resolution
 
-// Waits `seconds` of real time, to the millisecond. A spin, not a halt: the machine only wakes from
-// a halt on an interrupt that is actually dispatched, and this must not need a handler. Returns 0.
+// Waits `seconds` of real time, sleeping (timer_wait_ms: the machine halts with the timer's alarm armed, and
+// needs no handler). Returns 0.
 unsigned int sleep(unsigned int seconds);
+
+// POSIX nanosleep: sleeps for *req the same way, to the nanosecond the clock and the host's sleep allow. Nothing
+// interrupts it, so *rem (when not null) is set to 0. -1 with errno EINVAL for a negative time or a tv_nsec
+// outside 0..999999999.
+int nanosleep(const struct timespec* req, struct timespec* rem);

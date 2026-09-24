@@ -15,8 +15,10 @@ int term_eof(void)
 
 // Waits until a byte can be read (returns 1) or the input has ended (returns 0). The status word is read once
 // per turn: the end-of-input bit only sets while the ring is empty, so "no byte, and the end" is one snapshot.
-// Waiting by interrupt masks them while it looks, and sleeps with `sti; halt`: a byte that arrives between the
-// look and the sleep wakes the halt, it is not lost.
+// Between looks the machine halts: the terminal raises its request for a byte and for the end of input, and a
+// halt ends on any request, taken or not; one that comes between the look and the halt keeps the halt from
+// sleeping (CeresASM 551cdbd). Waiting by interrupt masks them while it looks and sleeps with `sti; halt`, so
+// the handler on vector 17 runs for each byte.
 static int wait_for_input(enum term_read_mode_t mode)
 {
     unsigned int was = mode == TERM_READ_UNTIL_ISR ? irq_save() : 0;
@@ -39,6 +41,8 @@ static int wait_for_input(enum term_read_mode_t mode)
             irq_wait();
             __builtin_cli();
         }
+        else
+            __builtin_halt();
     }
     if (mode == TERM_READ_UNTIL_ISR)
         irq_restore(was);

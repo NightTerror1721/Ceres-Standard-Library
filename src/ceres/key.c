@@ -73,15 +73,17 @@ static int following_byte(void)
         return next_byte();
     if (term_eof())
         return -1;
-    unsigned int start = timer_millis();
-    while (timer_millis_elapsed(start) < FOLLOW_MS)
+    struct ns64 deadline = ns64_add(timer_nanos(), ns64_from_ms(FOLLOW_MS));
+    for (;;)
     {
         if (term_read_ready())
             return next_byte();
         if (term_eof())
             return -1;
+        if (timer_halt_until_ns(deadline))      // sleeps until a byte comes or the time is up
+            break;
     }
-    return -1;
+    return term_read_ready() ? next_byte() : -1;
 }
 
 // The key an ESC [ ... sequence stands for, its final byte and first number known.
@@ -230,7 +232,7 @@ int key_wait(void)
         if (from_keyboard)
         {
             while (!(mmio_r32(KBD_STATUS) & KBD_KEY_READY))
-                ;
+                __builtin_halt();                   // the keyboard's request ends the halt
             return key_from_keystroke(mmio_r32(KBD_KEY));
         }
         int c = held_byte;

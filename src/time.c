@@ -3,6 +3,7 @@
 #include "string.h"
 #include "stdint.h"
 #include "ceres/timer.h"
+#include "errno.h"
 
 // ---- clocks ----
 
@@ -72,6 +73,24 @@ unsigned int sleep(unsigned int seconds)
     if (seconds > 4294967u)
         seconds = 4294967u;                              // the most whole seconds a millisecond count can hold
     timer_wait_ms(seconds * 1000u);                      // exact, where the seconds register was up to a second early
+    return 0;
+}
+
+int nanosleep(const struct timespec* req, struct timespec* rem)
+{
+    if (req == 0 || req->tv_sec < 0 || req->tv_nsec < 0 || req->tv_nsec > 999999999)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    struct ns64 span = ns64_add(ns64_mul_u32(ns64_from_u32(1000000000u), (unsigned int)req->tv_sec),
+                                ns64_from_u32((unsigned int)req->tv_nsec));
+    timer_wait_until_ns(ns64_add(timer_nanos(), span));
+    if (rem != 0)
+    {
+        rem->tv_sec = 0;
+        rem->tv_nsec = 0;
+    }
     return 0;
 }
 

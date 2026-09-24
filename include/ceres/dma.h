@@ -29,4 +29,4 @@ void         dma_copy_async(void* dst, const void* src, unsigned int n);   // re
 int          dma_busy(void);            // a transfer is in flight
 int          dma_done(void);            // the last transfer has completed
 unsigned int dma_transferred(void);     // bytes the last completed transfer moved
-void         dma_wait(void);            // spins until the transfer in flight is done
+void         dma_wait(void);            // halts until the transfer in flight is done

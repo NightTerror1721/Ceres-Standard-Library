@@ -46,10 +46,10 @@
 enum term_read_mode_t
 {
     TERM_READ_NON_BLOCKING = 0,  // return immediately (0 / -1 if nothing is there)
-    TERM_READ_UNTIL_STATUS = 1,  // spin on the status register until input arrives
-    TERM_READ_UNTIL_ISR     = 2  // halt until the terminal interrupt wakes us (needs irq_enable AND a
-                                 // handler on vector 17: link the irq module, or bind your own - a halt
-                                 // is only woken by an interrupt that is actually dispatched)
+    TERM_READ_UNTIL_STATUS = 1,  // look at the status register, halting between looks until input arrives:
+                                 // the terminal's request ends the halt whether or not it is taken
+    TERM_READ_UNTIL_ISR     = 2  // the same, but with interrupts enabled while halted (sti; halt), so a
+                                 // handler on vector 17 runs for each byte (link the irq module, or bind your own)
 };
 
 int  term_read_ready(void);       // nonzero when input is available

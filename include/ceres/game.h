@@ -18,9 +18,10 @@
 //
 // For a game that must run at a steady speed on a real clock there are two ways, and in both a frame lasts
 // `ms` milliseconds from its start - its own work counts, and a frame that runs late is not made up for:
-//   game_pace_real(&g, 16)   spins on the nanosecond clock; needs nothing else, and keeps the host busy;
-//   game_pace_ms(&g, 16)     (in the irq module - link it with `// USE: irq`) waits by halting with the timer
-//                            armed, so the host is not kept busy. Both are about 60 frames a second.
+//   game_pace_ms(&g, 16)     sleeps: halts with the timer's alarm at the frame's end (timer_wait_until_ns), so
+//                            the host is not kept busy. Needs no handler and no module;
+//   game_pace_real(&g, 16)   spins on the nanosecond clock instead: the host is kept busy, and the frame ends
+//                            to the clock's step rather than the host's sleep's. Both are about 60 frames a second.
 
 #include "../stddef.h"
 #include "ns64.h"
@@ -47,4 +48,4 @@ int  game_over_budget(const struct game* g);   // 1 when the last frame spent mo
 void game_run(struct game* g, game_fn update, game_fn draw, void* ctx);   // until game_quit
 
 void game_pace_real(struct game* g, unsigned int ms);   // wall-clock pacing by spinning on the nanosecond clock
-void game_pace_ms(struct game* g, unsigned int ms);     // wall-clock pacing by halting; needs the irq module. ms is at least 1
+void game_pace_ms(struct game* g, unsigned int ms);     // wall-clock pacing by sleeping; ms is at least 1
