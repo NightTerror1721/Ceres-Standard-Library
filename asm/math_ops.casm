@@ -4,10 +4,6 @@ global fabs:
     abs f0, f0
     ret
 
-global fmod:
-    mod f0, f0, f1
-    ret
-
 global sqrt:
     sqrt f0, f0
     ret

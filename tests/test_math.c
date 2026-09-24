@@ -226,6 +226,16 @@ static void section_inverse_trigonometric_quadrants_and_specials(void)
 static void section_domain_and_range_errors(void)
 {
     TEST_SECTION("domain and range errors");
+    CHECK_ERRNO(fmod(5.0f, 0.0f), EDOM);            // the instruction traps and would give back 5
+    CHECK_NAN(fmod(5.0f, 0.0f));
+    CHECK_NAN(fmod(5.0f, -0.0f));
+    CHECK_ERRNO(fmod(INFINITY, 2.0f), EDOM);
+    CHECK_NAN(fmod(-INFINITY, 2.0f));
+    CHECK(fmod(5.5f, INFINITY) == 5.5f && fmod(-5.5f, -INFINITY) == -5.5f);   // an infinite y leaves x
+    CHECK_NAN(fmod(NAN, 2.0f));
+    CHECK_NAN(fmod(2.0f, NAN));
+    CHECK_NAN(fmod(NAN, 0.0f));
+    CHECK_ERRNO(fmod(NAN, 0.0f), 0);                // NaN in is not a domain error of its own
     CHECK_ERRNO(log(-1.0f), EDOM);
     CHECK_NAN(log(-1.0f));
     CHECK_ERRNO(log(0.0f), ERANGE);

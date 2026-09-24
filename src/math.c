@@ -3,11 +3,11 @@
 #include "math.h"
 #include "errno.h"
 
-// Software float functions. The single-instruction operations (fabs, fmod, sqrt, floor, ceil, round,
-// trunc, fmin, fmax, copysign, fma, rcp, rsqrt) live in asm/math_ops.casm; everything here is built
-// on those plus the ordinary + - * / operators, and on float_bits/float_from_bits to take a float
-// apart. The rarer functions (hyperbolics, cbrt, hypot, ldexp, ...) are in math_ext.c so a program
-// that only needs sin and sqrt does not carry them.
+// Software float functions. The single-instruction operations (fabs, sqrt, floor, ceil, round,
+// trunc, fmin, fmax, copysign, fma, rcp, rsqrt) live in asm/math_ops.casm, and fmod in src/fmod.c;
+// everything here is built on those plus the ordinary + - * / operators, and on
+// float_bits/float_from_bits to take a float apart. The rarer functions (hyperbolics, cbrt, hypot,
+// ldexp, ...) are in math_ext.c so a program that only needs sin and sqrt does not carry them.
 //
 // A float division by zero does not fail: it sets the Trap flag and leaves the destination unchanged.
 // So every division below is guarded, and the ways to reach a zero divisor are handled first.

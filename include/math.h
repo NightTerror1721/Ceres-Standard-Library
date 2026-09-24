@@ -52,7 +52,7 @@ int signbit(float x);
 
 // ---- one instruction each (asm/math_ops.casm) ----
 extern float fabs(float x);
-extern float fmod(float x, float y);       // traps, like a division, when y == 0
+float fmod(float x, float y);              // NaN with errno = EDOM when y == 0 or x is infinite (src/fmod.c)
 extern float sqrt(float x);                // sqrt of a negative number is NaN (errno is not set)
 extern float floor(float x);
 extern float ceil(float x);
