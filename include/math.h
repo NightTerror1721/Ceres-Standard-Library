@@ -106,8 +106,8 @@ float nan(const char* tag) __attribute__((const));   // a quiet NaN (the tag is 
 #define scalbn    ldexp
 
 // ---- the one-instruction ones, inline ----
-// Every function above that is one machine instruction is also a macro on the compiler's builtin
-// for it, so a call costs that instruction instead of a call, a return and the registers saved
+// Every function above that is one machine instruction, except fma (below), is also a macro on the
+// compiler's builtin for it, so a call costs that instruction instead of a call, a return and the registers saved
 // around them. The argument is converted to float first, as the prototype would have done (a
 // builtin converts nothing). The functions stay in asm/math_ops.casm for whoever takes their
 // address or writes the name in parentheses: `(sqrt)(x)` is still a call.
@@ -125,7 +125,8 @@ float nan(const char* tag) __attribute__((const));   // a quiet NaN (the tag is 
 #define rsqrt(x)           __builtin_frsqrt((float)(x))
 #define float_bits(x)      __builtin_float_bits((float)(x))
 #define float_from_bits(b) __builtin_float_from_bits((unsigned int)(b))
-// fma is not among them: the compiler has no builtin for the accumulating `fma` instruction.
+// fma is not among them: Ceres-C has no __builtin_fma (the instruction accumulates into its
+// destination, which its back end cannot guarantee a spare register for), so fma stays a call.
 
 // Classification on `fclass`, which sets exactly one bit: 0 -inf, 1 -normal, 2 -subnormal, 3 -0,
 // 4 +0, 5 +subnormal, 6 +normal, 7 +inf, 8 NaN. Each evaluates its argument once.

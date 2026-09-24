@@ -5,6 +5,7 @@
 #include "ceres/test.h"
 #include "ceres/timer.h"
 #include "string.h"
+#include "ceres/string_fast.h"
 
 #define AREA 256
 #define LEN_MAX 70
@@ -159,6 +160,9 @@ static void check_string_standard_names(void)
     CHECK(strchr(buf + 1, 0) == buf + 13);
     CHECK(memchr(buf + 1, 'o', 12) == buf + 5);
     CHECK(memchr(buf + 1, 'z', 12) == 0);
+    // The _fast names are the same routines (ceres/string_fast.h says so).
+    CHECK((void*)strcpy == (void*)strcpy_fast && (void*)strcmp == (void*)strcmp_fast);
+    CHECK((void*)strchr == (void*)strchr_fast && (void*)memchr == (void*)memchr_fast);
 }
 
 // Instructions for one call on 4 KiB, from the timer. The bounds are per byte, with room for the

@@ -22,7 +22,7 @@ void sys_set_features(unsigned int features);
 void sys_panic(const char* msg) __attribute__((noreturn));   // print "panic: <msg>" on the terminal and shut down
 
 unsigned int sys_sp(void);           // the stack pointer, as seen by this call (asm/sys.casm) ...
-#define sys_sp() __builtin_stack_pointer()   // ... read in place, with no call
+#define sys_sp() ((unsigned int)__builtin_stack_pointer())   // ... read in place, with no call
 unsigned int sys_heap_start(void);   // the linker's __heap_start: first free byte above the image
 unsigned int sys_stack_free(void);   // bytes between the top of the heap and sp
 

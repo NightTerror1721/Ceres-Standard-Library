@@ -144,7 +144,7 @@ static void section_the_one_instruction_functions(void)
 static void section_macros_and_functions_agree(void)
 {
     TEST_SECTION("builtin macros and the functions agree");
-    float (*unary[8])(float) = { fabs, sqrt, floor, ceil, trunc, rint, nearbyint, rcp };
+    float (*unary[9])(float) = { fabs, sqrt, floor, ceil, trunc, rint, nearbyint, rcp, rsqrt };
     float (*binary[3])(float, float) = { fmin, fmax, copysign };
     int (*classify[6])(float) = { isnan, isinf, isfinite, isnormal, signbit, fpclassify };
     float values[10];
@@ -154,12 +154,16 @@ static void section_macros_and_functions_agree(void)
     for (int i = 0; i < 10; i++)
     {
         float v = values[i];
-        float m[8];
+        float m[9];
         m[0] = fabs(v); m[1] = sqrt(v); m[2] = floor(v); m[3] = ceil(v);
-        m[4] = trunc(v); m[5] = rint(v); m[6] = nearbyint(v); m[7] = rcp(v);
-        for (int k = 0; k < 8; k++)
-            if (float_bits(m[k]) != float_bits(unary[k](v)))
+        m[4] = trunc(v); m[5] = rint(v); m[6] = nearbyint(v); m[7] = rcp(v); m[8] = rsqrt(v);
+        for (int k = 0; k < 9; k++)
+            if ((float_bits)(m[k]) != (float_bits)(unary[k](v)))   // the functions as the oracle
                 same = 0;
+        // ... and the bit macros against their functions, on every kind of float
+        if (float_bits(v) != (float_bits)(v) ||
+            (float_bits)(float_from_bits(float_bits(v))) != (float_bits)((float_from_bits)((float_bits)(v))))
+            same = 0;
         int c[6];
         c[0] = isnan(v); c[1] = isinf(v); c[2] = isfinite(v); c[3] = isnormal(v); c[4] = signbit(v); c[5] = fpclassify(v);
         for (int k = 0; k < 6; k++)
@@ -175,7 +179,6 @@ static void section_macros_and_functions_agree(void)
         }
     }
     CHECK(same);
-    CHECK(float_bits(rsqrt(4.0f)) == float_bits((rsqrt)(4.0f)));
     CHECK((sqrt)(9.0f) == 3.0f && (fabs)(-1.0f) == 1.0f && (isnan)(NAN) != 0);
     CHECK((float_bits)(1.0f) == 0x3F800000u && (float_from_bits)(0x3F800000u) == 1.0f);
     CHECK(sqrt(16) == 4.0f && fabs(-3) == 3.0f && floor(7) == 7.0f);   // int arguments, converted

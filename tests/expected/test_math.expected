@@ -15,4 +15,4 @@
 -- llround and llrint: 64 bits
 -- remainder, fdim, nan
 -- aliases
-ALL PASSED 2137/2137
+ALL PASSED 2136/2136

@@ -13,6 +13,8 @@ unsigned int bit_rotr(unsigned int x, int n);
 unsigned int umulhi(unsigned int a, unsigned int b);   // high 32 bits of the unsigned 64-bit product
 int          imulhi(int a, int b);                     // ... of the signed one
 
+// clz and ctz of 0 are 32, as documented above: Ceres-C defines its builtins so (docs/02-Grammar.md),
+// unlike GCC's, which leave 0 undefined.
 #define bit_clz(x)       __builtin_clz((unsigned int)(x))
 #define bit_ctz(x)       __builtin_ctz((unsigned int)(x))
 #define bit_popcount(x)  __builtin_popcount((unsigned int)(x))
