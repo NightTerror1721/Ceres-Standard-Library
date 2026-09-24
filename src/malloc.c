@@ -1,5 +1,9 @@
 // Dynamic memory: a first-fit free list over [__heap_start, sp - reserve).
 //
+// Each time the heap grows its new top becomes the machine's stack limit (sys_set_stack_limit): a stack that
+// later runs down into the heap is a StackOverflow, reported like any other, instead of allocations quietly
+// rewritten by stack frames.
+//
 // Every block, used or free, starts with an 8-byte header and the blocks are chained in address
 // order, each one ending exactly where the next begins. free() merges a block with its free
 // neighbours, so two free blocks are never adjacent. See ceres/heap.h for the contract.
@@ -57,6 +61,7 @@ static struct blk* grow(unsigned int payload)
 
     struct blk* b = (struct blk*)heap_brk;
     heap_brk += need;
+    sys_set_stack_limit((unsigned int)heap_brk);   // the stack stops where the heap now ends
     b->size = payload;
     b->next = 0;
     if (heap_tail) heap_tail->next = b;

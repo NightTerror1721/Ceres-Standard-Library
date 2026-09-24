@@ -16,6 +16,16 @@ static void stop_here(void)
         __builtin_halt();
 }
 
+unsigned int sys_stack_limit(void)
+{
+    return mmio_r32(SYS_CTRL_STACK_LIMIT);
+}
+
+void sys_set_stack_limit(unsigned int address)
+{
+    mmio_w32(SYS_CTRL_STACK_LIMIT, address);
+}
+
 void sys_exit(void)
 {
     mmio_w8(SYS_CTRL_CMD, 1);

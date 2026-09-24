@@ -9,6 +9,7 @@
 #define SYS_CTRL_CMD          (SYS_CTRL_BASE + 0x00)   // write: command | status << 8
 #define SYS_CTRL_MEM_SIZE     (SYS_CTRL_BASE + 0x04)   // read: bytes of RAM
 #define SYS_CTRL_FEATURES     (SYS_CTRL_BASE + 0x08)   // read/write: switches for behaviour that is off by default
+#define SYS_CTRL_STACK_LIMIT  (SYS_CTRL_BASE + 0x0C)   // read/write: the lowest address the stack may reach
 #define SYS_FEATURE_DIV_FAULT 0x01                     // a division by zero raises interrupt 4 instead of only setting Trap
 
 // The three that stop the machine never return. On a machine without the system-control device they
@@ -25,6 +26,13 @@ unsigned int sys_sp(void);           // the stack pointer, as seen by this call 
 #define sys_sp() ((unsigned int)__builtin_stack_pointer())   // ... read in place, with no call
 unsigned int sys_heap_start(void);   // the linker's __heap_start: first free byte above the image
 unsigned int sys_stack_free(void);   // bytes between the top of the heap and sp
+
+// The lowest address the stack may reach: a push below it is a StackOverflow (CeresASM fcf7d4c). It starts at
+// the end of the image, and malloc raises it to the top of the heap each time the heap grows, so a stack that
+// runs down into allocations faults instead of rewriting them. It cannot be put below the image; all-ones on
+// a machine that has no such register.
+unsigned int sys_stack_limit(void);
+void sys_set_stack_limit(unsigned int address);
 
 // The image and the ground around it. The linker defines the section bounds; the stack pointer
 // is read at the moment of the call.
