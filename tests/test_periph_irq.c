@@ -31,8 +31,10 @@ int main(void)
 
     TEST_SECTION("pulling a medium out raises the interrupt");
     irq_enable_all();
-    // Connecting the medium before the start raised the interrupt too, and a masked one stays queued: it
-    // arrives right after sti. Let it, then count only what the eject raises.
+    // Connecting the medium before the start may have raised the interrupt too, and a masked one stays
+    // queued. The machine takes a deliverable interrupt before the next instruction, once the one after
+    // the sti has run (its shadow), so it is taken within the first iteration of this loop - by
+    // instruction count, not by time. Then count only what the eject raises.
     for (volatile int spin = 0; spin < 10; spin++)
     {
     }
