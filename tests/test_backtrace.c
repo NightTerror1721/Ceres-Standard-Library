@@ -27,6 +27,9 @@ __attribute__((noinline)) void innermost(void)                   // not in its o
     int n = backtrace(pcs, 8);
     putstr("backtrace:\n");
     print_callers(pcs, n);
+    putstr(pcs[0] - 4u >= (unsigned int)innermost ? "the printers:\n" : "?\n");
+    backtrace_print_address((unsigned int)innermost);    // a function's own address: its name alone
+    putstr("\n");
 }
 
 __attribute__((noinline)) void middle(void) { innermost(); putstr(""); }
@@ -56,6 +59,7 @@ __attribute__((noinline)) void reach(void) { poke((volatile unsigned short*)0x10
 
 int main(void)
 {
+    putstr(sys_fault_frame() == 0 && backtrace_has_symbols() ? "no fault yet, and names\n" : "?\n");
     outer();
     unsigned int offset = 1;
     putstr(backtrace_symbol(0, &offset) == 0 ? "no name below the code\n" : "a name below the code\n");

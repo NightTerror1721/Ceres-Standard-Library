@@ -1,8 +1,11 @@
+no fault yet, and names
 backtrace:
   innermost
   middle
   outer
   main
+the printers:
+innermost
 no name below the code
 fault 6 in poke: store 2 bytes at 0x10001
 called from:

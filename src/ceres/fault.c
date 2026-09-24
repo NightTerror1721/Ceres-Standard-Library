@@ -74,7 +74,10 @@ static void fault_report(int irq, unsigned int pc, unsigned int flags, unsigned 
     fault_frame = fp;
     int sig = __signal_of_fault(irq);
     if (sig != 0 && __signal_deliver(sig) && irq == 4)
+    {
+        fault_frame = 0;                                 // the program carries on: no fault in progress
         return;
+    }
     if (user_hook != 0)
     {
         user_hook(irq, pc, flags);
@@ -87,7 +90,8 @@ static void fault_report(int irq, unsigned int pc, unsigned int flags, unsigned 
         putint(irq);
         putstr(") at ");
         puthex(pc);
-        if (backtrace_symbol(pc, 0) != 0)
+        const char* name = backtrace_symbol(pc, 0);
+        if (name != 0)
         {
             putstr(" (");
             backtrace_print_address(pc);
@@ -98,7 +102,7 @@ static void fault_report(int irq, unsigned int pc, unsigned int flags, unsigned 
         putstr("\n");
         if (irq == 3 || irq == 6 || irq == 7)
             report_access();
-        if (backtrace_symbol(pc, 0) != 0)
+        if (backtrace_has_symbols())                     // the callers, whether or not the pc itself has a name
         {
             putstr("called from:\n");
             backtrace_print_from(fp);

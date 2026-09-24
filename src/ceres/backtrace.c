@@ -20,7 +20,7 @@ static int in_stack(unsigned int fp)
     unsigned int bottom = sys_stack_limit();
     if (bottom == 0xFFFFFFFFu)
         bottom = sys_heap_start();                        // a machine without the register
-    return (fp & 3u) == 0 && fp >= bottom && fp + 8u <= top;
+    return (fp & 3u) == 0 && fp >= bottom && fp <= top && top - fp >= 8u;   // no fp + 8: near 2^32 it wraps
 }
 
 unsigned int __backtrace_text_start(void);
@@ -41,7 +41,7 @@ static unsigned int return_address(unsigned int fp, unsigned int caller)
     for (unsigned int at = fp + 4u; at < caller && at < fp + 4u + 4u * 16u; at += 4u)
     {
         unsigned int word = *(const unsigned int*)at;
-        if ((word & 3u) != 0 || word < text_start + 4u || word > text_end)
+        if ((word & 3u) != 0 || word < text_start + 4u || word >= text_end)   // text_end is one past the end
             continue;
         unsigned int opcode = *(const unsigned int*)(word - 4u) >> 24;
         if (opcode == OP_CALL || opcode == OP_CALLR)
@@ -75,6 +75,11 @@ int backtrace(unsigned int* pcs, int max)
 {
     volatile int n = backtrace_from(__backtrace_fp(), pcs, max);
     return n;
+}
+
+int backtrace_has_symbols(void)
+{
+    return __backtrace_symtab() < __backtrace_symtab_end();
 }
 
 const char* backtrace_symbol(unsigned int pc, unsigned int* offset)
