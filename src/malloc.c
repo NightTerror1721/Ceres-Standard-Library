@@ -20,6 +20,10 @@ struct blk
 #define BLK_SIZE(b) ((b)->size & ~BLK_USED)
 #define ALIGN8(n)   (((n) + 7u) & ~7u)
 #define MIN_SPLIT   (sizeof(struct blk) + 8)   // do not leave a remainder that cannot hold a payload
+// The largest request malloc considers: anything above it would wrap to a small number when rounded
+// up to 8, or when the header is added to it, and be handed a block far smaller than was asked for.
+// No machine has that much room anyway (RAM is at most 1 GiB).
+#define MAX_REQUEST (0xFFFFFFFFu - 2u * sizeof(struct blk) - 7u)
 
 static struct blk*  heap_head = 0;
 static struct blk*  heap_tail = 0;
@@ -54,7 +58,7 @@ static struct blk* grow(unsigned int payload)
 
 void* malloc(size_t n)
 {
-    if (n == 0)
+    if (n == 0 || n > MAX_REQUEST)
         return 0;
     n = ALIGN8(n);
 

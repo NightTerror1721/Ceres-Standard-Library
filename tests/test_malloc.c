@@ -71,6 +71,27 @@ int main(void)
     CHECK_EQ(sum, 0);
     free(z);
     CHECK(calloc(0x10000, 0x10001) == 0);       // n * size overflows
+    CHECK(calloc(1, 0xFFFFFFF9u) == 0);         // n * size fits, but rounding it up to 8 would wrap to 0
+    CHECK(calloc(0xFFFFFFF9u, 1) == 0);
+
+    TEST_SECTION("huge");
+    // Sizes whose rounding (or header) wraps past 2^32 used to come back as a tiny block. Put a free
+    // block in the heap first: a wrapped size of 0 would have been served from it.
+    void* hole = malloc(32);
+    void* keep = malloc(8);
+    free(hole);
+    CHECK(malloc(0xFFFFFFFFu) == 0);
+    CHECK(malloc(0xFFFFFFFCu) == 0);
+    CHECK(malloc(0xFFFFFFF9u) == 0);
+    CHECK(malloc(0xFFFFFFF0u) == 0);
+    CHECK(malloc(0x80000000u) == 0);            // more than any machine has
+    char* grown = (char*)malloc(8);
+    CHECK(grown != 0);
+    CHECK(realloc(grown, 0xFFFFFFFCu) == 0);    // refused, and the block is left alone
+    free(grown);
+    free(keep);
+    CHECK_EQ((int)heap_used(), 0);
+    CHECK_EQ(heap_check(), 0);
 
     TEST_SECTION("realloc");
     char* r = (char*)malloc(4);

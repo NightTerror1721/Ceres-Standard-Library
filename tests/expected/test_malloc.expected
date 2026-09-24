@@ -1,7 +1,8 @@
 -- stress
 -- edges
 -- calloc
+-- huge
 -- realloc
 -- exhaustion
 -- stats
-ALL PASSED 48/48
+ALL PASSED 59/59
