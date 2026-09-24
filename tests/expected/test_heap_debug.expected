@@ -1,0 +1,8 @@
+-- the build
+-- in bounds, nothing to say
+-- a write after free
+-- a double free
+reported: double free
+-- an overrun
+reported: write past the end of a block
+ALL PASSED 16/16

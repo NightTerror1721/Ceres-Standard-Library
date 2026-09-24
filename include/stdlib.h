@@ -21,6 +21,8 @@ void* malloc(size_t n);
 void* calloc(size_t n, size_t size);
 void* realloc(void* p, size_t n);
 void  free(void* p);
+void* aligned_alloc(size_t alignment, size_t n);            // alignment a power of two
+int   posix_memalign(void** out, size_t alignment, size_t n); // 0, EINVAL or ENOMEM
 
 // ---- text to number (src/strtox.c) ----
 // Leading white space is skipped; `end`, when not NULL, receives the first character that was not

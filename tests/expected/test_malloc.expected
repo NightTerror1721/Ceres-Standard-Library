@@ -5,5 +5,9 @@
 -- reserve
 -- realloc
 -- exhaustion
+-- constant time
+-- realloc in place
+-- aligned
+-- misuse
 -- stats
-ALL PASSED 62/62
+ALL PASSED 98/98

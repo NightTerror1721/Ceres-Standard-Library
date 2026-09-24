@@ -20,6 +20,14 @@
 #define CERES_HEAP_STACK_RESERVE 16384
 #endif
 
+// 1 makes malloc check itself as it goes: a canary after every block, freed blocks filled with 0xDD, and
+// heap_check() looking at both, so an overrun, a write after free, a double free or a bad free is reported
+// through heap_set_error_handler() (by default: a message and abort). Costs 8 bytes a block and a pass over
+// every freed block. (src/malloc.c)
+#ifndef CERES_HEAP_DEBUG
+#define CERES_HEAP_DEBUG 0
+#endif
+
 // How many CeresFS files can be open at once, and so how many fopen() streams. (ceres/fs.h)
 #ifndef FS_MAX_OPEN
 #define FS_MAX_OPEN 8

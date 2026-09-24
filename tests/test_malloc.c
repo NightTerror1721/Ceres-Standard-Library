@@ -3,7 +3,27 @@
 #include "ceres/test.h"
 #include "ceres/heap.h"
 #include "ceres/config.h"
+#include "ceres/timer.h"
+#include "stdlib.h"
 #include "string.h"
+#include "errno.h"
+
+// Instructions for 64 malloc/free pairs of assorted sizes.
+static int pair_cost(void)
+{
+    uint64_t start = timer_ticks64();
+    for (int i = 0; i < 64; i++)
+        free(malloc((size_t)(16 + i * 8)));
+    return (int)(timer_ticks64() - start);
+}
+
+static int errors_seen = 0;
+static const char* last_error = 0;
+static void count_error(const char* what, void* p)
+{
+    errors_seen++;
+    last_error = what;
+}
 
 static unsigned int seed = 12345;
 static unsigned int next_random(void)
@@ -138,6 +158,91 @@ int main(void)
     void* again = malloc(1024 * 1024);
     CHECK(again != 0);                          // and it recovers
     free(again);
+
+    TEST_SECTION("constant time");
+    // What a malloc and a free cost with an empty heap, and again with 1000 blocks in use below: the same.
+    // (A first-fit list walks every block in use on each call: 1000 blocks made it ~40 times dearer.)
+    int few = pair_cost();
+    static void* many[1000];
+    for (int i = 0; i < 1000; i++)
+        many[i] = malloc((size_t)(8 + (i * 37) % 300));
+    int lots = pair_cost();
+    CHECK(lots < few + few / 2);
+    for (int i = 0; i < 1000; i++)
+        free(many[(i * 197) % 1000]);                   // 197 is prime to 1000: every block, once, scattered
+    CHECK_EQ((int)heap_used(), 0);
+    CHECK_EQ(heap_check(), 0);
+    CHECK_EQ(heap_blocks(), 1);                         // and they merged back into one
+
+    TEST_SECTION("realloc in place");
+    char* low = (char*)malloc(64);
+    char* mid = (char*)malloc(64);
+    char* top = (char*)malloc(64);
+    memset(mid, 'm', 64);
+    free(top);
+    char* wider = (char*)realloc(mid, 100);             // the free block above is absorbed
+    CHECK(wider == mid);
+    CHECK(wider[63] == 'm');
+    char* widest = (char*)realloc(wider, 4000);         // and the rest of the free space above
+    CHECK(widest == mid);
+    CHECK(widest[0] == 'm');
+    CHECK(malloc_usable_size(widest) >= 4000);
+    char* narrow = (char*)realloc(widest, 16);          // shrinking gives the rest back
+    CHECK(narrow == mid);
+    CHECK(heap_free() > 3000);
+    CHECK_EQ(heap_check(), 0);
+    char* blocked = (char*)malloc(8);                   // now above mid: mid cannot grow in place
+    char* moved = (char*)realloc(narrow, 5000);
+    CHECK(moved != mid && moved != 0);
+    CHECK(moved[15] == 'm');
+    free(moved);
+    free(blocked);
+    free(low);
+    CHECK_EQ((int)heap_used(), 0);
+    CHECK_EQ(heap_check(), 0);
+
+    TEST_SECTION("aligned");
+    void* a16 = aligned_alloc(16, 40);
+    void* a256 = aligned_alloc(256, 10);
+    void* a4k = aligned_alloc(4096, 4096);
+    CHECK(a16 != 0 && a256 != 0 && a4k != 0);
+    CHECK_EQ((int)((unsigned int)a16 & 15u), 0);
+    CHECK_EQ((int)((unsigned int)a256 & 255u), 0);
+    CHECK_EQ((int)((unsigned int)a4k & 4095u), 0);
+    memset(a4k, 1, 4096);
+    CHECK(malloc_usable_size(a256) >= 10);
+    CHECK_EQ(heap_check(), 0);
+    errno = 0;
+    CHECK(aligned_alloc(24, 8) == 0);                   // not a power of two
+    CHECK_EQ(errno, EINVAL);
+    void* pm = 0;
+    CHECK_EQ(posix_memalign(&pm, 64, 100), 0);
+    CHECK_EQ((int)((unsigned int)pm & 63u), 0);
+    CHECK_EQ(posix_memalign(&pm, 2, 100), EINVAL);      // below sizeof(void*)
+    free(pm);
+    free(a4k);
+    free(a256);
+    free(a16);
+    CHECK_EQ((int)heap_used(), 0);
+    CHECK_EQ(heap_check(), 0);
+
+    TEST_SECTION("misuse");
+    heap_set_error_handler(count_error);
+    char* once = (char*)malloc(24);
+    char* other = (char*)malloc(24);
+    free(once);
+    free(once);                                         // a double free is reported, and does nothing
+    CHECK_EQ(errors_seen, 1);
+    CHECK_STR(last_error, "double free");
+    static char not_heap[16];
+    free(not_heap + 8);
+    CHECK_EQ(errors_seen, 2);
+    CHECK(realloc(once, 64) == 0);                      // a freed block cannot be resized
+    CHECK_EQ(errors_seen, 3);
+    CHECK_EQ(heap_check(), 0);                          // and the heap is none the worse
+    free(other);
+    heap_set_error_handler(0);
+    CHECK_EQ((int)heap_used(), 0);
 
     TEST_SECTION("stats");
     struct heap_stats s;
