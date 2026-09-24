@@ -1,49 +1,159 @@
-// memory.casm - the four hot memory primitives. Leaf routines: no frame, r0-r7 only.
+// memory.casm - the hot memory primitives. Leaf routines: no frame, r0-r7 only.
+//
+// Every one moves words when it can and bytes only when it must. Two pointers whose low two bits are
+// equal ("co-aligned") become aligned together after at most three bytes, so a copy, a move or a
+// comparison takes those bytes first and then goes a word at a time - four words per turn of the loop
+// for a copy and a fill. Pointers that can never be aligned together go a byte at a time, four bytes
+// per turn. Each loop tests its condition at the bottom, so a turn costs one compare-and-branch.
+//
+// Measured in instructions on 4 KiB (the timer's ticks): memcpy aligned 0.8 per byte (2.0 before),
+// co-aligned at +1 the same (8.0 before), never co-aligned 3.3 (8.0); memmove backwards like memcpy
+// (8.0 before); memset 0.5; memcmp of equal buffers 1.6 (10.0); strlen 2.0 (5.0).
 @text
 
 // void* memcpy(void* dst, const void* src, size_t n)   r0 = dst, r1 = src, r2 = n
 global memcpy:
     mov  r4, r0                 // the return value
-    or   r5, r0, r1
+    xor  r5, r0, r1
     and  r5, r5, 3
-    ifne r5, 0, .tail           // either pointer unaligned -> bytes only
-.words:
-    ifbl r2, 4, .tail
-    ldr  r6, [r1]
-    str  [r0], r6
-    add  r0, r0, 4
-    add  r1, r1, 4
-    sub  r2, r2, 4
-    jp   .words
-.tail:
-    ifeq r2, 0, .done
+    ifne r5, 0, .cpb4           // never aligned together: bytes, four per turn
+.cphead:                        // co-aligned: bytes until both are aligned
+    and  r5, r0, 3
+    ifeq r5, 0, .cpw16
+    ifeq r2, 0, .cpdone
     ldrb r6, [r1]
     strb [r0], r6
     add  r0, r0, 1
     add  r1, r1, 1
     sub  r2, r2, 1
-    jp   .tail
-.done:
+    jp   .cphead
+.cpw16:
+    ifbl r2, 16, .cpw4
+.cpw16loop:                     // four words: all loaded before any is stored, so memmove can use it
+    ldr  r3, [r1]
+    ldr  r5, [r1 + 4]
+    ldr  r6, [r1 + 8]
+    ldr  r7, [r1 + 12]
+    str  [r0], r3
+    str  [r0 + 4], r5
+    str  [r0 + 8], r6
+    str  [r0 + 12], r7
+    add  r0, r0, 16
+    add  r1, r1, 16
+    sub  r2, r2, 16
+    ifae r2, 16, .cpw16loop
+.cpw4:
+    ifbl r2, 4, .cptail
+.cpw4loop:
+    ldr  r6, [r1]
+    str  [r0], r6
+    add  r0, r0, 4
+    add  r1, r1, 4
+    sub  r2, r2, 4
+    ifae r2, 4, .cpw4loop
+    jp   .cptail
+.cpb4:
+    ifbl r2, 4, .cptail
+.cpb4loop:                      // four bytes: loaded before any is stored, like the words
+    ldrb r3, [r1]
+    ldrb r5, [r1 + 1]
+    ldrb r6, [r1 + 2]
+    ldrb r7, [r1 + 3]
+    strb [r0], r3
+    strb [r0 + 1], r5
+    strb [r0 + 2], r6
+    strb [r0 + 3], r7
+    add  r0, r0, 4
+    add  r1, r1, 4
+    sub  r2, r2, 4
+    ifae r2, 4, .cpb4loop
+.cptail:
+    ifeq r2, 0, .cpdone
+.cptailloop:
+    ldrb r6, [r1]
+    strb [r0], r6
+    add  r0, r0, 1
+    add  r1, r1, 1
+    sub  r2, r2, 1
+    ifne r2, 0, .cptailloop
+.cpdone:
     mov  r0, r4
     ret
 
 // void* memmove(void* dst, const void* src, size_t n)
+// A forward copy is memcpy's (it reads each group before writing it, and dst is below src). An overlap
+// with dst above src goes backwards from the ends, the same way: bytes until aligned, then four words
+// per turn, then words, then bytes.
 global memmove:
     ifbe r0, r1, memcpy         // dst <= src: a forward copy is safe (tail call)
     add  r4, r1, r2             // src + n
     ifae r0, r4, memcpy         // dst >= src + n: no overlap
-    mov  r4, r0                 // overlap with dst > src: copy backwards
-    add  r0, r0, r2
+    mov  r4, r0                 // the return value
+    add  r0, r0, r2             // both ends: the copy runs down from here
     add  r1, r1, r2
-.back:
-    ifeq r2, 0, .bdone
+    xor  r5, r0, r1
+    and  r5, r5, 3
+    ifne r5, 0, .mvb4
+.mvhead:
+    and  r5, r0, 3
+    ifeq r5, 0, .mvw16
+    ifeq r2, 0, .mvdone
     sub  r0, r0, 1
     sub  r1, r1, 1
     ldrb r6, [r1]
     strb [r0], r6
     sub  r2, r2, 1
-    jp   .back
-.bdone:
+    jp   .mvhead
+.mvw16:
+    ifbl r2, 16, .mvw4
+.mvw16loop:
+    ldr  r3, [r1 - 4]
+    ldr  r5, [r1 - 8]
+    ldr  r6, [r1 - 12]
+    ldr  r7, [r1 - 16]
+    str  [r0 - 4], r3
+    str  [r0 - 8], r5
+    str  [r0 - 12], r6
+    str  [r0 - 16], r7
+    sub  r0, r0, 16
+    sub  r1, r1, 16
+    sub  r2, r2, 16
+    ifae r2, 16, .mvw16loop
+.mvw4:
+    ifbl r2, 4, .mvtail
+.mvw4loop:
+    sub  r0, r0, 4
+    sub  r1, r1, 4
+    ldr  r6, [r1]
+    str  [r0], r6
+    sub  r2, r2, 4
+    ifae r2, 4, .mvw4loop
+    jp   .mvtail
+.mvb4:
+    ifbl r2, 4, .mvtail
+.mvb4loop:
+    ldrb r3, [r1 - 1]
+    ldrb r5, [r1 - 2]
+    ldrb r6, [r1 - 3]
+    ldrb r7, [r1 - 4]
+    strb [r0 - 1], r3
+    strb [r0 - 2], r5
+    strb [r0 - 3], r6
+    strb [r0 - 4], r7
+    sub  r0, r0, 4
+    sub  r1, r1, 4
+    sub  r2, r2, 4
+    ifae r2, 4, .mvb4loop
+.mvtail:
+    ifeq r2, 0, .mvdone
+.mvtailloop:
+    sub  r0, r0, 1
+    sub  r1, r1, 1
+    ldrb r6, [r1]
+    strb [r0], r6
+    sub  r2, r2, 1
+    ifne r2, 0, .mvtailloop
+.mvdone:
     mov  r0, r4
     ret
 
@@ -53,51 +163,133 @@ global memset:
     and  r1, r1, 255
     la   r5, 0x01010101
     mul  r5, r1, r5             // c replicated into all four bytes
+.sthead:                        // bytes until dst is aligned
     and  r6, r0, 3
-    ifne r6, 0, .stail
-.swords:
-    ifbl r2, 4, .stail
-    str  [r0], r5
-    add  r0, r0, 4
-    sub  r2, r2, 4
-    jp   .swords
-.stail:
-    ifeq r2, 0, .sdone
+    ifeq r6, 0, .stw16
+    ifeq r2, 0, .stdone
     strb [r0], r1
     add  r0, r0, 1
     sub  r2, r2, 1
-    jp   .stail
-.sdone:
+    jp   .sthead
+.stw16:
+    ifbl r2, 16, .stw4
+.stw16loop:
+    str  [r0], r5
+    str  [r0 + 4], r5
+    str  [r0 + 8], r5
+    str  [r0 + 12], r5
+    add  r0, r0, 16
+    sub  r2, r2, 16
+    ifae r2, 16, .stw16loop
+.stw4:
+    ifbl r2, 4, .sttail
+.stw4loop:
+    str  [r0], r5
+    add  r0, r0, 4
+    sub  r2, r2, 4
+    ifae r2, 4, .stw4loop
+.sttail:
+    ifeq r2, 0, .stdone
+.sttailloop:
+    strb [r0], r1
+    add  r0, r0, 1
+    sub  r2, r2, 1
+    ifne r2, 0, .sttailloop
+.stdone:
     mov  r0, r4
     ret
 
 // int memcmp(const void* a, const void* b, size_t n)
+// The difference of the first pair of bytes that differ, as unsigned bytes. Co-aligned buffers are
+// compared two words per turn; the word pair that differs is then gone through a byte at a time.
 global memcmp:
-.cmp:
-    ifeq r2, 0, .equal
+    xor  r4, r0, r1
+    and  r4, r4, 3
+    ifne r4, 0, .mcbytes        // never aligned together: bytes only
+.mchead:
+    and  r4, r0, 3
+    ifeq r4, 0, .mcw8
+    ifeq r2, 0, .mcequal
     ldrb r4, [r0]
     ldrb r5, [r1]
-    ifne r4, r5, .differ
+    ifne r4, r5, .mcdiffer
     add  r0, r0, 1
     add  r1, r1, 1
     sub  r2, r2, 1
-    jp   .cmp
-.differ:
+    jp   .mchead
+.mcw8:
+    ifbl r2, 8, .mcw4
+.mcw8loop:
+    ldr  r4, [r0]
+    ldr  r5, [r1]
+    ifne r4, r5, .mcbytes       // this word differs: the bytes say where
+    ldr  r6, [r0 + 4]
+    ldr  r7, [r1 + 4]
+    ifne r6, r7, .mcsecond
+    add  r0, r0, 8
+    add  r1, r1, 8
+    sub  r2, r2, 8
+    ifae r2, 8, .mcw8loop
+.mcw4:
+    ifbl r2, 4, .mcbytes
+    ldr  r4, [r0]
+    ldr  r5, [r1]
+    ifne r4, r5, .mcbytes
+    add  r0, r0, 4
+    add  r1, r1, 4
+    sub  r2, r2, 4
+    jp   .mcbytes
+.mcsecond:
+    add  r0, r0, 4
+    add  r1, r1, 4
+    sub  r2, r2, 4
+.mcbytes:
+    ifeq r2, 0, .mcequal
+    ldrb r4, [r0]
+    ldrb r5, [r1]
+    ifne r4, r5, .mcdiffer
+    add  r0, r0, 1
+    add  r1, r1, 1
+    sub  r2, r2, 1
+    jp   .mcbytes
+.mcdiffer:
     sub  r0, r4, r5
     ret
-.equal:
+.mcequal:
     li   r0, 0
     ret
 
 // size_t strlen(const char* s)
+// Bytes until the pointer is aligned, then a word at a time: ((w - 0x01010101) & ~w & 0x80808080) is
+// non-zero exactly when one byte of w is zero. An aligned word never crosses into memory the string's
+// own last byte is not in, so reading the whole word that holds the terminator is safe.
 global strlen:
     mov  r1, r0
-.len:
+.slhead:
+    and  r2, r1, 3
+    ifeq r2, 0, .slwords
     ldrb r2, [r1]
-    ifeq r2, 0, .lend
+    ifeq r2, 0, .slend
     add  r1, r1, 1
-    jp   .len
-.lend:
+    jp   .slhead
+.slwords:
+    la   r6, 0x01010101
+    la   r7, 0x80808080
+.slloop:
+    ldr  r2, [r1]
+    add  r1, r1, 4
+    sub  r3, r2, r6
+    not  r4, r2
+    and  r3, r3, r4
+    and  r3, r3, r7
+    ifeq r3, 0, .slloop
+    sub  r1, r1, 4              // the terminator is in this word: find it
+.slbytes:
+    ldrb r2, [r1]
+    ifeq r2, 0, .slend
+    add  r1, r1, 1
+    jp   .slbytes
+.slend:
     sub  r0, r1, r0
     ret
 

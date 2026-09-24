@@ -1,4 +1,5 @@
-// <string.h> and <strings.h> except the memory primitives (asm/memory.casm).
+// <string.h> and <strings.h> except the memory primitives and strlen (asm/memory.casm) and strcpy,
+// strcmp, strchr and memchr (asm/string_fast.casm), which go a word at a time.
 //
 // The explicit (const void*) casts in front of memcpy are there for older ceresc builds, which lost
 // the const of a `const void*` and refused a `const char*` argument (fixed in Ceres-C a7cf62a).
@@ -7,14 +8,6 @@
 #include "strings.h"
 #include "ceres/heap.h"      // malloc, for strdup/strndup
 #include "ctype.h"
-
-void* memchr(const void* p, int c, size_t n)
-{
-    const unsigned char* s = (const unsigned char*)p;
-    for (size_t i = 0; i < n; i++)
-        if (s[i] == (unsigned char)c) return (void*)(s + i);
-    return 0;
-}
 
 void* memrchr(const void* p, int c, size_t n)
 {
@@ -45,14 +38,6 @@ size_t strnlen(const char* s, size_t max)
     return n;
 }
 
-char* strcpy(char* restrict dst, const char* restrict src)
-{
-    size_t i = 0;
-    while (src[i] != 0) { dst[i] = src[i]; i++; }
-    dst[i] = 0;
-    return dst;
-}
-
 char* strncpy(char* restrict dst, const char* restrict src, size_t n)
 {
     size_t i = 0;
@@ -76,13 +61,6 @@ char* strncat(char* restrict dst, const char* restrict src, size_t n)
     return dst;
 }
 
-int strcmp(const char* a, const char* b)
-{
-    size_t i = 0;
-    while (a[i] != 0 && a[i] == b[i]) i++;
-    return (int)((unsigned char)a[i]) - (int)((unsigned char)b[i]);
-}
-
 int strncmp(const char* a, const char* b, size_t n)
 {
     for (size_t i = 0; i < n; i++)
@@ -102,15 +80,6 @@ size_t strxfrm(char* dst, const char* src, size_t n)
     size_t len = strlen(src);
     if (n != 0) { strncpy(dst, src, n - 1); dst[n - 1] = 0; }
     return len;
-}
-
-char* strchr(const char* s, int c)
-{
-    for (size_t i = 0; ; i++)
-    {
-        if (s[i] == (char)c) return (char*)(s + i);
-        if (s[i] == 0) return 0;
-    }
 }
 
 char* strrchr(const char* s, int c)

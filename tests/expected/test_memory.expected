@@ -1,0 +1,8 @@
+-- memcpy: every alignment and length
+-- memmove: overlapping both ways, at every alignment
+-- memset: every alignment and length
+-- memcmp: the same difference, at every alignment and position
+-- strlen: every alignment and length, high bytes included
+-- strcpy, strcmp, strchr and memchr under their standard names
+-- instructions per byte on 4 KiB
+ALL PASSED 20/20

@@ -1,23 +1,37 @@
-// string_fast.casm - string routines written for speed: strcpy, strcmp, strchr and memchr (strlen and the memory
-// primitives are in memory.casm already). They are OPTIONAL: they have their own names, and ceres/string_fast.h
-// maps the standard ones onto them for a program that asks. Leaf routines: no frame, r0-r7.
+// string_fast.casm - strcpy, strcmp, strchr and memchr, written for speed (strlen and the memory primitives
+// are in memory.casm). These ARE the standard functions: each has its standard name and, for code written
+// against ceres/string_fast.h, its old _fast name at the same address. Leaf routines: no frame, r0-r7.
 //
-// Each reads a word at a time while its pointers are aligned and the word shows nothing to stop for, and a byte
-// at a time otherwise (unaligned pointers, the word that holds the end or the difference, the last bytes). A
-// word is tested for a zero byte with ((w - 0x01010101) & ~w & 0x80808080), which is non-zero exactly when
-// one byte of w is zero; a word is tested for a byte c by xoring it with c repeated four times first.
+// Each goes a byte at a time until its pointer is aligned (strcpy and strcmp only when the two pointers
+// are co-aligned - otherwise they stay on bytes), then reads a word at a time while the word shows nothing
+// to stop for, and finishes the word that does a byte at a time. A word is tested for a zero byte with
+// ((w - 0x01010101) & ~w & 0x80808080), which is non-zero exactly when one byte of w is zero; a word is
+// tested for a byte c by xoring it with c repeated four times first. An aligned word never crosses into
+// memory the string's own bytes are not in, so reading past the terminator inside its word is safe.
 //
-// Measured on 4096 bytes, in instructions (the timer's ticks, the same on every run), against the C versions
-// at -O2: strcpy 11305 vs 32797, strcmp 13356 vs 40995, strchr 15407 vs 45089, memchr 13347 vs 36896 - about a
-// third. At -O0 the C versions take ten times what they do at -O2 (strcpy 327801), and these do not change.
+// Measured on 4096 bytes, in instructions (the timer's ticks, the same on every run), against the byte
+// loops in C they replaced, at -O2: strcpy 11305 vs 32797, strcmp 13356 vs 40995, strchr 15407 vs 45089,
+// memchr 13347 vs 36896 - about a third. At -O0 the C versions took ten times what they did at -O2.
 @text
 
-// char* strcpy_fast(char* dst, const char* src)   r0 = dst, r1 = src
+// char* strcpy(char* dst, const char* src)   r0 = dst, r1 = src
+global strcpy:
 global strcpy_fast:
     mov  r4, r0                 // the return value
-    or   r5, r0, r1
+    xor  r5, r0, r1
     and  r5, r5, 3
-    ifne r5, 0, .cpbytes        // either pointer unaligned: bytes only
+    ifne r5, 0, .cpbytes        // never aligned together: bytes only
+.cphead:                        // co-aligned: bytes until both are aligned
+    and  r5, r1, 3
+    ifeq r5, 0, .cpsetup
+    ldrb r2, [r1]
+    strb [r0], r2
+    add  r0, r0, 1
+    add  r1, r1, 1
+    ifne r2, 0, .cphead
+    mov  r0, r4
+    ret
+.cpsetup:
     la   r6, 0x01010101
     la   r7, 0x80808080
 .cpwords:
@@ -40,12 +54,24 @@ global strcpy_fast:
     mov  r0, r4
     ret
 
-// int strcmp_fast(const char* a, const char* b)   r0 = a, r1 = b
-// Returns the difference of the first pair of bytes that differ, as unsigned bytes, exactly as strcmp does.
+// int strcmp(const char* a, const char* b)   r0 = a, r1 = b
+// Returns the difference of the first pair of bytes that differ, as unsigned bytes, as C's strcmp does.
+global strcmp:
 global strcmp_fast:
-    or   r4, r0, r1
+    xor  r4, r0, r1
     and  r4, r4, 3
-    ifne r4, 0, .cmloop         // either pointer unaligned: bytes only
+    ifne r4, 0, .cmloop         // never aligned together: bytes only
+.cmhead:
+    and  r4, r0, 3
+    ifeq r4, 0, .cmsetup
+    ldrb r2, [r0]
+    ldrb r3, [r1]
+    ifne r2, r3, .cmdiff
+    ifeq r2, 0, .cmequal
+    add  r0, r0, 1
+    add  r1, r1, 1
+    jp   .cmhead
+.cmsetup:
     la   r6, 0x01010101
     la   r7, 0x80808080
 .cmwords:
@@ -75,12 +101,20 @@ global strcmp_fast:
     sub  r0, r2, r3
     ret
 
-// char* strchr_fast(const char* s, int c)   r0 = s, r1 = c
+// char* strchr(const char* s, int c)   r0 = s, r1 = c
 // The first occurrence of (char)c, which for c == 0 is the terminator; NULL when there is none.
+global strchr:
 global strchr_fast:
     and  r1, r1, 255
+.schead:                        // bytes until s is aligned
     and  r4, r0, 3
-    ifne r4, 0, .scloop         // unaligned: bytes only
+    ifeq r4, 0, .scsetup
+    ldrb r2, [r0]
+    ifeq r2, r1, .scfound
+    ifeq r2, 0, .scnone
+    add  r0, r0, 1
+    jp   .schead
+.scsetup:
     la   r5, 0x01010101
     mul  r6, r1, r5             // c repeated in all four bytes
     la   r7, 0x80808080
@@ -111,11 +145,20 @@ global strchr_fast:
     li   r0, 0
     ret
 
-// void* memchr_fast(const void* p, int c, size_t n)   r0 = p, r1 = c, r2 = n
+// void* memchr(const void* p, int c, size_t n)   r0 = p, r1 = c, r2 = n
+global memchr:
 global memchr_fast:
     and  r1, r1, 255
+.mchead:                        // bytes until p is aligned
+    ifeq r2, 0, .mcnone
     and  r4, r0, 3
-    ifne r4, 0, .mcloop         // unaligned: bytes only
+    ifeq r4, 0, .mcsetup
+    ldrb r3, [r0]
+    ifeq r3, r1, .mcfound
+    add  r0, r0, 1
+    sub  r2, r2, 1
+    jp   .mchead
+.mcsetup:
     la   r5, 0x01010101
     mul  r6, r1, r5             // c repeated in all four bytes
     la   r7, 0x80808080
