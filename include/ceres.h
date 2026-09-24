@@ -33,7 +33,7 @@
 #define CERES_VECTOR_TABLE  0x00000000   // 64 entries x 4 bytes; entry 0 is the reset vector
 #define CERES_BIOS          0x00000100
 #define CERES_TEXT_BASE     0x00000400   // where the program image starts
-#define CERES_SYSTEM_STACK  1024         // the last KiB of RAM: interrupt handlers run here
+#define CERES_SYSTEM_STACK  4096         // the last 4 KiB of RAM: interrupt handlers run here (CeresASM 331068a)
 #define CERES_DEFAULT_RAM   (16 * 1024 * 1024)
 
 #define irq_enable()        __builtin_sti()

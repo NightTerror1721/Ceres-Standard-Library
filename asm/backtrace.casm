@@ -1,0 +1,25 @@
+// The two pieces of ceres/backtrace.h that C cannot say. __backtrace_fp() is the frame pointer of the function
+// that called it: a leaf with no frame of its own, so fp still holds its caller's. The symbol table's bounds
+// are linker-defined names (CeresASM de96a5f), reached here as __heap_start is in sys.casm: a C declaration of
+// one would land in the library's shared declarations, and a unit may not declare a name the linker defines.
+@text
+
+global __backtrace_fp:
+    mov  r0, fp
+    ret
+
+global __backtrace_symtab:          // __symtab_start
+    la   r0, __symtab_start
+    ret
+
+global __backtrace_symtab_end:      // __symtab_end
+    la   r0, __symtab_end
+    ret
+
+global __backtrace_text_start:      // __text_start
+    la   r0, __text_start
+    ret
+
+global __backtrace_text_end:        // __text_end
+    la   r0, __text_end
+    ret

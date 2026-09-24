@@ -16,6 +16,16 @@ static void stop_here(void)
         __builtin_halt();
 }
 
+unsigned int sys_fault_address(void)
+{
+    return mmio_r32(SYS_CTRL_FAULT_ADDR);
+}
+
+unsigned int sys_fault_access(void)
+{
+    return mmio_r32(SYS_CTRL_FAULT_ACCESS);
+}
+
 unsigned int sys_stack_limit(void)
 {
     return mmio_r32(SYS_CTRL_STACK_LIMIT);

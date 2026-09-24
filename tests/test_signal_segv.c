@@ -8,7 +8,7 @@
 
 static void on_segv(int sig)
 {
-    putstr("caught signal ");                            // no printf: this runs on the 1 KiB system stack
+    putstr("caught signal ");                            // no printf: this runs on the 4 KiB system stack
     putint(sig);
     putstr("\n");
     exit(7);

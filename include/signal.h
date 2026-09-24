@@ -19,7 +19,7 @@
 // them (SIG_ERR, errno ENOSYS). A handler for SIGILL or SIGSEGV that returns is undefined in C, and here the
 // fault is reported and the program stops (status 139); one that calls exit() or longjmp() is fine.
 //
-// A handler for one of those three runs where the interrupt does: on the 1 KiB system stack, with interrupts
+// A handler for one of those three runs where the interrupt does: on the 4 KiB system stack, with interrupts
 // masked. Keep it short - putstr and putint, a flag, exit() or longjmp() - and do not call printf or malloc from
 // it. A stack overflow inside a handler is one more fault, and nothing is left to report it.
 //

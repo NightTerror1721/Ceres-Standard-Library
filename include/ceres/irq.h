@@ -13,7 +13,7 @@
 // them itself (say `__interrupt_vector(17, my_isr)`) must not link it. See tools/runtests.ps1
 // (`// USE: irq`) and the Makefile (`USE=irq`).
 //
-// A handler runs with user interrupts masked, on the 1 KiB system stack: keep it short, and do not
+// A handler runs with user interrupts masked, on the 4 KiB system stack: keep it short, and do not
 // call printf or malloc from it. It gets the interrupt number.
 
 typedef void (*irq_handler_t)(int irq);

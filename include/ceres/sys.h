@@ -10,6 +10,11 @@
 #define SYS_CTRL_MEM_SIZE     (SYS_CTRL_BASE + 0x04)   // read: bytes of RAM
 #define SYS_CTRL_FEATURES     (SYS_CTRL_BASE + 0x08)   // read/write: switches for behaviour that is off by default
 #define SYS_CTRL_STACK_LIMIT  (SYS_CTRL_BASE + 0x0C)   // read/write: the lowest address the stack may reach
+#define SYS_CTRL_FAULT_ADDR   (SYS_CTRL_BASE + 0x10)   // read: the data address of the last memory fault
+#define SYS_CTRL_FAULT_ACCESS (SYS_CTRL_BASE + 0x14)   // read: its access (FAULT_READ/WRITE/FETCH) | size << 8
+#define FAULT_READ   1u
+#define FAULT_WRITE  2u
+#define FAULT_FETCH  3u
 #define SYS_FEATURE_DIV_FAULT 0x01                     // a division by zero raises interrupt 4 instead of only setting Trap
 
 // The three that stop the machine never return. On a machine without the system-control device they
@@ -53,8 +58,14 @@ void sys_print_layout(void);                   // a readable table on the termin
 // grew past its limit) falls through to the BIOS's default stub, which prints a bare "E" and halts. A
 // program that calls sys_install_fault_handlers() carries handlers for interrupts 1, 2, 3, 5, 6 and 7
 // instead; each reports the kind of fault, the address of the instruction and the flags, then stops the
-// machine (with --debug the address can be turned into file:line). The module binds those vectors, and the
-// linker allows ONE binding per vector for the whole program: a program with its own handlers must not
-// call this. Pass a hook to take over the report; the machine stops when it returns.
+// machine (with --debug the address can be turned into file:line). For a memory fault (3, 6, 7) it also says
+// what the instruction was doing - "store 2 bytes to 0x10001" - from the machine's fault registers (CeresASM
+// de96a5f); and a program linked with a symbol table (ceresc --symtab) gets the function the fault is in and
+// the callers above it, as ceres/backtrace.h names them. The module binds those vectors, and the linker allows
+// ONE binding per vector for the whole program: a program with its own handlers must not call this. Pass a
+// hook to take over the report; the machine stops when it returns. A hook may use the three functions below.
 typedef void (*fault_hook_t)(int irq, unsigned int pc, unsigned int flags);
 void sys_install_fault_handlers(fault_hook_t hook);   // hook may be NULL: the default report
+unsigned int sys_fault_address(void);   // the data address the last memory fault was reaching
+unsigned int sys_fault_access(void);    // FAULT_READ, FAULT_WRITE or FAULT_FETCH, with the size in bytes << 8
+unsigned int sys_fault_frame(void);     // the faulting program's fp, for backtrace_from() (0 outside a fault)

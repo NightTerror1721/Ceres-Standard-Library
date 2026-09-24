@@ -1,6 +1,6 @@
 // USE: fault
 // A misaligned word load is an AlignmentFault. With the fault module linked it reaches our hook, which reports
-// through putstr only (the handler runs on the 1 KiB system stack) and lets the machine stop.
+// through putstr only (the handler runs on the 4 KiB system stack) and lets the machine stop.
 #include "stdio.h"
 #include "ceres/sys.h"
 
