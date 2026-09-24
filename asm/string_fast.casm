@@ -2,145 +2,61 @@
 // are in memory.casm). These ARE the standard functions: each has its standard name and, for code written
 // against ceres/string_fast.h, its old _fast name at the same address. Leaf routines: no frame, r0-r7.
 //
-// Each goes a byte at a time until its pointer is aligned (strcpy and strcmp only when the two pointers
-// are co-aligned - otherwise they stay on bytes), then reads a word at a time while the word shows nothing
-// to stop for, and finishes the word that does a byte at a time. A word is tested for a zero byte with
-// ((w - 0x01010101) & ~w & 0x80808080), which is non-zero exactly when one byte of w is zero; a word is
-// tested for a byte c by xoring it with c repeated four times first. An aligned word never crosses into
-// memory the string's own bytes are not in, so reading past the terminator inside its word is safe.
-//
-// Measured on 4096 bytes, in instructions (the timer's ticks, the same on every run), against the byte
-// loops in C they replaced, at -O2: strcpy 11305 vs 32797, strcmp 13356 vs 40995, strchr 15407 vs 45089,
-// memchr 13347 vs 36896 - about a third. At -O0 the C versions took ten times what they did at -O2.
+// Each is built on the machine's block instructions (CeresASM 6b6372b): an mscan for the terminator gives
+// the string's length, and one more mcpy, mcmp or mscan does the rest, a page per step. The word loops these
+// replaced took about a third of what the byte loops in C did; these take a few steps per page.
 @text
 
 // char* strcpy(char* dst, const char* src)   r0 = dst, r1 = src
 global strcpy:
 global strcpy_fast:
     mov  r4, r0                 // the return value
-    xor  r5, r0, r1
-    and  r5, r5, 3
-    ifne r5, 0, .cpbytes        // never aligned together: bytes only
-.cphead:                        // co-aligned: bytes until both are aligned
-    and  r5, r1, 3
-    ifeq r5, 0, .cpsetup
-    ldrb r2, [r1]
-    strb [r0], r2
-    add  r0, r0, 1
-    add  r1, r1, 1
-    ifne r2, 0, .cphead
-    mov  r0, r4
-    ret
-.cpsetup:
-    la   r6, 0x01010101
-    la   r7, 0x80808080
-.cpwords:
-    ldr  r2, [r1]
-    sub  r3, r2, r6
-    not  r5, r2
-    and  r3, r3, r5
-    and  r3, r3, r7             // non-zero when the word holds the terminator
-    ifne r3, 0, .cpbytes        // finish it a byte at a time
-    str  [r0], r2
-    add  r0, r0, 4
-    add  r1, r1, 4
-    jp   .cpwords
-.cpbytes:
-    ldrb r2, [r1]
-    strb [r0], r2
-    add  r0, r0, 1
-    add  r1, r1, 1
-    ifne r2, 0, .cpbytes
+    mov  r5, r1
+    li   r6, 0
+    la   r7, 0xFFFFFFFF
+    mscan r5, r6, r7            // r5 = src's terminator
+    sub  r6, r5, r1
+    add  r6, r6, 1              // the bytes to copy, the terminator with them
+    mcpy r0, r1, r6
     mov  r0, r4
     ret
 
 // int strcmp(const char* a, const char* b)   r0 = a, r1 = b
 // Returns the difference of the first pair of bytes that differ, as unsigned bytes, as C's strcmp does.
+// Comparing a's bytes and its terminator is enough: b cannot match past its own terminator, so the first
+// difference comes at or before it, and nothing past it is read.
 global strcmp:
 global strcmp_fast:
-    xor  r4, r0, r1
-    and  r4, r4, 3
-    ifne r4, 0, .cmloop         // never aligned together: bytes only
-.cmhead:
-    and  r4, r0, 3
-    ifeq r4, 0, .cmsetup
+    mov  r5, r0
+    li   r6, 0
+    la   r7, 0xFFFFFFFF
+    mscan r5, r6, r7            // r5 = a's terminator
+    sub  r6, r5, r0
+    add  r6, r6, 1
+    mcmp r0, r1, r6
+    ifeq r6, 0, .cmequal
     ldrb r2, [r0]
     ldrb r3, [r1]
-    ifne r2, r3, .cmdiff
-    ifeq r2, 0, .cmequal
-    add  r0, r0, 1
-    add  r1, r1, 1
-    jp   .cmhead
-.cmsetup:
-    la   r6, 0x01010101
-    la   r7, 0x80808080
-.cmwords:
-    ldr  r2, [r0]
-    ldr  r3, [r1]
-    ifne r2, r3, .cmloop        // the words differ: the bytes say where
-    sub  r4, r2, r6
-    not  r5, r2
-    and  r4, r4, r5
-    and  r4, r4, r7
-    ifne r4, 0, .cmloop         // equal, and the terminator is in them: the bytes will return 0
-    add  r0, r0, 4
-    add  r1, r1, 4
-    jp   .cmwords
-.cmloop:
-    ldrb r2, [r0]
-    ldrb r3, [r1]
-    ifne r2, r3, .cmdiff
-    ifeq r2, 0, .cmequal
-    add  r0, r0, 1
-    add  r1, r1, 1
-    jp   .cmloop
+    sub  r0, r2, r3
+    ret
 .cmequal:
     li   r0, 0
     ret
-.cmdiff:
-    sub  r0, r2, r3
-    ret
 
 // char* strchr(const char* s, int c)   r0 = s, r1 = c
-// The first occurrence of (char)c, which for c == 0 is the terminator; NULL when there is none.
+// The first occurrence of (char)c, which for c == 0 is the terminator; NULL when there is none. The string's
+// length first, then c among its bytes and its terminator.
 global strchr:
 global strchr_fast:
-    and  r1, r1, 255
-.schead:                        // bytes until s is aligned
-    and  r4, r0, 3
-    ifeq r4, 0, .scsetup
-    ldrb r2, [r0]
-    ifeq r2, r1, .scfound
-    ifeq r2, 0, .scnone
-    add  r0, r0, 1
-    jp   .schead
-.scsetup:
-    la   r5, 0x01010101
-    mul  r6, r1, r5             // c repeated in all four bytes
-    la   r7, 0x80808080
-.scwords:
-    ldr  r3, [r0]
-    sub  r2, r3, r5
-    not  r4, r3
-    and  r2, r2, r4
-    and  r2, r2, r7             // a terminator in the word
-    xor  r4, r3, r6             // a byte equal to c is now zero
-    sub  r3, r4, r5
-    not  r4, r4
-    and  r3, r3, r4
-    and  r3, r3, r7             // a c in the word
-    or   r2, r2, r3
-    ifne r2, 0, .scloop         // one or the other: find which, a byte at a time
-    add  r0, r0, 4
-    jp   .scwords
-.scloop:
-    ldrb r2, [r0]
-    ifeq r2, r1, .scfound
-    ifeq r2, 0, .scnone
-    add  r0, r0, 1
-    jp   .scloop
-.scfound:
-    ret                         // r0 already points at it
+    mov  r5, r0
+    li   r6, 0
+    la   r7, 0xFFFFFFFF
+    mscan r5, r6, r7            // r5 = the terminator
+    sub  r6, r5, r0
+    add  r6, r6, 1
+    mscan r0, r1, r6            // the low byte of c
+    ifeq r6, 0, .scnone
+    ret                         // r0 points at it
 .scnone:
     li   r0, 0
     ret
@@ -148,41 +64,9 @@ global strchr_fast:
 // void* memchr(const void* p, int c, size_t n)   r0 = p, r1 = c, r2 = n
 global memchr:
 global memchr_fast:
-    and  r1, r1, 255
-.mchead:                        // bytes until p is aligned
+    mscan r0, r1, r2            // the low byte of c
     ifeq r2, 0, .mcnone
-    and  r4, r0, 3
-    ifeq r4, 0, .mcsetup
-    ldrb r3, [r0]
-    ifeq r3, r1, .mcfound
-    add  r0, r0, 1
-    sub  r2, r2, 1
-    jp   .mchead
-.mcsetup:
-    la   r5, 0x01010101
-    mul  r6, r1, r5             // c repeated in all four bytes
-    la   r7, 0x80808080
-.mcwords:
-    ifbl r2, 4, .mcloop         // fewer than four bytes left
-    ldr  r3, [r0]
-    xor  r3, r3, r6             // a byte equal to c is now zero
-    sub  r4, r3, r5
-    not  r3, r3
-    and  r4, r4, r3
-    and  r4, r4, r7             // a c in the word
-    ifne r4, 0, .mcloop         // find it a byte at a time
-    add  r0, r0, 4
-    sub  r2, r2, 4
-    jp   .mcwords
-.mcloop:
-    ifeq r2, 0, .mcnone
-    ldrb r3, [r0]
-    ifeq r3, r1, .mcfound
-    add  r0, r0, 1
-    sub  r2, r2, 1
-    jp   .mcloop
-.mcfound:
-    ret
+    ret                         // r0 points at it
 .mcnone:
     li   r0, 0
     ret
