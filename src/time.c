@@ -175,8 +175,11 @@ time_t mktime(struct tm* tm)
     int mon = tm->tm_mon;
     year += floor_div(mon, 12);
     mon -= floor_div(mon, 12) * 12;                      // 0..11
-    if (year > 5000000 || year < -5000000)
+    if (year > 5800000 || year < -5800000)               // an int's worth of days, and a little more: MAX_DAYS decides
+    {
+        errno = EOVERFLOW;
         return (time_t)-1;
+    }
 
     // Everything below a day is folded into a second-of-day and a number of whole days to carry.
     long long seconds = (long long)tm->tm_hour * 3600 + (long long)tm->tm_min * 60 + tm->tm_sec;
@@ -184,7 +187,10 @@ time_t mktime(struct tm* tm)
     long long second_of_day = seconds - carry * 86400;
     long long days = (long long)days_from_civil((int)year, mon + 1, 1) + ((long long)tm->tm_mday - 1) + carry;
     if (days > MAX_DAYS || days < -MAX_DAYS)
+    {
+        errno = EOVERFLOW;
         return (time_t)-1;
+    }
 
     time_t t = days * 86400 + second_of_day;
     gmtime_r(&t, tm);                                    // normalize the fields and fill wday/yday

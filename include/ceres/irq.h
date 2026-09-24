@@ -18,7 +18,7 @@
 
 typedef void (*irq_handler_t)(int irq);
 
-int  irq_attach(int irq, irq_handler_t handler);   // 16..23; -1 for any other number
+int  irq_attach(int irq, irq_handler_t handler);   // 16..24; -1 for any other number
 void irq_detach(int irq);
 irq_handler_t irq_handler(int irq);                // the attached handler, or NULL
 const char* irq_name(int irq);                     // "Timer", "Terminal", "AlignmentFault", ...
@@ -48,8 +48,9 @@ void         irq_enable_all(void);                 // sti
 // between the two (`sti` takes effect after the next instruction), so an interrupt that arrives just
 // before the halt wakes it rather than being handled first and leaving the halt to sleep on. A halt ends
 // on any request a device raises, taken or not (CeresASM 551cdbd), so a program that only wants to sleep
-// until something happens needs neither this module nor a handler: `__builtin_halt()` with interrupts
-// masked does it, and the library's waits (timer_wait_ms, getchar, key_wait, audio_wait) work that way.
+// until something happens needs neither this module nor a handler: `__builtin_halt()` does it (with the
+// interrupts masked first, if no handler should run). The library's waits (timer_wait_ms, getchar,
+// key_wait, audio_wait) halt the same way and leave the interrupt state as they found it.
 // irq_wait_flag() sleeps until *flag is set, by a handler: it reads the flag with interrupts masked,
 // so it cannot miss the interrupt that sets it.
 void irq_wait(void);

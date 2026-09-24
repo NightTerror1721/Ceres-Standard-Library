@@ -103,7 +103,13 @@ int main(void)
     struct tm distant = make(2200, 1, 1, 0, 0, 0);
     CHECK(mktime(&distant) == 7258118400LL);
     struct tm too_far = make(6000000, 1, 1, 0, 0, 0);
+    errno = 0;
     CHECK(mktime(&too_far) == (time_t)-1);                           // past what the calendar keeps
+    CHECK_EQ(errno, EOVERFLOW);
+    time_t edge = 170000000000000LL;                                 // about 5.39 million years on: gmtime's bound is mktime's
+    struct tm at_edge;
+    CHECK(gmtime_r(&edge, &at_edge) != 0);
+    CHECK(mktime(&at_edge) == edge);
 
     TEST_SECTION("gmtime, localtime and ctime");
     time_t when = 1234567890u;

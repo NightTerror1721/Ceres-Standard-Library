@@ -23,9 +23,12 @@ int main(void)
     CHECK_EQ(irq_attach(16, on_tick), 0);
     CHECK(irq_handler(16) == on_tick);
     CHECK_EQ(irq_attach(3, on_tick), -1);         // no stub is bound to a fault number
-    CHECK_EQ(irq_attach(24, on_tick), -1);         // one past the last device number, 23 (the peripheral ports)
+    CHECK_EQ(irq_attach(25, on_tick), -1);         // one past the last device number, 24 (the timer's alarm)
     CHECK_EQ(irq_attach(23, on_tick), 0);
     CHECK_STR(irq_name(23), "Periph");
+    CHECK_EQ(irq_attach(IRQ_ALARM, on_tick), 0);
+    CHECK_STR(irq_name(IRQ_ALARM), "Alarm");
+    irq_detach(IRQ_ALARM);
     irq_detach(23);
     CHECK_EQ(irq_attach(22, on_tick), 0);
     CHECK_STR(irq_name(22), "Audio");

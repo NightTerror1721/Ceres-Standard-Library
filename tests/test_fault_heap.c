@@ -8,6 +8,7 @@
 #include "ceres/config.h"
 
 #define BLOCK 4096u
+#define HEADERS 64u   // room for the two blocks' 8-byte headers and their 8-byte rounding, with some to spare
 
 static unsigned char* block;
 
@@ -37,9 +38,14 @@ int main(void)
     // The heap takes most of the ground it may - all but the reserve malloc keeps for the stack - and the
     // block watched is its top, the first thing a stack coming down would rewrite.
     unsigned int room = sys_stack_free();
-    if (room > CERES_HEAP_STACK_RESERVE + 2u * BLOCK + 64u)
-        malloc(room - CERES_HEAP_STACK_RESERVE - 2u * BLOCK - 64u);
+    if (room > CERES_HEAP_STACK_RESERVE + 2u * BLOCK + HEADERS)
+        malloc(room - CERES_HEAP_STACK_RESERVE - 2u * BLOCK - HEADERS);
     block = malloc(BLOCK);
+    if (block == 0)
+    {
+        putstr("no room for the watched block\n");
+        return 1;
+    }
     for (unsigned int i = 0; i < BLOCK; i++)
         block[i] = (unsigned char)(i * 7u);
 

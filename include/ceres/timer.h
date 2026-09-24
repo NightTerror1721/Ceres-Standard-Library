@@ -2,6 +2,7 @@
 
 #include "../ceres.h"
 #include "../stdint.h"
+#include "../interrupts.h"
 #include "ns64.h"
 
 // Timer device (0xFF010000). See CeresASM docs/07-IO-Devices-and-Ports.md.
@@ -46,7 +47,6 @@
 #define TIMER_HALT_CLOCK_REG (TIMER_BASE + 0x1C)   // R: ticks per second while the CPU is halted; 0 when not in real time
 #define TIMER_ALARM_LOW_REG  (TIMER_BASE + 0x20)   // RW: the low word of the alarm instant (nanoseconds, NANOS' clock)
 #define TIMER_ALARM_HIGH_REG (TIMER_BASE + 0x24)   // RW: the high word; writing it arms the alarm (0:0 disarms)
-#define IRQ_ALARM        24                    // what the alarm raises when its instant comes, once
 #define TIMER_TICKS_HIGH_REG (TIMER_BASE + 0x28)   // R: the high word of the ticks latched by the last low read
 #define TIMER_PERIODIC   0x80000000u
 #define TIMER_MAX_TICKS  0x7FFFFFFFu           // the longest period the command register can hold

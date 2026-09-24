@@ -43,8 +43,9 @@ struct tm* localtime_r(const time_t* t, struct tm* out);
 
 // Normalizes the fields (month 12 is January of the next year, day 0 the last of the previous month,
 // second -1 the last second of the minute before...), fills tm_wday and tm_yday, and returns the time.
-// (time_t)-1 when the date is more than about five million years away - which is also, as C has it,
-// 1969-12-31 23:59:59.
+// (time_t)-1 with errno EOVERFLOW when the date is more than about five million years away - the same
+// bound gmtime keeps, so what one gives the other takes back. (time_t)-1 is also, as C has it,
+// 1969-12-31 23:59:59: errno tells the two apart.
 time_t mktime(struct tm* tm);
 
 char*  asctime(const struct tm* tm);                 // "Thu Jan  1 00:00:00 1970\n", in a static buffer
@@ -77,6 +78,6 @@ int timespec_getres(struct timespec* ts, int base);   // the same, for the clock
 unsigned int sleep(unsigned int seconds);
 
 // POSIX nanosleep: sleeps for *req the same way, to the nanosecond the clock and the host's sleep allow. Nothing
-// interrupts it, so *rem (when not null) is set to 0. -1 with errno EINVAL for a negative time or a tv_nsec
-// outside 0..999999999.
+// interrupts it, so *rem (when not null) is set to 0. -1 with errno EINVAL for a null req, a negative time or
+// a tv_nsec outside 0..999999999.
 int nanosleep(const struct timespec* req, struct timespec* rem);

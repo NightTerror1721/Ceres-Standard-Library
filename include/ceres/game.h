@@ -18,7 +18,7 @@
 //
 // For a game that must run at a steady speed on a real clock there are two ways, and in both a frame lasts
 // `ms` milliseconds from its start - its own work counts, and a frame that runs late is not made up for:
-//   game_pace_ms(&g, 16)     sleeps: halts with the timer's alarm at the frame's end (timer_wait_until_ns), so
+//   game_pace_ms(&g, 16)     sleeps: halts with the timer's alarm at the frame's end (timer_wait_until_ns64), so
 //                            the host is not kept busy. Needs no handler and no module;
 //   game_pace_real(&g, 16)   spins on the nanosecond clock instead: the host is kept busy, and the frame ends
 //                            to the clock's step rather than the host's sleep's. Both are about 60 frames a second.

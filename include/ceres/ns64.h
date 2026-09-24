@@ -2,15 +2,14 @@
 
 // A 64-bit unsigned count, in two words: the machine is 32-bit, but `long long` is a real 8-byte type
 // and the arithmetic below runs on it. 32 bits of nanoseconds wrap every 4.29 seconds; 64 last 584
-// years. Meant for the clock - ceres/timer.h's timer_nanos() returns one - but it is plain arithmetic
-// and knows nothing of the machine.
+// years. It was meant for the clock, and is plain arithmetic that knows nothing of the machine.
 //
-//   struct ns64 start = timer_nanos();
+// DEPRECATED: a uint64_t does all of this with the ordinary operators, and the timer reads one directly:
+//
+//   uint64_t start = timer_nanos64();
 //   ...
-//   struct ns64 spent = ns64_sub(timer_nanos(), start);
-//   printf("%u us\n", ns64_to_us(spent));
+//   uint64_t spent = timer_nanos64() - start;
 //
-// DEPRECATED: a uint64_t does all of this with the ordinary operators, and the timer reads one directly
 // (timer_nanos64, timer_ticks64). The struct keeps its two-word shape (the same layout a `uint64_t` has: low
 // word first) so that code written before still builds and links; the timer functions that hand one out are
 // marked deprecated, and nothing in the library uses them any more.

@@ -15,6 +15,7 @@
 #include "stdckdint.h"
 #include "stdint.h"
 #include "stdnoreturn.h"
+#include "uchar.h"
 #include "stdio.h"
 #include "string.h"
 #include "strings.h"

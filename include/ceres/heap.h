@@ -7,8 +7,9 @@
 // It is a first-fit free list in address order: blocks are split when they are larger than needed
 // and merged with free neighbours on free(). Payloads are 8-byte aligned, the header is 8 bytes.
 //
-// The machine does not protect the heap from the stack: a stack that grows past the reserve
-// silently overwrites it.
+// The stack cannot run into the heap: each time the heap grows, malloc makes its new top the machine's
+// stack limit (sys_set_stack_limit, CeresASM fcf7d4c), and a stack that comes down to it is a
+// StackOverflow instead of rewritten allocations. The reserve is what malloc leaves the stack to grow into.
 
 void*  malloc(size_t n);               // NULL when n == 0 or nothing fits
 void*  calloc(size_t n, size_t size);  // zeroed; NULL on overflow of n * size

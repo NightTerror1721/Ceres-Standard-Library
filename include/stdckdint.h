@@ -17,7 +17,7 @@
 
 _Static_assert(sizeof(long) == 4 && sizeof(long long) == 8, "stdckdint.h: the bounds below assume a 32-bit long");
 
-#define __STDC_VERSION_STDCKDINT_H__ 202311L
+#define __STDC_VERSION_STDCKDINT_H__ 202311L      // the l suffix: Ceres-C 6a4ef5a
 
 // A value as a sign and a magnitude; `big` says the magnitude is 2^64 or more (only mag's low 64 bits
 // are kept, which is what the wrapped result needs).
