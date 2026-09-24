@@ -19,7 +19,7 @@
 
 _Static_assert(sizeof(unsigned long) == 4, "stdbit.h: the _ul functions below assume a 32-bit long");
 
-#define __STDC_VERSION_STDBIT_H__ 202311      // C writes 202311L; ceresc has no l suffix, and long is int here
+#define __STDC_VERSION_STDBIT_H__ 202311L
 #define __STDC_ENDIAN_LITTLE__ 1234
 #define __STDC_ENDIAN_BIG__    4321
 #define __STDC_ENDIAN_NATIVE__ __STDC_ENDIAN_LITTLE__     // the machine is little-endian

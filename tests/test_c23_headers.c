@@ -1,9 +1,11 @@
-// The C11/C23 headers: <stdnoreturn.h>, <stdalign.h>, <stdbit.h> and <stdckdint.h>. <stdnoreturn.h> comes
+// The C11/C23 headers: <stdnoreturn.h>, <stdalign.h>, <stdbit.h>, <stdckdint.h> and <uchar.h>. <stdnoreturn.h> comes
 // first on purpose: it makes `noreturn` a macro, and the library headers after it must not mind.
 #include <stdnoreturn.h>
 #include <stdalign.h>
 #include <stdbit.h>
 #include <stdckdint.h>
+#include <uchar.h>
+#include <stddef.h>
 #include "ceres/test.h"
 #include "stdlib.h"
 #include "limits.h"
@@ -13,7 +15,13 @@ noreturn void never_back(int status);
 void never_back(int status) { exit(status); }
 
 _Static_assert(__alignof_is_defined && __alignas_is_defined, "stdalign.h defines its macros");
-_Static_assert(__STDC_VERSION_STDBIT_H__ == 202311 && __STDC_VERSION_STDCKDINT_H__ == 202311, "the C23 versions");
+_Static_assert(__STDC_VERSION_STDBIT_H__ == 202311L && __STDC_VERSION_STDCKDINT_H__ == 202311L, "the C23 versions");
+
+// Each prefixed literal has the type its header names.
+_Static_assert(_Generic(L'a', wchar_t: 1, default: 0) && _Generic(u'a', char16_t: 1, default: 0) &&
+               _Generic(U'a', char32_t: 1, default: 0) && _Generic(u8'a', char8_t: 1, default: 0), "the character types");
+_Static_assert(sizeof(char16_t) == 2 && sizeof(char32_t) == 4 && WCHAR_MAX == 2147483647, "their sizes");
+_Static_assert(__STDC_UTF_16__ && __STDC_UTF_32__, "uchar.h says its encodings");
 
 // References a bit at a time, on a value of `w` bits.
 static unsigned int ref_leading_zeros(unsigned long long x, unsigned int w)
