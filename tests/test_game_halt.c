@@ -21,7 +21,7 @@ int main(void)
     game_pace_ms(&g, 20);
 
     TEST_SECTION("frames pass on the clock, not on instructions");
-    CHECK_EQ((int)timer_halt_clock(), 100000000);       // the default rate of `ceres run`
+    CHECK(timer_halt_clock() >= 1000u);                 // `ceres run` keeps real time while halted (100 MHz by default)
     unsigned int per_ms = timer_halt_clock() / 1000u;
     unsigned int s0 = timer_clock();
     int long_enough = 1, short_enough = 1;

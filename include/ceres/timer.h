@@ -5,10 +5,11 @@
 
 // Timer device (0xFF010000). See CeresASM docs/07-IO-Devices-and-Ports.md.
 //
-// TIME HERE IS COUNTED IN INSTRUCTIONS. The tick register counts instructions executed, not
-// milliseconds: the same program ticks the same number of times on every run, which is what makes
-// tests reproducible, but an optimized build does more work per tick and a game loop must measure
-// WORK, not time. The wall clock (timer_clock, seconds since 1970) is the one value in the whole
+// TIME HERE IS COUNTED IN INSTRUCTIONS. A tick is one instruction executed - or, while the CPU is halted,
+// one tick of the halted clock (below), an instruction's worth of time. A program that never halts ticks
+// the same number of times on every run, which is what makes tests reproducible; one that halts until an
+// outside event (a key, a real-time frame) ticks as long as it waited. An optimized build does more work
+// per tick and a game loop must measure WORK, not time. The wall clock (timer_clock, seconds since 1970) is the one value in the whole
 // machine that is not deterministic - and so is the millisecond register: real time, for the code that wants
 // to keep a rhythm on the wall clock.
 //
@@ -26,7 +27,7 @@
 // Nothing here needs an interrupt handler, so this module never binds a vector: the waits spin on
 // the tick register and the task table (timer_after/every) is driven by timer_poll().
 
-#define TIMER_TICKS_REG  (TIMER_BASE + 0x00)   // R: instructions executed (truncated to 32 bits)
+#define TIMER_TICKS_REG  (TIMER_BASE + 0x00)   // R: ticks: instructions executed, and halted-clock ticks (truncated to 32 bits)
 #define TIMER_CLOCK_REG  (TIMER_BASE + 0x04)   // R: wall-clock seconds since 1970
 #define TIMER_CMD_REG    (TIMER_BASE + 0x08)   // W: N instructions until it fires; bit 31 = periodic; 0 disarms
 #define TIMER_MILLIS_REG (TIMER_BASE + 0x0C)   // R: milliseconds since the machine started (wraps at 49 days)
@@ -37,7 +38,7 @@
 #define TIMER_PERIODIC   0x80000000u
 #define TIMER_MAX_TICKS  0x7FFFFFFFu           // the longest period the command register can hold
 
-unsigned int timer_ticks(void);                          // instructions executed so far (wraps at 2^32)
+unsigned int timer_ticks(void);                          // ticks so far: instructions, and halted time (wraps at 2^32)
 unsigned int timer_clock(void);                          // wall-clock seconds since 1970
 unsigned int timer_elapsed(unsigned int since);          // ticks since `since`, correct across the wrap
 unsigned int timer_millis(void);                         // wall-clock milliseconds since the machine started

@@ -100,16 +100,10 @@ int lrint(float x)
 }
 
 // The 64-bit forms. Every float of magnitude 2^23 and up is already a whole number, so the rounding
-// is lround's and lrint's; only the range differs. -2^63 is a float, and the only one at the bottom
-// edge; 2^63 is the first one past the top.
-long long llround(float x)
+// is lround's and lrint's; only the range differs, and that is ll_from_rounded's: -2^63 is a float, and
+// the only one at the bottom edge; 2^63 is the first one past the top.
+static long long ll_from_rounded(float r)
 {
-    if (isnan(x))
-    {
-        errno = EDOM;
-        return 0;
-    }
-    float r = round(x);
     if (r >= 9223372036854775808.0f)
     {
         errno = ERANGE;
@@ -123,6 +117,16 @@ long long llround(float x)
     return (long long)r;
 }
 
+long long llround(float x)
+{
+    if (isnan(x))
+    {
+        errno = EDOM;
+        return 0;
+    }
+    return ll_from_rounded(round(x));
+}
+
 long long llrint(float x)
 {
     if (isnan(x))
@@ -130,18 +134,7 @@ long long llrint(float x)
         errno = EDOM;
         return 0;
     }
-    float r = nearbyint(x);
-    if (r >= 9223372036854775808.0f)
-    {
-        errno = ERANGE;
-        return 9223372036854775807LL;
-    }
-    if (r < -9223372036854775808.0f)
-    {
-        errno = ERANGE;
-        return -9223372036854775807LL - 1;
-    }
-    return (long long)r;
+    return ll_from_rounded(nearbyint(x));
 }
 
 // ---- simple arithmetic ----

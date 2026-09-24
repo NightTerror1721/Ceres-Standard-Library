@@ -488,6 +488,9 @@ static void section_remainder_fdim_nan(void)
     CHECK_EQ64(llrint(3.5f), 4LL);
     CHECK_EQ64(llrint(1.0e18f), (long long)1.0e18f);
     CHECK_EQ64(llround(-9223372036854775808.0f), -9223372036854775807LL - 1);   // the bottom edge fits
+    CHECK_ERRNO(llround(-9223372036854775808.0f), 0);             // ... and is not out of range
+    CHECK_EQ64(llrint(-9223372036854775808.0f), -9223372036854775807LL - 1);
+    CHECK_ERRNO(llrint(-9223372036854775808.0f), 0);
     CHECK_ERRNO(llround(9223372036854775808.0f), ERANGE);         // 2^63 does not
     CHECK_EQ64(llround(9223372036854775808.0f), 9223372036854775807LL);
     CHECK_EQ64(llrint(-1.0e19f), -9223372036854775807LL - 1);
