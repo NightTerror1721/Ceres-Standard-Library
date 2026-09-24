@@ -31,17 +31,34 @@ void omap_init(struct omap* m, unsigned int key_size, unsigned int value_size, i
     m->cmp = cmp;
 }
 
+// Frees the nodes children first, each one detached from its parent before it goes, so the walk only ever
+// reads nodes that are still allocated. (An in-order walk calling rb_next after each free climbs through
+// parents it has already freed, and read whatever the allocator had written into them since.)
 void omap_free(struct omap* m)
 {
-    struct rb_node* it = rb_first(&m->tree);
-    while (it != NULL)
+    struct rb_node* node = m->tree.root;
+    while (node != NULL)
     {
-        struct rb_node* next = rb_next(it);          // computed before freeing `it` - see list.h's
-                                                        // LIST_FOR_EACH_SAFE for the same idea one
-                                                        // structure over; an ancestor `it` needs for
-                                                        // this very call is never freed before it
-        free(rb_entry(it, struct omap_node, rb));
-        it = next;
+        if (node->left != NULL)
+        {
+            node = node->left;
+            continue;
+        }
+        if (node->right != NULL)
+        {
+            node = node->right;
+            continue;
+        }
+        struct rb_node* parent = node->parent;
+        if (parent != NULL)
+        {
+            if (parent->left == node)
+                parent->left = NULL;
+            else
+                parent->right = NULL;
+        }
+        free(rb_entry(node, struct omap_node, rb));
+        node = parent;
     }
     rb_init(&m->tree, m->tree.cmp);
 }
