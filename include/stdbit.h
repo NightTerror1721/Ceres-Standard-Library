@@ -17,6 +17,8 @@
 // (This file is generated; the helpers take a width so that one body serves 8, 16 and 32 bits, and
 // the 64-bit ones work on the two halves.)
 
+_Static_assert(sizeof(unsigned long) == 4, "stdbit.h: the _ul functions below assume a 32-bit long");
+
 #define __STDC_VERSION_STDBIT_H__ 202311      // C writes 202311L; ceresc has no l suffix, and long is int here
 #define __STDC_ENDIAN_LITTLE__ 1234
 #define __STDC_ENDIAN_BIG__    4321
@@ -26,7 +28,7 @@
 static inline unsigned int __stdc_mask(unsigned int w) { return w >= 32u ? 0xFFFFFFFFu : (1u << w) - 1u; }
 static inline unsigned int __stdc_lz(unsigned int x, unsigned int w) { return __builtin_clz(x) - (32u - w); }   // clz(0) is 32
 static inline unsigned int __stdc_lo(unsigned int x, unsigned int w) { return __stdc_lz(~x & __stdc_mask(w), w); }
-static inline unsigned int __stdc_tz(unsigned int x, unsigned int w) { return __builtin_umin(__builtin_ctz(x), w); }
+static inline unsigned int __stdc_tz(unsigned int x, unsigned int w) { return x == 0u ? w : __builtin_ctz(x); }
 static inline unsigned int __stdc_to(unsigned int x, unsigned int w) { return __stdc_tz(~x & __stdc_mask(w), w); }
 static inline unsigned int __stdc_flz(unsigned int x, unsigned int w) { unsigned int n = __stdc_lo(x, w); return n == w ? 0u : n + 1u; }
 static inline unsigned int __stdc_flo(unsigned int x, unsigned int w) { return x == 0u ? 0u : __stdc_lz(x, w) + 1u; }

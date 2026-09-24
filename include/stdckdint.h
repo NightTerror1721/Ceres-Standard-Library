@@ -15,6 +15,8 @@
 // Exactness costs a few calls. For a hot loop on int alone, __builtin_add_overflow(a, b, &r) (and _sub,
 // _mul) is a handful of instructions - but it judges overflow in the operands' type, not in r's.
 
+_Static_assert(sizeof(long) == 4 && sizeof(long long) == 8, "stdckdint.h: the bounds below assume a 32-bit long");
+
 #define __STDC_VERSION_STDCKDINT_H__ 202311      // C writes 202311L; ceresc has no l suffix, and long is int here
 
 // A value as a sign and a magnitude; `big` says the magnitude is 2^64 or more (only mag's low 64 bits

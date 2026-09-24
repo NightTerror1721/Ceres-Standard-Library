@@ -47,8 +47,8 @@ static int same_values(const int* a, const int* b, int n)
     unsigned int s1 = 0, s2 = 0, q1 = 0, q2 = 0;
     for (int i = 0; i < n; i++)
     {
-        s1 += (unsigned int)a[i]; q1 += (unsigned int)(a[i] * a[i]);
-        s2 += (unsigned int)b[i]; q2 += (unsigned int)(b[i] * b[i]);
+        s1 += (unsigned int)a[i]; q1 += (unsigned int)a[i] * (unsigned int)a[i];
+        s2 += (unsigned int)b[i]; q2 += (unsigned int)b[i] * (unsigned int)b[i];
     }
     return s1 == s2 && q1 == q2;
 }

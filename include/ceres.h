@@ -44,6 +44,6 @@
 #define read_port(port, type) (*((volatile type*)(port)))
 #define write_port(port, type, value) (*((volatile type*)(port)) = (value))
 
-void sys_exit(void);      // halt the VM with status 0 (write 1 to the system-control device)
-void sys_exit_status(int status);   // halt it; the low eight bits of status are the exit status of `ceres run`
-void sys_reset(void);     // reset the VM (write 2 to the system-control device)
+void sys_exit(void) __attribute__((__noreturn__));      // halt the VM with status 0 (write 1 to the system-control device)
+void sys_exit_status(int status) __attribute__((__noreturn__));   // halt it; the low eight bits of status are the exit status of `ceres run`
+void sys_reset(void) __attribute__((__noreturn__));     // start the program again (write 2 to the system-control device)
