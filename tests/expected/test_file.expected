@@ -7,15 +7,10 @@
 -- no file system on the disk
 -- stdout and stderr
 to stdout 1
-to stderr 2
 puts to stdout
-puts to stderr
-abcd
+acd
 fwrite
 ab
 
-open: No such file or directory
-Success
-Success
 -- stdin
 ALL PASSED 143/143

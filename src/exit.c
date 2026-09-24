@@ -8,6 +8,7 @@
 #include "stdio.h"
 #include "ceres.h"
 #include "ceres/config.h"
+#include "ceres/terminal.h"
 
 #define ATEXIT_SLOTS CERES_ATEXIT_SLOTS
 static void (*atexit_table[ATEXIT_SLOTS])(void);
@@ -53,6 +54,6 @@ void __abort_now(void)
 
 void abort(void)
 {
-    putstr("abort\n");
+    term_write_error("abort\n", 6);                      // on the error stream
     __abort_now();
 }

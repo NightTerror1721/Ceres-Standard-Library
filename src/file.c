@@ -3,7 +3,8 @@
 // opens a file does not link the file system.
 //
 // stdout and stderr are UNBUFFERED - every byte goes straight to the terminal - so printf, fprintf(stdout)
-// and putchar can never come out of order, and nothing is lost if the program stops without flushing.
+// and putchar can never come out of order, and nothing is lost if the program stops without flushing. stderr
+// is the terminal's error stream (term_write_error): the host's stderr under `ceres run`.
 // stdin has no buffer either, only a one-character pushback for ungetc; a read waits for a byte, or for the
 // end of the input (the host closed stdin), which makes it return EOF and feof(stdin) true.
 #include "stdio.h"
@@ -166,7 +167,11 @@ int __file_putc(struct __file* f, int c)
         }
         return c & 0xFF;
     }
-    term_write_char(c);
+    char byte = (char)c;
+    if (f->kind == FILE_TERM_ERR)
+        term_write_error(&byte, 1);
+    else
+        term_write(&byte, 1);
     return c & 0xFF;
 }
 
@@ -184,6 +189,11 @@ int fputs(const char* s, FILE* f)
 {
     if (f == 0 || !f->writable)
         return EOF;
+    if (f->kind == FILE_TERM_ERR)
+    {
+        term_write_error(s, (int)strlen(s));
+        return 1;
+    }
     if (__file_is_terminal_out(f))
     {
         putstr(s);
@@ -221,7 +231,10 @@ size_t fwrite(const void* buf, size_t size, size_t count, FILE* f)
         for (size_t left = total; left > 0;)
         {
             int part = left > 0x40000000u ? 0x40000000 : (int)left;   // term_write takes an int
-            term_write((const char*)p, part);
+            if (f->kind == FILE_TERM_ERR)
+                term_write_error((const char*)p, part);
+            else
+                term_write((const char*)p, part);
             p += part;
             left -= (size_t)part;
         }

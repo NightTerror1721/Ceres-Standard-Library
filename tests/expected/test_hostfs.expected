@@ -1,0 +1,10 @@
+-- a directory is attached
+-- reading what the host put there
+level one
+-- writing, appending, renaming, removing
+-- listing
+  levels/
+  readme.txt
+  saves/
+-- what cannot be named
+ALL PASSED 30/30

@@ -1,0 +1,5 @@
+to stderr 2
+puts to stderr
+bopen: No such file or directory
+Success
+Success

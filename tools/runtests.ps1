@@ -22,7 +22,11 @@
     it is not there, and is new for every level).
 
     A test with a tests/expected/<name>.run file passes what it holds to `ceres run`: `--env NAME=value`, and
-    `-- a b` for main's arguments.
+    `-- a b` for main's arguments. With `--host-dir build/host` the directory is made afresh for every level,
+    with a copy of tests/data/host in it.
+
+    What a test writes to its error stream (stderr, perror, assert, abort) is compared with
+    tests/expected/<name>.stderr, and must be empty when there is none.
 
     A test with a tests/expected/<name>.flags file sets a compile-time option of the LIBRARY (-DCERES_...), so
     the library is compiled again with it, together with the test, as before. -FromSources does that for every
@@ -244,6 +248,12 @@ foreach ($name in $tests) {
         }
         $stdin = "tests/expected/$name.stdin"        # what the program reads from the terminal, if it reads
         if (-not (Test-Path $stdin)) { $stdin = '' }
+        if ((Test-Path $runFile) -and ((Get-Content $runFile -Raw) -match '--host-dir\s+build/host')) {
+            # a new, empty host directory for every level, as for the sticks
+            Remove-Item "build/host" -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force "build/host" | Out-Null
+            if (Test-Path "tests/data/host") { Copy-Item "tests/data/host/*" "build/host" -Recurse -Force }
+        }
         $code = Invoke-Tool $Ceresc $cmdLine $out $err $stdin
         $errText = Read-Text $err
         $statusFile = "tests/expected/$name.status"          # the exit status the test must end with (default 0)
@@ -267,6 +277,24 @@ foreach ($name in $tests) {
             [void]$failures.Add("$name -O$level (differs from -O$($LevelList[0]))")
             Write-Host "  FAIL  $label  prints something different from -O$($LevelList[0])" -ForegroundColor Red
             Show-Difference $reference $actual
+            continue
+        }
+
+        # What the program wrote to its error stream (the host's stderr: the same file as ceresc's own messages,
+        # whose "Wrote" lines are left out): tests/expected/<name>.stderr, or nothing at all.
+        # (the assembler's notes on an optimized unit - "  warning [x.casm:n] ... never used" - are the build's, too)
+        $errActual = ((Get-ProgramOutput $errText) -split "(?<=`n)" | Where-Object { $_ -notmatch '^(Wrote |  warning \[)' }) -join ''
+        $errExpectedPath = "tests/expected/$name.stderr"
+        $errExpected = Read-Text $errExpectedPath
+        $errExpected = if ($null -eq $errExpected) { '' } else { $errExpected -replace "`r`n", "`n" }
+        if ($Update -and $level -eq $LevelList[0] -and $errActual -ne '') {
+            [System.IO.File]::WriteAllBytes("$Root\$errExpectedPath", $Latin1.GetBytes($errActual))
+            $errExpected = $errActual
+        }
+        if (-not (Same $errExpected $errActual)) {
+            [void]$failures.Add("$name -O$level (stderr)")
+            Write-Host "  FAIL  $label  its error stream differs from $errExpectedPath" -ForegroundColor Red
+            Show-Difference $errExpected $errActual
             continue
         }
 

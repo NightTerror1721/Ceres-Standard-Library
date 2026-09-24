@@ -2,4 +2,3 @@
 -- NDEBUG
 -- a failed assertion
 ALL PASSED 2/2
-tests/test_assert.c:32: main: assertion 'touch(0) == 1' failed

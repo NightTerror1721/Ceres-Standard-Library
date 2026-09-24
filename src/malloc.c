@@ -24,6 +24,7 @@
 #include "string.h"
 #include "stdio.h"
 #include "errno.h"
+#include "ceres/terminal.h"
 
 struct blk
 {
@@ -271,13 +272,21 @@ static void trim(struct blk* b, unsigned int size)
 
 void __abort_now(void) __attribute__((__noreturn__));
 
+static void err(const char* s)
+{
+    term_write_error(s, (int)strlen(s));
+}
+
 static void report_and_abort(const char* what, void* p)
 {
-    putstr("heap: ");
-    putstr(what);
-    putstr(" at ");
-    puthex((unsigned int)p);
-    putstr("\n");
+    char hex[11] = "0x00000000";
+    for (int i = 0; i < 8; i++)
+        hex[9 - i] = "0123456789abcdef"[((unsigned int)p >> (4 * i)) & 15u];
+    err("heap: ");                            // on the error stream, like assert
+    err(what);
+    err(" at ");
+    err(hex);
+    err("\n");
     __abort_now();                            // SIGABRT's handler, if any, then status 134
 }
 

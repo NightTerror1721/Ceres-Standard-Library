@@ -14,9 +14,10 @@
 #define TERM_BLOCK_READ_CNT   (TERMINAL_BASE + 0x10)  // read: bytes the last block read moved
 #define TERM_DROPPED          (TERMINAL_BASE + 0x14)  // read: bytes dropped by a full ring
 #define TERM_MODE             (TERMINAL_BASE + 0x18)  // write: TERM_MODE_RAW to ask for keys as pressed; read: what was granted
+#define TERM_ERR              (TERMINAL_BASE + 0x1C)  // write: one byte -> the error stream (the host's stderr)
 #define TERM_BLOCK_ADDR       (TERMINAL_BASE + 0xF0)
 #define TERM_BLOCK_LEN        (TERMINAL_BASE + 0xF4)
-#define TERM_BLOCK_CMD        (TERMINAL_BASE + 0xF8)  // write: 1 = read, 2 = write
+#define TERM_BLOCK_CMD        (TERMINAL_BASE + 0xF8)  // write: 1 = read, 2 = write, 3 = write to the error stream
 
 #define TERM_STATUS_TYPE          unsigned int
 // The output register takes BYTES. Storing an unsigned int here writes the character plus three
@@ -68,4 +69,7 @@ int  term_set_raw(int on);
 void term_write_char(int ch);
 int  term_read_char(enum term_read_mode_t mode);                  // -1 = no input (non-blocking only)
 void term_write(const char* restrict buf, int len);
+// The same to the error stream: under `ceres run` the host's stderr, apart from what the program prints (CeresASM
+// 1c51ade). stderr, perror, assert and abort write here. An older machine drops it.
+void term_write_error(const char* restrict buf, int len);
 int  term_read(char* buf, int max, enum term_read_mode_t mode);   // bytes actually read

@@ -79,7 +79,8 @@ int  vsscanf(const char* s, const char* fmt, va_list ap) __attribute__((__format
 
 // ---- streams (src/file.c) ----
 // stdout and stderr are unbuffered, so nothing is lost when the program stops and printf/fprintf/putchar
-// always come out in order. stdin waits for each byte and has one character of pushback.
+// always come out in order. stderr is the terminal's error stream: the host's stderr under `ceres run`, kept
+// apart from what the program prints. stdin waits for each byte and has one character of pushback.
 FILE* fopen(const char* path, const char* mode);          // "r" "w" "a", with "+" and/or "b"; NULL with errno set (ENOENT, ENODEV, ENOSPC, EMFILE, EBUSY...)
 FILE* freopen(const char* path, const char* mode, FILE* f);   // closes f and opens path in its place; only for disk streams (ENOSYS for the others)
 FILE* fmemopen(void* buf, size_t size, const char* mode);     // a stream over `buf`; it never grows

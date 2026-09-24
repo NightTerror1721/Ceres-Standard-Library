@@ -14,7 +14,7 @@ int vfprintf(FILE* f, const char* fmt, va_list ap)
 {
     if (f == 0 || !f->writable)
         return -1;
-    if (__file_is_terminal_out(f))
+    if (f->kind == FILE_TERM_OUT)
         return vprintf(fmt, ap);                  // the terminal has its own chunked sink
     return __vformat_ext(put_to_file, f, fmt, ap);
 }

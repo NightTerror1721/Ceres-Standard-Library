@@ -1,4 +1,3 @@
 handler: signal 6
 after raise
-abort
 handler: signal 6

@@ -44,7 +44,7 @@ void         heap_dump(void);    // one line per block on the terminal
 
 // What malloc does when it finds a misuse: a double free, a free or realloc of a pointer it did not return,
 // and with CERES_HEAP_DEBUG an overrun past a block's end. `what` says which and `p` is the pointer. The
-// default prints "heap: <what> at <p>" and aborts (SIGABRT, status 134); a handler that returns makes the
+// default prints "heap: <what> at <p>" on the error stream and aborts (SIGABRT, status 134); a handler that returns makes the
 // call that found it do nothing. Returns the previous handler; NULL restores the default.
 typedef void (*heap_error_fn)(const char* what, void* p);
 heap_error_fn heap_set_error_handler(heap_error_fn f);
