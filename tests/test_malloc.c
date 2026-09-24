@@ -2,6 +2,7 @@
 // Addresses are never printed - they change with the optimization level.
 #include "ceres/test.h"
 #include "ceres/heap.h"
+#include "ceres/config.h"
 #include "string.h"
 
 static unsigned int seed = 12345;
@@ -92,6 +93,19 @@ int main(void)
     free(keep);
     CHECK_EQ((int)heap_used(), 0);
     CHECK_EQ(heap_check(), 0);
+
+    TEST_SECTION("reserve");
+    // A reserve larger than the stack pointer leaves the heap no room: it must not wrap round to a
+    // limit near 4 GiB and let the heap grow over the stack.
+    heap_set_stack_reserve(0xFFFFF000u);
+    CHECK(malloc(1024 * 1024) == 0);
+    struct heap_stats tight;
+    heap_stats(&tight);
+    CHECK_EQ((int)tight.limit, 0);
+    heap_set_stack_reserve(CERES_HEAP_STACK_RESERVE);   // back to the default
+    void* after = malloc(1024 * 1024);
+    CHECK(after != 0);
+    free(after);
 
     TEST_SECTION("realloc");
     char* r = (char*)malloc(4);

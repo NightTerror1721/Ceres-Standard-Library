@@ -27,7 +27,7 @@ struct heap_stats
     unsigned int largest_free;   // the biggest single request that fits without growing
 };
 
-void         heap_set_stack_reserve(unsigned int bytes);   // default 16 KiB
+void         heap_set_stack_reserve(unsigned int bytes);   // default 16 KiB; a reserve above sp leaves the heap no room
 unsigned int heap_used(void);
 unsigned int heap_free(void);
 int          heap_blocks(void);

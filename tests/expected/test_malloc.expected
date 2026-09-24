@@ -2,7 +2,8 @@
 -- edges
 -- calloc
 -- huge
+-- reserve
 -- realloc
 -- exhaustion
 -- stats
-ALL PASSED 59/59
+ALL PASSED 62/62

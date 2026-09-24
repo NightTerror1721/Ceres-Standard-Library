@@ -35,13 +35,22 @@ void heap_set_stack_reserve(unsigned int bytes)
     heap_reserve = bytes;
 }
 
+// The highest address the heap may reach: `heap_reserve` bytes below the stack pointer. A reserve
+// larger than sp (a machine started with little --memory, or a big heap_set_stack_reserve) leaves no
+// room at all, rather than wrapping round to an address near the top of the address space.
+static unsigned int heap_limit(void)
+{
+    unsigned int sp = sys_sp();
+    return sp > heap_reserve ? sp - heap_reserve : 0u;
+}
+
 static struct blk* grow(unsigned int payload)
 {
     if (heap_brk == 0)
         heap_brk = (char*)ALIGN8(sys_heap_start());
 
     unsigned int need = payload + sizeof(struct blk);
-    unsigned int limit = sys_sp() - heap_reserve;
+    unsigned int limit = heap_limit();
     unsigned int top = (unsigned int)heap_brk;
     if (top + need > limit || top + need < top)          // out of room, or the sum wrapped
         return 0;
@@ -174,7 +183,7 @@ void heap_stats(struct heap_stats* out)
 {
     out->start = ALIGN8(sys_heap_start());
     out->brk = heap_brk ? (unsigned int)heap_brk : out->start;
-    out->limit = sys_sp() - heap_reserve;
+    out->limit = heap_limit();
     out->used = 0;
     out->free_bytes = 0;
     out->blocks = 0;
