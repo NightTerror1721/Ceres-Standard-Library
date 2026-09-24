@@ -54,7 +54,7 @@ static void report_access(void)
 {
     unsigned int access = sys_fault_access();
     unsigned int kind = access & 0xFFu;
-    unsigned int size = (access >> 8) & 0xFFu;
+    unsigned int size = access >> 8;                 // bits 8-31: a block instruction's chunk runs to a page
     if (kind == 0u || access == 0xFFFFFFFFu)
         return;                                          // nothing recorded, or no such register
     putstr(kind == FAULT_WRITE ? "  store" : kind == FAULT_FETCH ? "  fetch" : "  load");

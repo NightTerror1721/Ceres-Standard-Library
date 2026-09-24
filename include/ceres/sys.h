@@ -67,5 +67,5 @@ void sys_print_layout(void);                   // a readable table on the termin
 typedef void (*fault_hook_t)(int irq, unsigned int pc, unsigned int flags);
 void sys_install_fault_handlers(fault_hook_t hook);   // hook may be NULL: the default report
 unsigned int sys_fault_address(void);   // the data address the last memory fault was reaching
-unsigned int sys_fault_access(void);    // FAULT_READ, FAULT_WRITE or FAULT_FETCH, with the size in bytes << 8
+unsigned int sys_fault_access(void);    // FAULT_READ, FAULT_WRITE or FAULT_FETCH in bits 0-7, with the size in bytes << 8 (bits 8-31)
 unsigned int sys_fault_frame(void);     // the faulting program's fp, for backtrace_from() (0 outside a fault)
