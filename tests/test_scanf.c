@@ -50,8 +50,13 @@ int main(void)
     CHECK_EQ(sc, 44);                                            // and 300 to 8
     CHECK_EQ(sscanf("65535 255", "%hu %hhu", &ush, &uc), 2);
     CHECK(ush == 65535 && uc == 255);
-    CHECK_EQ(sscanf("5 6 7", "%ld %lu %lld", &a, &u, &b), 3);
-    CHECK(a == 5 && u == 6u && b == 7);
+    long long wide = 0;                                          // %lld stores eight bytes: an int would be overrun
+    CHECK_EQ(sscanf("5 6 7", "%ld %lu %lld", &a, &u, &wide), 3);
+    CHECK(a == 5 && u == 6u && wide == 7);
+    CHECK_EQ(sscanf("-5000000000 12345678901", "%jd %qd", &wide, &wide), 2);   // j and q are 64 bits too
+    CHECK(wide == 12345678901LL);
+    CHECK_EQ(sscanf("-5000000000", "%jd", &wide), 1);
+    CHECK(wide == -5000000000LL);
     CHECK_EQ(sscanf("1 2", "%zd %td", &a, &b), 2);
     CHECK(a == 1 && b == 2);
 

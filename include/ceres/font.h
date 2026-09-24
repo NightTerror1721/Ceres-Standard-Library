@@ -17,6 +17,7 @@ extern const unsigned char font8x8[128][8];
 
 void font_char(struct gfx_surface* s, int x, int y, char c, unsigned int fg, int scale);
 void font_text(struct gfx_surface* s, int x, int y, const char* str, unsigned int fg, int scale);   // '\n' starts a new line at x
-void font_printf(struct gfx_surface* s, int x, int y, unsigned int fg, int scale, const char* fmt, ...);   // up to 255 characters
+void font_printf(struct gfx_surface* s, int x, int y, unsigned int fg, int scale, const char* fmt, ...)
+    __attribute__((format(printf, 6, 7)));   // up to 255 characters
 int  font_text_width(const char* str, int scale);          // pixels: the longest line
 int  font_text_height(const char* str, int scale);         // pixels: every line

@@ -64,6 +64,8 @@ int main(void)
     FMT("0|0||", "%x|%#x|%.0d|", 0, 0, 0);            // "%#x" of 0 has no prefix; "%.0d" of 0 prints nothing
     FMT("5|", "%.0d|%.0d", 5, 0);
     FMT("44 4464 5 7", "%hhd %hd %ld %zu", 300, 70000, 5, 7);
+    FMT("-5000000000 12345678901", "%jd %qd", (intmax_t)-5000000000LL, 12345678901LL);   // j and q are 64 bits
+    FMT("-5000000000|18446744073709551615", "%" PRIdMAX "|%" PRIuMAX, (intmax_t)-5000000000LL, (uintmax_t)-1);
     FMT("101 00000101", "%b %08b", 5, 5);
     FMT("   42|42   ", "%*d|%-*d", 5, 42, 5, 42);
     FMT("42   |", "%*d|", -5, 42);                    // a negative * width means left-justify
@@ -83,9 +85,13 @@ int main(void)
     FMT("100%", "%d%%", 100);
     FMT("(null)", "%s", (char*)0);
     FMT("||   ab", "%s|%.0s|%5.2s", "", "abc", "abcdef");
-    FMT("0xff|0x0|  0x10", "%p|%p|%6p", 255, 0, 16);
-    FMT("%y", "%y");                                   // an unknown conversion is printed back
-    FMT("abc", "abc%");                                // a lone % at the end prints nothing
+    FMT("0xff|0x0|  0x10", "%p|%p|%6p", (void*)255, (void*)0, (void*)16);
+    // Formats ceresc would warn about when written as literals (W3005): passed through a variable,
+    // they show what the engine does with them at run time.
+    const char* odd = "%y";
+    FMT("%y", odd);                                    // an unknown conversion is printed back
+    odd = "abc%";
+    FMT("abc", odd);                                   // a lone % at the end prints nothing
 
     TEST_SECTION("floats: %f");
     FMT("3.141590 -2.500000 0.000000", "%f %f %f", 3.14159f, -2.5f, 0.0f);

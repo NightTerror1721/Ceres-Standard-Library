@@ -408,13 +408,14 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
             if (fmt[i] == '*') { prec = va_arg(ap, int); i++; }
             else while (fmt[i] >= '0' && fmt[i] <= '9') { prec = prec * 10 + (fmt[i] - '0'); i++; }
         }
-        int lenmod = 0;                                // 'H' = hh, 'h', 'W' = ll (64-bit), 0 = 32 bits
+        int lenmod = 0;                                // 'H' = hh, 'h', 'W' = ll/j/q (64-bit), 0 = 32 bits
         for (;;)
         {
             c = fmt[i];
             if (c == 'h') { lenmod = (lenmod == 'h') ? 'H' : 'h'; }
             else if (c == 'l') { lenmod = (lenmod == 'l') ? 'W' : 'l'; }
-            else if (c == 'z' || c == 't' || c == 'j' || c == 'L' || c == 'q') { }
+            else if (c == 'j' || c == 'q') { lenmod = 'W'; }   // intmax_t is long long
+            else if (c == 'z' || c == 't' || c == 'L') { }
             else break;
             i++;
         }

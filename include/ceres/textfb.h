@@ -83,7 +83,7 @@ void fb_put(int x, int y, char c);
 char fb_get(int x, int y);                 // ' ' outside the grid
 
 void fb_text(int x, int y, const char* s);            // a '\n' moves to the next row, back at column x
-void fb_printf(int x, int y, const char* fmt, ...);   // formatted text, at most 255 characters
+void fb_printf(int x, int y, const char* fmt, ...) __attribute__((format(printf, 3, 4)));   // formatted text, at most 255 characters
 void fb_hline(int x, int y, int len, char c);
 void fb_vline(int x, int y, int len, char c);
 void fb_rect(int x, int y, int w, int h, char c);     // the outline

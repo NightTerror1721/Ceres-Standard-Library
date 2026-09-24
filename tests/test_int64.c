@@ -94,8 +94,10 @@ int main(void)
     CHECK_EQ(n, 1);
     CHECK(u == 0xDEADBEEFULL);
     int scratch = 0;
-    n = sscanf("7 4294967298 9", "%d %lld %d", &scratch, &s, &u); // `n` stays the return value alone
+    int last = 0;
+    n = sscanf("7 4294967298 9", "%d %lld %d", &scratch, &s, &last); // `n` stays the return value alone
     CHECK_EQ(n, 3);
+    CHECK(scratch == 7 && s == 4294967298LL && last == 9);
 
     TEST_SECTION("strtoll, strtoull and atoll");
     char* end;

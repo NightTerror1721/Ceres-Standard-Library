@@ -271,7 +271,8 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
             char m = fmt[i];
             if (m == 'h') narrow = (narrow == 'h') ? 'H' : 'h';
             else if (m == 'l') narrow = (narrow == 'l') ? 'W' : 'l';
-            else if (m == 'z' || m == 't' || m == 'j' || m == 'L' || m == 'q') { }
+            else if (m == 'j' || m == 'q') narrow = 'W';       // intmax_t is long long
+            else if (m == 'z' || m == 't' || m == 'L') { }
             else break;
             i++;
         }

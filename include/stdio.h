@@ -40,7 +40,7 @@ int  puts(const char* s);               // putstr + newline
 
 // Declared here as well as in stdlib.h: a translation unit that declares exit() ends main by calling it, so
 // that returning n from main is exit(n) - the atexit handlers run and open files are flushed.
-void exit(int status);
+void exit(int status) __attribute__((noreturn));
 
 // ---- numbers, without the format engine (small and fast) ----
 int  putint(int v);                     // decimal, with sign
@@ -51,28 +51,31 @@ int  putfloat(float f, int decimals);   // like "%.*f": sign, integer, '.', `dec
 
 // ---- formatted output (src/format.c) ----
 // %d %i %u %o %x %X %b %c %s %p %n %f %F %e %E %g %G %%, with flags "- + space # 0", width and
-// precision (a number or *), and the length modifiers hh h l ll z t j (all of them 32 bits at most).
-// Returns the number of characters that were (or, for snprintf, would have been) produced.
-int  printf(const char* fmt, ...);
-int  vprintf(const char* fmt, va_list ap);
-int  fprintf(FILE* f, const char* fmt, ...);
-int  vfprintf(FILE* f, const char* fmt, va_list ap);
-int  sprintf(char* buf, const char* fmt, ...);
-int  vsprintf(char* buf, const char* fmt, va_list ap);
-int  snprintf(char* buf, size_t n, const char* fmt, ...);   // always NUL-terminates when n > 0
-int  vsnprintf(char* buf, size_t n, const char* fmt, va_list ap);
+// precision (a number or *), and the length modifiers hh h l ll z t j q (ll, j and q take a 64-bit
+// argument; l, z and t are 32 bits here). Returns the number of characters that were (or, for
+// snprintf, would have been) produced. The format attribute has ceresc check a literal format
+// against the arguments (W3005, W3006): on this machine a %lld given an int, or a %d given a
+// long long, shifts every argument after it.
+int  printf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+int  vprintf(const char* fmt, va_list ap) __attribute__((format(printf, 1, 0)));
+int  fprintf(FILE* f, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
+int  vfprintf(FILE* f, const char* fmt, va_list ap) __attribute__((format(printf, 2, 0)));
+int  sprintf(char* buf, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
+int  vsprintf(char* buf, const char* fmt, va_list ap) __attribute__((format(printf, 2, 0)));
+int  snprintf(char* buf, size_t n, const char* fmt, ...) __attribute__((format(printf, 3, 4)));   // always NUL-terminates when n > 0
+int  vsnprintf(char* buf, size_t n, const char* fmt, va_list ap) __attribute__((format(printf, 3, 0)));
 
 // ---- formatted input (src/scanf.c) ----
 // %d %i %u %x %X %o %c %s %f %e %g %[set] %p %n %%, with a width, `*` to skip a conversion and the length
-// modifiers hh h l ll z (%lf is a float: double IS float here). Returns how many conversions stored a
+// modifiers hh h l ll z t j q (%lf is a float: double IS float here). Returns how many conversions stored a
 // value, or EOF when the input ended before the first one. Whitespace in the format matches any run of
 // whitespace; any other character must match exactly, and the first mismatch stops the scan.
-int  scanf(const char* fmt, ...);
-int  vscanf(const char* fmt, va_list ap);
-int  fscanf(FILE* f, const char* fmt, ...);
-int  vfscanf(FILE* f, const char* fmt, va_list ap);
-int  sscanf(const char* s, const char* fmt, ...);
-int  vsscanf(const char* s, const char* fmt, va_list ap);
+int  scanf(const char* fmt, ...) __attribute__((format(scanf, 1, 2)));
+int  vscanf(const char* fmt, va_list ap) __attribute__((format(scanf, 1, 0)));
+int  fscanf(FILE* f, const char* fmt, ...) __attribute__((format(scanf, 2, 3)));
+int  vfscanf(FILE* f, const char* fmt, va_list ap) __attribute__((format(scanf, 2, 0)));
+int  sscanf(const char* s, const char* fmt, ...) __attribute__((format(scanf, 2, 3)));
+int  vsscanf(const char* s, const char* fmt, va_list ap) __attribute__((format(scanf, 2, 0)));
 
 // ---- streams (src/file.c) ----
 // stdout and stderr are unbuffered, so nothing is lost when the program stops and printf/fprintf/putchar

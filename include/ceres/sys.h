@@ -11,13 +11,15 @@
 #define SYS_CTRL_FEATURES     (SYS_CTRL_BASE + 0x08)   // read/write: switches for behaviour that is off by default
 #define SYS_FEATURE_DIV_FAULT 0x01                     // a division by zero raises interrupt 4 instead of only setting Trap
 
-void sys_exit(void);                 // shut the VM down with status 0
-void sys_exit_status(int status);    // shut it down; the low eight bits of `status` become the exit status of `ceres run`
-void sys_reset(void);                // reset the VM (writes 2)
+// The three that stop the machine never return. On a machine without the system-control device they
+// halt with interrupts masked instead, which is as stopped as a program can make itself.
+void sys_exit(void) __attribute__((noreturn));                // shut the VM down with status 0
+void sys_exit_status(int status) __attribute__((noreturn));   // shut it down; the low eight bits of `status` become the exit status of `ceres run`
+void sys_reset(void) __attribute__((noreturn));               // start the program again from its image (writes 2)
 unsigned int sys_memory_size(void);  // how many bytes of RAM the machine has
 unsigned int sys_features(void);     // the features register (0 unless something switched a feature on)
 void sys_set_features(unsigned int features);
-void sys_panic(const char* msg);     // print "panic: <msg>" on the terminal and shut down
+void sys_panic(const char* msg) __attribute__((noreturn));   // print "panic: <msg>" on the terminal and shut down
 
 unsigned int sys_sp(void);           // the stack pointer, as seen by this call (asm/sys.casm) ...
 #define sys_sp() __builtin_stack_pointer()   // ... read in place, with no call

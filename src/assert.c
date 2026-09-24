@@ -2,7 +2,7 @@
 #include "stdio.h"
 #include "ceres.h"
 
-void __abort_now(void);                                  // exit.c: the SIGABRT handler, if any, then status 134
+void __abort_now(void) __attribute__((noreturn));        // exit.c: the SIGABRT handler, if any, then status 134
 
 // Called by assert() when its expression is 0. It reports with putstr/putint rather than printf:
 // a failing assert may be a symptom of a broken heap or format engine, and the report must not

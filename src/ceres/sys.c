@@ -6,14 +6,26 @@
 // The system-control device takes a command: 1 shuts the machine down, 2 resets it. A shutdown written as a word
 // (or a halfword) carries the exit status in the second byte; written as a byte it is status 0.
 
+// After a command the machine stops (or starts over) before the next instruction. Only a machine with
+// no system-control device gets past the store, and there the halt, with interrupts masked, is the stop.
+static void stop_here(void) __attribute__((noreturn));
+static void stop_here(void)
+{
+    __builtin_cli();
+    for (;;)
+        __builtin_halt();
+}
+
 void sys_exit(void)
 {
     mmio_w8(SYS_CTRL_CMD, 1);
+    stop_here();
 }
 
 void sys_exit_status(int status)
 {
     mmio_w32(SYS_CTRL_CMD, ((unsigned int)status & 0xFFu) << 8 | 1u);
+    stop_here();
 }
 
 unsigned int sys_memory_size(void)
@@ -34,6 +46,7 @@ void sys_set_features(unsigned int features)
 void sys_reset(void)
 {
     mmio_w8(SYS_CTRL_BASE, 2);
+    stop_here();
 }
 
 void sys_panic(const char* msg)

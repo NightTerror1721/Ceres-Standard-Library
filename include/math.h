@@ -54,7 +54,7 @@ float fmod(float x, float y);              // NaN with errno = EDOM when y == 0 
 extern float sqrt(float x);                // sqrt of a negative number is NaN (errno is not set)
 extern float floor(float x);
 extern float ceil(float x);
-float round(float x);                      // to the nearest integer, halfway cases away from zero (src/math.c)
+float round(float x) __attribute__((const));   // to the nearest integer, halfway cases away from zero (src/math.c)
 extern float trunc(float x);
 extern float fmin(float x, float y);
 extern float fmax(float x, float y);
@@ -88,12 +88,12 @@ float acosh(float x);
 float atanh(float x);
 float expm1(float x);                      // exp(x) - 1, exact for tiny x
 float log1p(float x);                      // log(1 + x), exact for tiny x
-float cbrt(float x);
+float cbrt(float x) __attribute__((const));
 float hypot(float x, float y);             // sqrt(x*x + y*y) without overflow
 float ldexp(float x, int e);               // x * 2^e
 float frexp(float x, int* e);              // x = m * 2^e with 0.5 <= |m| < 1
 float modf(float x, float* ip);            // splits into integer part (*ip) and fraction, both signed like x
-float fdim(float x, float y);              // x - y when positive, else 0
+float fdim(float x, float y) __attribute__((const));   // x - y when positive, else 0
 float remainder(float x, float y);         // x - n*y with n the nearest integer (halves to even)
 float nearbyint(float x);                  // to the nearest integer, halves to even: the `fround` instruction
 float rint(float x);                       // same as nearbyint here (no inexact exception to raise)
@@ -101,7 +101,7 @@ int   lround(float x);                     // to the nearest int, halves away fr
 int   lrint(float x);                      // to the nearest int, halves to even
 long long llround(float x);                // as lround, to the nearest 64-bit integer
 long long llrint(float x);                 // as lrint, to the nearest 64-bit integer
-float nan(const char* tag);                // a quiet NaN (the tag is ignored)
+float nan(const char* tag) __attribute__((const));   // a quiet NaN (the tag is ignored)
 
 #define scalbn    ldexp
 
