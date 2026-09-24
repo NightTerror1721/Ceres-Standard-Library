@@ -26,10 +26,8 @@
 
 // Infinity and NaN cannot be written as 1.0f/0.0f: a float division by zero does not fail, it
 // raises the Trap flag and leaves the destination untouched. Build them from their bit patterns.
-union __float_bits { float f; unsigned int u; };
-static inline float __fbits(unsigned int b) { union __float_bits x; x.u = b; return x.f; }
-#define INFINITY   (__fbits(0x7F800000u))
-#define NAN        (__fbits(0x7FC00000u))
+#define INFINITY   (__builtin_float_from_bits(0x7F800000u))
+#define NAN        (__builtin_float_from_bits(0x7FC00000u))
 #define HUGE_VAL   INFINITY
 #define HUGE_VALF  INFINITY
 
@@ -106,6 +104,45 @@ long long llrint(float x);                 // as lrint, to the nearest 64-bit in
 float nan(const char* tag);                // a quiet NaN (the tag is ignored)
 
 #define scalbn    ldexp
+
+// ---- the one-instruction ones, inline ----
+// Every function above that is one machine instruction is also a macro on the compiler's builtin
+// for it, so a call costs that instruction instead of a call, a return and the registers saved
+// around them. The argument is converted to float first, as the prototype would have done (a
+// builtin converts nothing). The functions stay in asm/math_ops.casm for whoever takes their
+// address or writes the name in parentheses: `(sqrt)(x)` is still a call.
+#define fabs(x)            __builtin_fabs((float)(x))
+#define sqrt(x)            __builtin_sqrt((float)(x))
+#define floor(x)           __builtin_floor((float)(x))
+#define ceil(x)            __builtin_ceil((float)(x))
+#define trunc(x)           __builtin_trunc((float)(x))
+#define rint(x)            __builtin_rint((float)(x))
+#define nearbyint(x)       __builtin_rint((float)(x))
+#define fmin(x, y)         __builtin_fmin((float)(x), (float)(y))
+#define fmax(x, y)         __builtin_fmax((float)(x), (float)(y))
+#define copysign(x, y)     __builtin_copysign((float)(x), (float)(y))
+#define rcp(x)             __builtin_frcp((float)(x))
+#define rsqrt(x)           __builtin_frsqrt((float)(x))
+#define float_bits(x)      __builtin_float_bits((float)(x))
+#define float_from_bits(b) __builtin_float_from_bits((unsigned int)(b))
+// fma is not among them: the compiler has no builtin for the accumulating `fma` instruction.
+
+// Classification on `fclass`, which sets exactly one bit: 0 -inf, 1 -normal, 2 -subnormal, 3 -0,
+// 4 +0, 5 +subnormal, 6 +normal, 7 +inf, 8 NaN. Each evaluates its argument once.
+#define isnan(x)      ((__builtin_fclass((float)(x)) & 256) != 0)
+#define isinf(x)      ((__builtin_fclass((float)(x)) & 129) != 0)
+#define isfinite(x)   ((__builtin_fclass((float)(x)) & 385) == 0)
+#define isnormal(x)   ((__builtin_fclass((float)(x)) & 66) != 0)
+#define signbit(x)    ((__builtin_fclass((float)(x)) & 15) != 0)
+static inline int __fpclassify_bits(int c)
+{
+    if ((c & 129) != 0) return FP_INFINITE;
+    if ((c & 256) != 0) return FP_NAN;
+    if ((c & 24) != 0)  return FP_ZERO;
+    if ((c & 36) != 0)  return FP_SUBNORMAL;
+    return FP_NORMAL;
+}
+#define fpclassify(x) __fpclassify_bits(__builtin_fclass((float)(x)))
 
 // ---- the f-suffixed names ----
 #define sinf sin

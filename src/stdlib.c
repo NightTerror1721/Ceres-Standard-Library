@@ -8,6 +8,9 @@
 
 // ---- arithmetic ----
 
+// The functions behind the macros in stdlib.h, for a call through a pointer.
+#undef abs
+#undef labs
 int abs(int v)   { return v < 0 ? (int)(0u - (unsigned int)v) : v; }   // wraps for INT_MIN, on purpose
 int labs(int v)  { return abs(v); }
 long long llabs(long long v) { return v < 0 ? (long long)(0ULL - (unsigned long long)v) : v; }   // wraps for LLONG_MIN

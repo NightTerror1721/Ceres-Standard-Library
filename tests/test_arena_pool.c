@@ -212,6 +212,16 @@ static void atomics(void)
     irq_restore(a);
     CHECK_EQ(irq_save() == a, 1);
     irq_restore(a);
+
+    TEST_SECTION("critical sections with interrupts on");
+    irq_enable_all();                                          // no device is armed: nothing arrives
+    unsigned int on = irq_save();
+    CHECK_EQ((int)on, 16);                                     // they were on ...
+    CHECK_EQ((int)irq_save(), 0);                              // ... and now they are masked
+    irq_restore(on);
+    CHECK_EQ((int)(irq_save)(), 16);                           // the CASM function sees the same
+    CHECK_EQ(atomic_add(&n, 1), 1);
+    CHECK_EQ((int)irq_save(), 0);                              // (irq_save)() masked them again
 }
 
 int main(void)

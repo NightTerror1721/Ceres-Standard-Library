@@ -4,7 +4,7 @@
 
 // Read-modify-write that an interrupt cannot cut in half. There is one core, so the only thing that can
 // interleave with the code is an interrupt handler: masking user interrupts around the access is
-// enough. (irq_save/irq_restore are in asm/sys.casm; this needs nothing from the optional irq module.)
+// enough. (irq_save/irq_restore are inline, in irq.h; this needs nothing from the optional irq module.)
 
 typedef volatile int atomic_int;
 

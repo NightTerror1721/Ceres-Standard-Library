@@ -3,4 +3,5 @@
 -- rotations
 -- wide multiply
 -- helpers
-ALL PASSED 37/37
+-- the macros and the functions agree
+ALL PASSED 40/40

@@ -47,6 +47,8 @@ void  srand(unsigned int seed);
 // ---- arithmetic ----
 int   abs(int v);              // abs(INT_MIN) is INT_MIN: the negation wraps
 int   labs(int v);
+#define abs(v)   __builtin_abs((int)(v))   // one instruction; |INT_MIN| is INT_MIN there too
+#define labs(v)  __builtin_abs((int)(v))
 long long llabs(long long v);
 div_t div(int num, int den);   // quotient truncated toward zero; a zero divisor sets the Trap flag
 div_t ldiv(int num, int den);

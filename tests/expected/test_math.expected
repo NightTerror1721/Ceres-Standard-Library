@@ -3,6 +3,7 @@
 -- tables: hyperbolic and roots
 -- classification
 -- the one-instruction functions
+-- builtin macros and the functions agree
 -- trigonometric: identities
 -- inverse trigonometric: quadrants and specials
 -- domain and range errors
@@ -14,4 +15,4 @@
 -- llround and llrint: 64 bits
 -- remainder, fdim, nan
 -- aliases
-ALL PASSED 2129/2129
+ALL PASSED 2137/2137

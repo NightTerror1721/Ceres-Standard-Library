@@ -75,6 +75,11 @@ static int data[1200];
 int main(void)
 {
     TEST_SECTION("abs and div");
+    int (*abs_fn)(int) = abs;
+    CHECK_EQ(abs(-7), 7);
+    CHECK_EQ(abs_fn(-7), 7);
+    CHECK_EQ(abs(-2147483647 - 1), abs_fn(-2147483647 - 1));   // the builtin wraps like the function
+    CHECK_EQ(labs(-9), 9);
     CHECK_EQ(abs(5), 5);
     CHECK_EQ(abs(-5), 5);
     CHECK_EQ(abs(0), 0);

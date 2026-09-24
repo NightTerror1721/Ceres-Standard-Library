@@ -138,6 +138,52 @@ static void section_the_one_instruction_functions(void)
     CHECK(M_PI == 3.14159265f && M_E == 2.71828183f && M_SQRT2 == 1.41421356f);
 }
 
+// The macros and the functions behind them (a call through a pointer, or a parenthesized name,
+// reaches the CASM function) must agree on every kind of float, and an int argument is converted
+// the way the prototype would.
+static void section_macros_and_functions_agree(void)
+{
+    TEST_SECTION("builtin macros and the functions agree");
+    float (*unary[8])(float) = { fabs, sqrt, floor, ceil, trunc, rint, nearbyint, rcp };
+    float (*binary[3])(float, float) = { fmin, fmax, copysign };
+    int (*classify[6])(float) = { isnan, isinf, isfinite, isnormal, signbit, fpclassify };
+    float values[10];
+    values[0] = 2.5f; values[1] = -2.5f; values[2] = 0.0f; values[3] = -0.0f; values[4] = 1e-40f;
+    values[5] = INFINITY; values[6] = -INFINITY; values[7] = NAN; values[8] = 3.5f; values[9] = -1e30f;
+    int same = 1;
+    for (int i = 0; i < 10; i++)
+    {
+        float v = values[i];
+        float m[8];
+        m[0] = fabs(v); m[1] = sqrt(v); m[2] = floor(v); m[3] = ceil(v);
+        m[4] = trunc(v); m[5] = rint(v); m[6] = nearbyint(v); m[7] = rcp(v);
+        for (int k = 0; k < 8; k++)
+            if (float_bits(m[k]) != float_bits(unary[k](v)))
+                same = 0;
+        int c[6];
+        c[0] = isnan(v); c[1] = isinf(v); c[2] = isfinite(v); c[3] = isnormal(v); c[4] = signbit(v); c[5] = fpclassify(v);
+        for (int k = 0; k < 6; k++)
+            if ((c[k] != 0) != (classify[k](v) != 0) || (k == 5 && c[k] != classify[k](v)))
+                same = 0;
+        for (int j = 0; j < 10; j++)
+        {
+            float w = values[j];
+            if (float_bits(fmin(v, w)) != float_bits(binary[0](v, w)) ||
+                float_bits(fmax(v, w)) != float_bits(binary[1](v, w)) ||
+                float_bits(copysign(v, w)) != float_bits(binary[2](v, w)))
+                same = 0;
+        }
+    }
+    CHECK(same);
+    CHECK(float_bits(rsqrt(4.0f)) == float_bits((rsqrt)(4.0f)));
+    CHECK((sqrt)(9.0f) == 3.0f && (fabs)(-1.0f) == 1.0f && (isnan)(NAN) != 0);
+    CHECK((float_bits)(1.0f) == 0x3F800000u && (float_from_bits)(0x3F800000u) == 1.0f);
+    CHECK(sqrt(16) == 4.0f && fabs(-3) == 3.0f && floor(7) == 7.0f);   // int arguments, converted
+    CHECK(fmin(2, 1.5f) == 1.5f && copysign(2, -1) == -2.0f);
+    CHECK(isfinite(3) && !isnan(0) && fpclassify(0) == FP_ZERO);
+    CHECK(float_from_bits(0x3F800000) == 1.0f);                     // an int bit pattern
+}
+
 static void section_trigonometric_identities(void)
 {
     TEST_SECTION("trigonometric: identities");
@@ -563,6 +609,7 @@ int main(void)
 #ifndef MATH_REPORT
     section_classification();
     section_the_one_instruction_functions();
+    section_macros_and_functions_agree();
     section_trigonometric_identities();
     section_inverse_trigonometric_quadrants_and_specials();
     section_domain_and_range_errors();

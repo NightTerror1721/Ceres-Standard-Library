@@ -42,5 +42,27 @@ int main(void)
     unsigned int flags = 0;
     BIT_SET(flags, 5); CHECK_EQ((int)BIT_TEST(flags, 5), 1); CHECK_EQ((int)flags, 32);
     BIT_CLR(flags, 5); CHECK_EQ((int)flags, 0);
+
+    TEST_SECTION("the macros and the functions agree");
+    unsigned int (*count[3])(unsigned int) = { bit_clz, bit_ctz, bit_popcount };
+    unsigned int samples[6];
+    samples[0] = 0; samples[1] = 1; samples[2] = 0x80000000u; samples[3] = 0x00F0F000u; samples[4] = 0xFFFFFFFFu; samples[5] = 12345u;
+    int same = 1;
+    for (int i = 0; i < 6; i++)
+    {
+        unsigned int x = samples[i];
+        if (bit_clz(x) != count[0](x) || bit_ctz(x) != count[1](x) || bit_popcount(x) != count[2](x))
+            same = 0;
+        if (bit_bswap(x) != (bit_bswap)(x) || umulhi(x, 0x9E3779B9u) != (umulhi)(x, 0x9E3779B9u))
+            same = 0;
+        if (imulhi((int)x, -7) != (imulhi)((int)x, -7))
+            same = 0;
+        for (int n = 0; n < 40; n += 7)
+            if (bit_rotl(x, n) != (bit_rotl)(x, n) || bit_rotr(x, n) != (bit_rotr)(x, n))
+                same = 0;
+    }
+    CHECK(same);
+    CHECK_EQ((int)bit_popcount(-1), 32);                  // an int argument, converted
+    CHECK_EQ((int)bit_clz((unsigned char)1), 31);
     return test_summary();
 }

@@ -12,4 +12,5 @@
 -- a churn of allocations
 -- atomic operations
 -- critical sections
-ALL PASSED 109/109
+-- critical sections with interrupts on
+ALL PASSED 114/114

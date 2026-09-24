@@ -23,10 +23,25 @@ void irq_detach(int irq);
 irq_handler_t irq_handler(int irq);                // the attached handler, or NULL
 const char* irq_name(int irq);                     // "Timer", "Terminal", "AlignmentFault", ...
 
-// Critical sections, in asm/sys.casm. irq_save() returns whether user interrupts were enabled and
-// masks them; irq_restore() puts that back, so the pair nests.
+// Critical sections. irq_save() returns whether user interrupts were enabled (16, the Interrupt
+// flag's bit, or 0) and masks them; irq_restore() puts that back, so the pair nests. Both are inline:
+// a read of the flags and a `cli`, and a `sti` when the state says so. The functions in asm/sys.casm
+// remain for a call through a pointer.
 unsigned int irq_save(void);
 void         irq_restore(unsigned int state);
+static inline unsigned int __irq_save(void)
+{
+    unsigned int state = __builtin_flags() & 16u;
+    __builtin_cli();
+    return state;
+}
+static inline void __irq_restore(unsigned int state)
+{
+    if (state != 0)
+        __builtin_sti();
+}
+#define irq_save()          __irq_save()
+#define irq_restore(state)  __irq_restore(state)
 void         irq_enable_all(void);                 // sti
 
 // Wait for an interrupt. irq_wait() is `sti` followed by `halt`, and the machine takes no interrupt
