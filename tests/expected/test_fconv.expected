@@ -1,0 +1,9 @@
+-- printf's digits are exact
+-- ties go to the even digit
+-- %a
+-- strtof is correctly rounded
+-- hexadecimal floats
+-- every float reads back from nine digits
+-- the shortest digits
+-- strfromf
+ALL PASSED 77/77

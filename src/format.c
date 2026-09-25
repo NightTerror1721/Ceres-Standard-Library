@@ -18,6 +18,7 @@
 #include "stdint.h"
 #include "math.h"
 #include "ceres/terminal.h"
+#include "fconv_priv.h"
 
 #define TERM_CHUNK 64
 
@@ -175,43 +176,10 @@ static void fmt_integer64(struct __sink* s, uint64_t v, int is_signed, int neg, 
 }
 
 // ---- floating point -------------------------------------------------------------
+// Every digit is exact (src/fconv.c): a float is converted from its exact decimal expansion, rounded to nearest
+// with ties to even at the place the conversion asks for. A precision past the float's last nonzero digit gets
+// zeros, put out after the body without a buffer to hold them.
 union fbits { float f; unsigned int u; };
-
-// The most significant digits float_digits produces. A float has about 7 exact ones and the largest
-// is below 10^39, so a longer request gets these and zeros after them.
-#define FLOAT_DIGITS_MAX 38
-
-// `nd` (1..FLOAT_DIGITS_MAX) significant decimal digits of a positive finite v, rounded; *exp10 = decimal
-// exponent. Good for ~7 exact digits (a float has a 24-bit mantissa); later digits are deterministic noise.
-static void float_digits(float v, int nd, char* out, int* exp10)
-{
-    int e = 0;
-    if (v != 0.0f)
-    {
-        while (v >= 10.0f) { v = v / 10.0f; e++; }
-        while (v < 1.0f)   { v = v * 10.0f; e--; }
-    }
-    int d[FLOAT_DIGITS_MAX + 1];
-    if (nd > FLOAT_DIGITS_MAX) nd = FLOAT_DIGITS_MAX;
-    float m = v;
-    for (int i = 0; i <= nd; i++)
-    {
-        int digit = (int)m;
-        if (digit > 9) digit = 9;
-        if (digit < 0) digit = 0;
-        d[i] = digit;
-        m = (m - (float)digit) * 10.0f;
-    }
-    if (d[nd] >= 5)                                    // round half up on the discarded digit
-    {
-        int i = nd - 1;
-        while (i >= 0 && d[i] == 9) { d[i] = 0; i--; }
-        if (i >= 0) d[i]++;
-        else { d[0] = 1; for (int k = 1; k < nd; k++) d[k] = 0; e++; }
-    }
-    for (int i = 0; i < nd; i++) out[i] = (char)('0' + d[i]);
-    *exp10 = e;
-}
 
 static int put_special(struct __sink* s, float v, int upper, int width, int flags)
 {
@@ -229,7 +197,7 @@ static int put_special(struct __sink* s, float v, int upper, int width, int flag
 
 // A number laid out as prefix, body, `zeros` zero digits, then tail, padded to `width` (with zeros
 // between the prefix and the body for the 0 flag). The zeros go straight to the sink, so a precision
-// of any size needs no buffer to hold it: "%.60e" is 38 real digits, 23 zeros and the exponent.
+// of any size needs no buffer to hold it.
 static void put_number(struct __sink* s, const char* prefix, const char* body, int blen, int zeros,
                        const char* tail, int tlen, int width, int flags)
 {
@@ -247,129 +215,153 @@ static void put_number(struct __sink* s, const char* prefix, const char* body, i
     if (flags & F_LEFT) pad(s, fill, ' ');
 }
 
+static int exponent_tail(char* tail, int upper, char letter, int x, int min_digits)
+{
+    int nt = 0;
+    tail[nt++] = upper ? (char)(letter - 32) : letter;
+    int ex = x < 0 ? -x : x;
+    tail[nt++] = x < 0 ? '-' : '+';
+    if (min_digits == 2 && ex < 10) tail[nt++] = '0';
+    nt += utoa_base((unsigned int)ex, 10, 0, tail + nt);
+    return nt;
+}
+
+// %a: [-]0x1.hhhhhhp+e, the exact bits in hexadecimal (0x0.hhhhhhp-126 for a subnormal). Without a precision the
+// trailing zero digits are dropped; with one the mantissa is rounded to it, to nearest with ties to even.
+static void fmt_hex_float(struct __sink* s, float v, const char* prefix_sign, int upper, int width, int prec, int flags)
+{
+    union fbits b; b.f = v;
+    unsigned int biased = (b.u >> 23) & 255u;
+    unsigned int frac = (b.u & 0x7FFFFFu) << 1;            // 24 bits: six hex digits
+    unsigned int lead = biased != 0 ? 1u : 0u;
+    int e = biased != 0 ? (int)biased - 127 : (frac != 0 ? -126 : 0);
+    int digits = 6;
+    if (prec >= 0 && prec < 6)
+    {
+        int drop = (6 - prec) * 4;
+        unsigned int kept = frac >> drop;
+        unsigned int rest = frac & ((1u << drop) - 1u);
+        unsigned int half = 1u << (drop - 1);
+        if (rest > half || (rest == half && (kept & 1u)))
+            kept++;
+        if (kept >> (prec * 4))                             // carried into the leading digit
+        {
+            kept &= (1u << (prec * 4)) - 1u;
+            lead++;
+        }
+        frac = kept << drop;
+        digits = prec;
+    }
+    else if (prec < 0)
+    {
+        while (digits > 0 && ((frac >> ((6 - digits) * 4)) & 15u) == 0)
+            digits--;                                       // only as many as the value needs
+    }
+    const char* hex = upper ? "0123456789ABCDEF" : "0123456789abcdef";
+    char prefix[4];
+    int np = 0;
+    if (prefix_sign[0]) prefix[np++] = prefix_sign[0];
+    prefix[np++] = '0';
+    prefix[np++] = upper ? 'X' : 'x';
+    prefix[np] = 0;
+    char body[12];
+    int n = 0;
+    body[n++] = hex[lead];
+    if (digits > 0 || (flags & F_ALT)) body[n++] = '.';
+    for (int i = 0; i < digits; i++)
+        body[n++] = hex[(frac >> (20 - 4 * i)) & 15u];
+    char tail[8];
+    int nt = exponent_tail(tail, upper, 'p', e, 1);
+    int zeros = prec > 6 ? prec - 6 : 0;
+    put_number(s, prefix, body, n, zeros, tail, nt, width, flags);
+}
+
 static void fmt_float(struct __sink* s, float v, int conv, int width, int prec, int flags)
 {
-    int upper = (conv == 'F' || conv == 'E' || conv == 'G');
+    int upper = (conv == 'F' || conv == 'E' || conv == 'G' || conv == 'A');
     if (put_special(s, v, upper, width, flags)) return;
     union fbits sb; sb.f = v;
     int neg = (int)(sb.u >> 31);
     if (neg) v = -v;
     char prefix[2]; prefix[0] = 0; prefix[1] = 0;
     if (neg) prefix[0] = '-'; else if (flags & F_PLUS) prefix[0] = '+'; else if (flags & F_SPACE) prefix[0] = ' ';
-    if (prec < 0) prec = 6;
-    char body[80];
-    int n = 0;
     int lc = conv | 32;                                // to lower case
+    if (lc == 'a')
+    {
+        fmt_hex_float(s, v, prefix, upper, width, prec, flags);
+        return;
+    }
+    if (prec < 0) prec = 6;
+    char dg[FCONV_MAX_DIGITS];
+    char body[FCONV_MAX_DIGITS + 64];
+    int n = 0;
+    int X = 0;
+    int nd;
 
     if (lc == 'f')
     {
-        char ip[48];
-        int ni = 0;
-        float ipart = trunc(v);
-        float frac = v - ipart;
-        if (ipart < 4294967296.0f) ni = utoa_base((unsigned int)ipart, 10, 0, ip);
-        else
-        {
-            // At or above 2^32 the value is m * 2^e2 with m < 2^24, and it has no fractional bits. Its exact
-            // digits come from writing m in a little-endian decimal array and doubling it e2 times
-            // (at most 39 digits): dividing a float by ten instead loses bits at every step.
-            union fbits ib; ib.f = ipart;
-            unsigned int m = (ib.u & 0x7FFFFFu) | 0x800000u;
-            int e2 = (int)((ib.u >> 23) & 255u) - 150;
-            char dec[48];
-            int k = 0;
-            while (m != 0) { dec[k] = (char)(m % 10u); k++; m /= 10u; }
-            for (; e2 > 0; e2--)
+        nd = v != 0.0f ? __fconv_digits(v, 0, prec, dg, &X) : 0;
+        if (nd == 0) X = 0;
+        // The integer part: the digits down to 10^0, or a 0.
+        if (nd == 0 || X < 0) body[n++] = '0';
+        else for (int i = 0; i <= X; i++) body[n++] = i < nd ? dg[i] : '0';
+        if (prec > 0 || (flags & F_ALT)) body[n++] = '.';
+        // The fraction, as far as there are digits; zeros after that go out as a count.
+        int j = 0;
+        if (nd != 0)
+            for (; j < prec; j++)
             {
-                int carry = 0;
-                for (int j = 0; j < k; j++) { int t = dec[j] * 2 + carry; dec[j] = (char)(t % 10); carry = t / 10; }
-                if (carry != 0) { dec[k] = (char)carry; k++; }
+                int at = X + 1 + j;
+                if (at >= nd) break;
+                body[n++] = at < 0 ? '0' : dg[at];
             }
-            for (int i = 0; i < k; i++) ip[i] = (char)('0' + dec[k - 1 - i]);
-            ni = k;
-        }
-        int pr = prec > 9 ? 9 : prec;
-        unsigned int scale = 1;
-        for (int i = 0; i < pr; i++) scale *= 10u;
-        unsigned int fd = (unsigned int)(frac * (float)scale + 0.5f);
-        int carry = 0;
-        if (pr > 0 && fd >= scale) { fd = 0; carry = 1; }
-        else if (pr == 0 && frac >= 0.5f) carry = 1;
-        if (carry)                                     // the rounding carried into the integer part
-        {
-            int i = ni - 1;
-            while (i >= 0 && carry)
-            {
-                if (ip[i] == '9') ip[i] = '0';
-                else { ip[i] = (char)(ip[i] + 1); carry = 0; }
-                i--;
-            }
-            if (carry)
-            {
-                for (int k = ni; k > 0; k--) ip[k] = ip[k - 1];
-                ip[0] = '1';
-                ni++;
-            }
-        }
-        for (int i = 0; i < ni; i++) { body[n] = ip[i]; n++; }
-        if (prec > 0 || (flags & F_ALT)) { body[n] = '.'; n++; }
-        if (pr > 0)
-        {
-            char fs[12];
-            int nf = utoa_base(fd, 10, 0, fs);
-            for (int i = nf; i < pr; i++) { body[n] = '0'; n++; }
-            for (int i = 0; i < nf; i++) { body[n] = fs[i]; n++; }
-        }
-        // Digits past the ninth are always zeros here: they go out as a count, not through body.
-        put_number(s, prefix, body, n, prec - pr, "", 0, width, flags);
+        put_number(s, prefix, body, n, prec - j, "", 0, width, flags);
         return;
     }
 
-    // e / g: P significant digits. float_digits makes at most FLOAT_DIGITS_MAX of them (`sig`); the
-    // rest of a longer precision are zeros, put out after body by put_number.
+    // e / g: P significant digits.
     int P = prec;
     if (lc == 'g') { if (P == 0) P = 1; }
     else P = prec + 1;
-    int sig = P < FLOAT_DIGITS_MAX ? P : FLOAT_DIGITS_MAX;
-    char dg[FLOAT_DIGITS_MAX];
-    int X = 0;
-    float_digits(v, sig, dg, &X);
+    if (v != 0.0f)
+        nd = __fconv_digits(v, 1, P, dg, &X);
+    else
+    {
+        dg[0] = '0';
+        nd = 1;
+        X = 0;
+    }
     int use_exp = 1;
     if (lc == 'g') use_exp = !(X >= -4 && X < P);
+    int sig = nd;                                      // digits we have; the rest of P are zeros
     if (lc == 'g' && !(flags & F_ALT))                 // strip trailing zeros of the significant digits
     {
-        int keep = sig;                                // (the ones past sig are zeros, so they go too)
-        while (keep > 1 && dg[keep - 1] == '0') keep--;
-        P = keep;
-        sig = keep;
+        while (sig > 1 && dg[sig - 1] == '0') sig--;
+        P = sig;
     }
     int zeros = P - sig;
     char tail[8];
     int nt = 0;
     if (use_exp)
     {
-        body[n] = dg[0]; n++;
-        if (P > 1 || (flags & F_ALT)) { body[n] = '.'; n++; }
-        for (int i = 1; i < sig; i++) { body[n] = dg[i]; n++; }
-        tail[nt] = upper ? 'E' : 'e'; nt++;
-        int ex = X < 0 ? -X : X;
-        tail[nt] = X < 0 ? '-' : '+'; nt++;
-        if (ex < 10) { tail[nt] = '0'; nt++; }
-        nt += utoa_base((unsigned int)ex, 10, 0, tail + nt);
+        body[n++] = dg[0];
+        if (P > 1 || (flags & F_ALT)) body[n++] = '.';
+        for (int i = 1; i < sig; i++) body[n++] = dg[i];
+        nt = exponent_tail(tail, upper, 'e', X, 2);
     }
     else if (X >= 0)                                   // 123.456 : the point goes after X+1 digits (X < P here)
     {
-        for (int i = 0; i <= X; i++) { body[n] = i < sig ? dg[i] : '0'; n++; }
-        if (P > X + 1 || (flags & F_ALT)) { body[n] = '.'; n++; }
-        for (int i = X + 1; i < sig; i++) { body[n] = dg[i]; n++; }
+        for (int i = 0; i <= X; i++) body[n++] = i < sig ? dg[i] : '0';
+        if (P > X + 1 || (flags & F_ALT)) body[n++] = '.';
+        for (int i = X + 1; i < sig; i++) body[n++] = dg[i];
         zeros = P - (sig > X + 1 ? sig : X + 1);       // the fraction digits past the real ones
     }
     else                                               // 0.000123
     {
-        body[n] = '0'; n++;
-        body[n] = '.'; n++;
-        for (int i = 0; i < -X - 1; i++) { body[n] = '0'; n++; }
-        for (int i = 0; i < sig; i++) { body[n] = dg[i]; n++; }
+        body[n++] = '0';
+        body[n++] = '.';
+        for (int i = 0; i < -X - 1; i++) body[n++] = '0';
+        for (int i = 0; i < sig; i++) body[n++] = dg[i];
     }
     put_number(s, prefix, body, n, zeros, tail, nt, width, flags);
 }
@@ -486,7 +478,7 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
             else
                 fmt_integer(s, v, 0, 0, 16, 0, width, prec, flags | F_ALT);
         }
-        else if (c == 'f' || c == 'F' || c == 'e' || c == 'E' || c == 'g' || c == 'G')
+        else if (c == 'f' || c == 'F' || c == 'e' || c == 'E' || c == 'g' || c == 'G' || c == 'a' || c == 'A')
         {
             float f = va_arg(ap, float);
             fmt_float(s, f, c, width, prec, flags);

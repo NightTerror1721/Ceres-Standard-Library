@@ -1,4 +1,5 @@
 // Text to number: atoi, atol, atoll, atof, strtol, strtoul, strtoll, strtoull, strtof, strtod.
+#include "fconv_priv.h"
 #include "stdlib.h"
 #include "ctype.h"
 #include "errno.h"
@@ -192,12 +193,6 @@ long long atoll(const char* s) { return strtoll(s, 0, 10); }
 
 // ---- floating point ----
 
-// 10^0 .. 10^10 are exact in a float (5^10 < 2^24), so one multiplication or division by one of them
-// is a single correctly rounded operation.
-static const float pow10_exact[11] = {
-    1e0f, 1e1f, 1e2f, 1e3f, 1e4f, 1e5f, 1e6f, 1e7f, 1e8f, 1e9f, 1e10f
-};
-
 static int matches_word(const char* p, const char* word)
 {
     for (int i = 0; word[i] != 0; i++)
@@ -206,31 +201,73 @@ static int matches_word(const char* p, const char* word)
     return 1;
 }
 
-static float scale_by_pow10(float r, int e)
+static int hex_value(int c)
 {
-    while (e > 10 && !isinf(r))
-    {
-        r *= 1e10f;
-        e -= 10;
-    }
-    while (e < -10 && r != 0.0f)
-    {
-        r /= 1e10f;
-        e += 10;
-    }
-    if (r == 0.0f || isinf(r))
-        return r;                       // the loops gave up early: e may still be out of the table's range
-    if (e > 0)
-        r *= pow10_exact[e];
-    else if (e < 0)
-        r /= pow10_exact[-e];
-    return r;
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
 }
 
-// The result is correctly rounded when the digits fit 24 bits (up to 7 of them, or 16777216) and the
-// decimal exponent is within +-10: then it is one exactly-rounded operation on exact operands. Longer
-// inputs keep their first 9 digits and can be a rounding or two off; that is the price of having no
-// wider type to compute in.
+// "0x1.8p3": hexadecimal digits with an optional point, then an optional binary exponent. p points after "0x";
+// returns the end, or 0 when no digit followed (the caller then takes the "0" alone).
+static const char* read_hex_float(const char* p, float* out, int* range)
+{
+    unsigned long long h = 0;
+    int exp2 = 0;
+    int any = 0;
+    int sticky = 0;
+    int point = 0;
+    for (;; p++)
+    {
+        if (*p == '.' && !point)
+        {
+            point = 1;
+            continue;
+        }
+        int d = hex_value((unsigned char)*p);
+        if (d < 0)
+            break;
+        any = 1;
+        if ((h >> 60) == 0)
+        {
+            h = (h << 4) | (unsigned int)d;
+            if (point) exp2 -= 4;
+        }
+        else
+        {
+            if (d != 0) sticky = 1;                  // past 60 bits: only "not zero" matters
+            if (!point) exp2 += 4;
+        }
+    }
+    if (!any)
+        return 0;
+    if (*p == 'p' || *p == 'P')
+    {
+        const char* q = p + 1;
+        int negative = 0;
+        if (*q == '-')      { negative = 1; q++; }
+        else if (*q == '+') { q++; }
+        if (*q >= '0' && *q <= '9')
+        {
+            int e = 0;
+            while (*q >= '0' && *q <= '9')
+            {
+                if (e < 100000) e = e * 10 + (*q - '0');
+                q++;
+            }
+            exp2 += negative ? -e : e;
+            p = q;
+        }
+    }
+    *out = __fconv_binary(h, sticky, exp2, range);
+    return p;
+}
+
+// Correctly rounded: the result is the float nearest the decimal value written, ties to even (src/fconv.c works
+// on its exact digits), whatever their number. "0x" introduces a hexadecimal float ("0x1.8p3" is 12), and
+// "inf", "infinity" and "nan" are read in any case. ERANGE when the value overflows to infinity or underflows
+// (to zero, or to a subnormal that is not exact).
 float strtof(const char* s, char** end)
 {
     const char* p = s;
@@ -255,58 +292,80 @@ float strtof(const char* s, char** end)
         return NAN;
     }
 
-    unsigned int mantissa = 0;      // the first 9 significant digits
-    int dexp = 0;                   // the power of ten the mantissa still has to be scaled by
-    int any = 0;
-    while (*p >= '0' && *p <= '9')
+    int range = 0;
+    float r;
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
     {
-        any = 1;
-        if (mantissa < 100000000u) mantissa = mantissa * 10u + (unsigned int)(*p - '0');
-        else dexp++;                // a digit dropped from the integer part is a factor of ten
-        p++;
-    }
-    if (*p == '.')
-    {
-        const char* q = p + 1;
-        while (*q >= '0' && *q <= '9')
+        const char* after = read_hex_float(p + 2, &r, &range);
+        if (after == 0)
         {
-            any = 1;
-            if (mantissa < 100000000u) { mantissa = mantissa * 10u + (unsigned int)(*q - '0'); dexp--; }
-            q++;
+            if (end != 0)
+                *end = (char*)(p + 1);               // "0x" alone: the 0
+            return negative ? -0.0f : 0.0f;
         }
-        if (any)
-            p = q;                  // "." alone is not a number; "5." is
+        if (end != 0)
+            *end = (char*)after;
     }
-    if (!any)
-        return 0.0f;
-
-    if (*p == 'e' || *p == 'E')
+    else
     {
-        const char* q = p + 1;
-        int exp_negative = 0;
-        if (*q == '-')      { exp_negative = 1; q++; }
-        else if (*q == '+') { q++; }
-        if (*q >= '0' && *q <= '9')
+        char digits[FCONV_MAX_DIGITS];
+        int nd = 0;                                  // significant digits kept
+        int sticky = 0;                              // a nonzero digit past them
+        int dexp = 0;                                // the power of ten the digits still need
+        int any = 0;
+        int point = 0;
+        for (;; p++)
         {
-            int e = 0;
-            while (*q >= '0' && *q <= '9')
+            if (*p == '.' && !point)
             {
-                if (e < 1000)
-                    e = e * 10 + (*q - '0');
-                q++;
+                point = 1;
+                continue;
             }
-            dexp += exp_negative ? -e : e;
-            p = q;
+            if (*p < '0' || *p > '9')
+                break;
+            any = 1;
+            if (nd == 0 && *p == '0')
+            {
+                if (point) dexp--;                   // a leading zero after the point moves the digits down
+                continue;
+            }
+            if (nd < FCONV_MAX_DIGITS)
+            {
+                digits[nd++] = *p;
+                if (point) dexp--;
+            }
+            else
+            {
+                if (*p != '0') sticky = 1;
+                if (!point) dexp++;
+            }
         }
+        if (!any)
+            return 0.0f;                             // "." alone is not a number; "5." is
+        if (*p == 'e' || *p == 'E')
+        {
+            const char* q = p + 1;
+            int exp_negative = 0;
+            if (*q == '-')      { exp_negative = 1; q++; }
+            else if (*q == '+') { q++; }
+            if (*q >= '0' && *q <= '9')
+            {
+                int e = 0;
+                while (*q >= '0' && *q <= '9')
+                {
+                    if (e < 100000) e = e * 10 + (*q - '0');
+                    q++;
+                }
+                dexp += exp_negative ? -e : e;
+                p = q;
+            }
+        }
+        if (end != 0)
+            *end = (char*)p;
+        r = __fconv_decimal(digits, nd, sticky, dexp, &range);
     }
-    if (end != 0)
-        *end = (char*)p;
-
-    float r = scale_by_pow10((float)mantissa, dexp);
-    if (isinf(r))
-        errno = ERANGE;                       // too big for a float
-    else if (r == 0.0f && mantissa != 0u)
-        errno = ERANGE;                       // so small it vanished
+    if (range)
+        errno = ERANGE;
     return negative ? -r : r;
 }
 

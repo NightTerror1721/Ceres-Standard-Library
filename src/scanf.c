@@ -112,7 +112,8 @@ static int read_integer(struct scan* s, int width, int base, char* buf)
     return digits > 0 ? n : 0;
 }
 
-// A floating-point field: sign, digits, '.', digits, an exponent, or inf/infinity/nan.
+// A floating-point field: sign, digits, '.', digits, an exponent, or inf/infinity/nan; or 0x, hexadecimal digits
+// and a 'p' exponent (what %a prints).
 static int read_float_field(struct scan* s, int width, char* buf)
 {
     int n = 0;
@@ -137,7 +138,22 @@ static int read_float_field(struct scan* s, int width, char* buf)
         buf[n] = 0;
         return n;
     }
-    while (c >= 0 && width > 0 && n < FIELD_MAX - 1 && isdigit(c))
+    int hex = 0;
+    if (c == '0' && width > 0 && n < FIELD_MAX - 2)
+    {
+        buf[n++] = '0';
+        width--;
+        digits++;
+        c = next_char(s);
+        if ((c == 'x' || c == 'X') && width > 0)
+        {
+            hex = 1;
+            buf[n++] = (char)c;
+            width--;
+            c = next_char(s);
+        }
+    }
+    while (c >= 0 && width > 0 && n < FIELD_MAX - 1 && (hex ? isxdigit(c) : isdigit(c)))
     {
         buf[n++] = (char)c;
         width--;
@@ -149,7 +165,7 @@ static int read_float_field(struct scan* s, int width, char* buf)
         buf[n++] = '.';
         width--;
         c = next_char(s);
-        while (c >= 0 && width > 0 && n < FIELD_MAX - 1 && isdigit(c))
+        while (c >= 0 && width > 0 && n < FIELD_MAX - 1 && (hex ? isxdigit(c) : isdigit(c)))
         {
             buf[n++] = (char)c;
             width--;
@@ -157,7 +173,8 @@ static int read_float_field(struct scan* s, int width, char* buf)
             c = next_char(s);
         }
     }
-    if (digits > 0 && (c == 'e' || c == 'E') && width > 1 && n < FIELD_MAX - 3)
+    int exp_letter = hex ? (c == 'p' || c == 'P') : (c == 'e' || c == 'E');
+    if (digits > 0 && exp_letter && width > 1 && n < FIELD_MAX - 3)
     {
         // the exponent counts only if a digit follows; the characters are read ahead, so they are kept
         buf[n++] = (char)c;
