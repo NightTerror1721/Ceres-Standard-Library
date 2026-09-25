@@ -64,7 +64,7 @@ extern float rcp(float x);                 // Ceres extensions: a fast approxima
 extern float rsqrt(float x);               // ... and of 1/sqrt(x)
 
 // ---- in software (src/math.c) ----
-float sin(float x);                        // |x| up to ~6000 is accurate; larger arguments lose digits
+float sin(float x);                        // within 1.5 units in the last place for every float (tan: 2.5)
 float cos(float x);
 float tan(float x);
 void  sincos(float x, float* s, float* c); // both at once, for the price of one argument reduction
@@ -102,6 +102,24 @@ int   lrint(float x);                      // to the nearest int, halves to even
 long long llround(float x);                // as lround, to the nearest 64-bit integer
 long long llrint(float x);                 // as lrint, to the nearest 64-bit integer
 float nan(const char* tag) __attribute__((__const__));   // a quiet NaN (the tag is ignored)
+
+// ---- the exponent, and the next float (src/math_ext.c) ----
+typedef float float_t;                     // FLT_EVAL_METHOD is 0: float arithmetic is done in float
+typedef float double_t;                    // ... and double is float
+#define FP_ILOGB0    (-2147483647 - 1)
+#define FP_ILOGBNAN  (-2147483647 - 1)
+int   ilogb(float x);                      // floor(log2|x|) as an int, subnormals too; FP_ILOGB0 for 0 and NaN, INT_MAX for inf (EDOM)
+float logb(float x);                       // ... as a float; -inf for 0 (ERANGE)
+float nextafter(float x, float y);         // the float next to x towards y; ERANGE when that overflows or is subnormal
+#define nexttoward(x, y) nextafter((x), (float)(y))   // long double is float too
+
+// ---- the error and gamma functions (src/math_special.c): erf within 2 units in the last place, erfc and tgamma 4,
+// lgamma 3 - except next to the zeros it has between the poles for x < 0, where it keeps about 6e-7 absolute ----
+float erf(float x);
+float erfc(float x);                       // 1 - erf(x) without the cancellation: right far into the tail
+float tgamma(float x);                     // EDOM at the negative integers and -inf, ERANGE at 0 and past 35.04
+float lgamma(float x);                     // log|gamma(x)|; the sign of gamma(x) goes to signgam
+extern int signgam;
 
 #define scalbn    ldexp
 
@@ -191,3 +209,11 @@ static inline int __fpclassify_bits(int c)
 #define lrintf lrint
 #define llroundf llround
 #define llrintf llrint
+#define ilogbf ilogb
+#define logbf logb
+#define nextafterf nextafter
+#define nexttowardf nexttoward
+#define erff erf
+#define erfcf erfc
+#define tgammaf tgamma
+#define lgammaf lgamma

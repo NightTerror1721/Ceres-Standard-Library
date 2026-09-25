@@ -1,10 +1,13 @@
 -- tables: trigonometric
 -- tables: exponential and logarithmic
 -- tables: hyperbolic and roots
+-- tables: error and gamma functions
 -- classification
 -- the one-instruction functions
 -- builtin macros and the functions agree
 -- trigonometric: identities
+-- ilogb, logb, nextafter
+-- erf, erfc, tgamma, lgamma
 -- inverse trigonometric: quadrants and specials
 -- domain and range errors
 -- exp and log
@@ -15,4 +18,4 @@
 -- llround and llrint: 64 bits
 -- remainder, fdim, nan
 -- aliases
-ALL PASSED 2136/2136
+ALL PASSED 2358/2358

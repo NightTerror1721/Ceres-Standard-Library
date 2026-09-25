@@ -25,42 +25,114 @@ float round(float x)
 
 // ---- argument reduction for the trigonometric functions ----
 
-// x = n * (pi/2) + r with |r| <= pi/4 (a hair more); *quad = n mod 4. pi/2 is subtracted in three
-// exact-product pieces (Cody and Waite), which keeps r right to its last digit up to |x| ~ 6400. Past
-// that the products stop being exact and the digits fade; past ~1e5 nothing is left, but the result
-// is still a number in [-1, 1] and never a crash. (A float that large is a multiple of 2^k anyway.)
+// 2/pi, the first 256 bits after the binary point: enough for any float, the largest being below 2^128.
+static const unsigned int two_over_pi[8] = {
+    0xA2F9836Eu, 0x4E441529u, 0xFC2757D1u, 0xF534DDC0u, 0xDB629599u, 0x3C439041u, 0xFE5163ABu, 0xDEBBC561u };
+
+// 32 bits of 2/pi from bit `b` after the point (bit 0 is worth 1/2); the bits before the point are 0.
+static unsigned int two_over_pi_window(int b)
+{
+    int w = b >= 0 ? b / 32 : -((31 - b) / 32);
+    int s = b - w * 32;
+    unsigned int a = w >= 0 && w < 8 ? two_over_pi[w] : 0u;
+    unsigned int c = w + 1 >= 0 && w + 1 < 8 ? two_over_pi[w + 1] : 0u;
+    return s == 0 ? a : (a << s) | (c >> (32 - s));
+}
+
+// Payne and Hanek's reduction, for |x| too large for Cody and Waite: x * 2/pi worked out in integers from as many
+// bits of 2/pi as the fraction needs, so r keeps every digit whatever the size of x. x is m * 2^e with m the
+// 24-bit significand; the bits of 2/pi that m * 2^e would carry past 4 cannot change the quadrant and are skipped,
+// and the next 96 give the product's fraction to 94 bits - more than the worst float needs (x a hair from a
+// multiple of pi/2 cancels about 30 of them).
+static float reduce_large(float ax, int* quad)
+{
+    unsigned int bits = float_bits(ax);
+    unsigned long long m = (bits & 0x7FFFFFu) | 0x800000u;
+    int e = (int)((bits >> 23) & 255u) - 150;
+    int from = e - 2;
+    unsigned long long p2 = m * two_over_pi_window(from + 64);
+    unsigned long long p1 = m * two_over_pi_window(from + 32) + (p2 >> 32);
+    unsigned long long p0 = m * two_over_pi_window(from) + (p1 >> 32);
+    // The product is p0 : p1 : p2 in 32-bit limbs; its point is 94 bits up, in p0.
+    unsigned int limb2 = (unsigned int)p0;
+    unsigned long long fraction = ((unsigned long long)(limb2 & 0x3FFFFFFFu) << 34) |
+                                  ((p1 & 0xFFFFFFFFull) << 2) | ((p2 & 0xFFFFFFFFull) >> 30);
+    int q = (int)(limb2 >> 30);
+    // To the nearest quadrant: a fraction of a half or more is the next one, from below.
+    q += (int)(fraction >> 63);
+    long long r = (long long)fraction;                 // the fraction, now in [-1/2, 1/2), times 2^64
+    *quad = q & 3;
+    int negative = r < 0;
+    unsigned long long a = negative ? (unsigned long long)(-r) : (unsigned long long)r;
+    if (a == 0)
+        return 0.0f;
+    int shift = 0;
+    while ((a >> 63) == 0)
+    {
+        a <<= 1;
+        shift++;
+    }
+    // r * pi/2 = (a / 2^64) * 2^-shift * pi/2: the top 32 bits of a times pi/2 in 32 bits (0xC90FDAA2 = pi/2 * 2^31).
+    unsigned long long product = (a >> 32) * 0xC90FDAA2ull;
+    float y = __scale2((float)(unsigned int)(product >> 32), -31 - shift);
+    return negative ? -y : y;
+}
+
+// x = n * (pi/2) + r with |r| <= pi/4 (a hair more); *quad = n mod 4. Up to 6000, pi/2 is subtracted in three
+// exact-product pieces (Cody and Waite), which keeps r right to its last digit; past it, reduce_large.
 static float reduce_pio2(float x, int* quad)
 {
     float ax = fabs(x);
     if (ax > 6000.0f)
-        x = fmod(x, TWO_PI);
+    {
+        float r = reduce_large(ax, quad);
+        if (x < 0.0f)
+        {
+            *quad = (4 - *quad) & 3;
+            r = -r;
+        }
+        return r;
+    }
     float nf = floor(x * TWO_OVER_PI + 0.5f);
     *quad = ((int)nf) & 3;
     return ((x - nf * PIO2_1) - nf * PIO2_2) - nf * PIO2_3;
 }
 
-// sin and cos of r, |r| <= pi/4: the Taylor series, which on this range is good to ~1e-9.
+// sin, cos and tan of r, |r| <= pi/4: Cephes' minimax polynomials for float, which reach the float's last digit
+// with three terms (sin, cos) and six (tan) where the Taylor series takes four and five and still needs a division
+// for tan.
 static float sin_kernel(float r)
 {
     if (r == 0.0f)
         return r;                       // keeps -0: r + r*z*p would add +0 to it and lose the sign
     float z = r * r;
-    float p = 1.0f / 362880.0f;
-    p = p * z - 1.0f / 5040.0f;
-    p = p * z + 1.0f / 120.0f;
-    p = p * z - 1.0f / 6.0f;
+    float p = -1.9515295891e-4f;
+    p = p * z + 8.3321608736e-3f;
+    p = p * z - 1.6666654611e-1f;
     return r + r * z * p;
 }
 
 static float cos_kernel(float r)
 {
     float z = r * r;
-    float p = -1.0f / 3628800.0f;
-    p = p * z + 1.0f / 40320.0f;
-    p = p * z - 1.0f / 720.0f;
-    p = p * z + 1.0f / 24.0f;
-    p = p * z - 0.5f;
-    return 1.0f + z * p;
+    float p = 2.443315711809948e-5f;
+    p = p * z - 1.388731625493765e-3f;
+    p = p * z + 4.166664568298827e-2f;
+    return 1.0f - 0.5f * z + z * z * p;
+}
+
+static float tan_kernel(float r)
+{
+    float z = r * r;
+    if (fabs(r) < 1.0e-4f)
+        return r;
+    float p = 9.38540185543e-3f;
+    p = p * z + 3.11992232697e-3f;
+    p = p * z + 2.44301354525e-2f;
+    p = p * z + 5.34112807005e-2f;
+    p = p * z + 1.33387994085e-1f;
+    p = p * z + 3.33331568548e-1f;
+    return r + r * z * p;
 }
 
 // NaN in, NaN out; an infinite argument has no sine: EDOM.
@@ -124,16 +196,15 @@ float tan(float x)
         return NAN;
     int q;
     float r = reduce_pio2(x, &q);
-    float sk = sin_kernel(r);
-    float ck = cos_kernel(r);
-    float num = (q & 1) ? -ck : sk;         // tan(r + pi/2) = -cos(r)/sin(r)
-    float den = (q & 1) ? sk : ck;
-    if (den == 0.0f)                        // an exact pole: cannot happen for a float, but never divide by zero
+    float t = tan_kernel(r);
+    if ((q & 1) == 0)
+        return t;
+    if (t == 0.0f)                          // tan(r + pi/2) = -1/tan(r): a pole no float reaches, but never divide by zero
     {
         errno = ERANGE;
-        return copysign(INFINITY, num);
+        return copysign(INFINITY, -t);
     }
-    return num / den;
+    return -1.0f / t;
 }
 
 // ---- inverse trigonometric ----

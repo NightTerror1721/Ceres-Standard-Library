@@ -231,12 +231,93 @@ static void section_trigonometric_identities(void)
         sincos(1000.0f, &s, &c);
         CHECK_REL(s, 0.82687954f, 3e-6f);
         CHECK_REL(c, 0.56237938f, 3e-6f);
-        // Beyond ~6000 the digits fade but the result stays a bounded number.
-        float big = sin(1.0e9f);
-        CHECK(big >= -1.0f && big <= 1.0f);
-        float huge = cos(3.0e38f);
-        CHECK(huge >= -1.0f && huge <= 1.0f);
+        // Past 6000 the reduction is Payne and Hanek's, exact for any float (the tables hold the values): sin and
+        // cos of one argument still agree.
+        float big = sin(1.0e9f), bigc = cos(1.0e9f);
+        CHECK(fabs(big * big + bigc * bigc - 1.0f) < 4e-7f);
+        float bs, bc;
+        sincos(-3.0e38f, &bs, &bc);
+        CHECK(bs == sin(-3.0e38f) && bc == cos(3.0e38f));
     }
+}
+
+static void section_exponent_next_error_and_gamma(void)
+{
+    TEST_SECTION("ilogb, logb, nextafter");
+    float_t ft = 1.5f;
+    double_t dt = ft;
+    CHECK(sizeof(float_t) == sizeof(float) && dt == 1.5f);
+    CHECK_EQ(ilogb(1.0f), 0);
+    CHECK_EQ(ilogb(0.75f), -1);
+    CHECK_EQ(ilogb(-1024.5f), 10);
+    CHECK_EQ(ilogb(FLT_MAX), 127);
+    CHECK_EQ(ilogb(float_from_bits(1u)), -149);                   // the smallest subnormal
+    CHECK_EQ(ilogb(0.0f), FP_ILOGB0);
+    CHECK_EQ(ilogb(NAN), FP_ILOGBNAN);
+    CHECK_EQ(ilogb(INFINITY), INT_MAX);
+    CHECK(logb(96.0f) == 6.0f && logb(-0.1f) == -4.0f);
+    CHECK_INF(logb(0.0f), 1);
+    CHECK_INF(logb(-INFINITY), 0);
+    CHECK_NAN(logb(NAN));
+    CHECK(float_bits(nextafter(1.0f, 2.0f)) == float_bits(1.0f) + 1u);
+    CHECK(float_bits(nextafter(1.0f, 0.0f)) == float_bits(1.0f) - 1u);
+    CHECK(float_bits(nextafter(-1.0f, -2.0f)) == float_bits(-1.0f) + 1u);
+    CHECK(nextafter(0.0f, 1.0f) == float_from_bits(1u));
+    CHECK(nextafter(0.0f, -1.0f) == -float_from_bits(1u));
+    CHECK_ZERO(nextafter(0.0f, -0.0f), 1);                        // equal: y, sign and all
+    CHECK(nextafter(2.0f, 2.0f) == 2.0f);
+    errno = 0;
+    CHECK_INF(nextafter(FLT_MAX, INFINITY), 0);
+    CHECK_EQ(errno, ERANGE);
+    CHECK_NAN(nextafter(NAN, 1.0f));
+    CHECK(nexttoward(1.0f, 2.0) == nextafter(1.0f, 2.0f) && nextafterf(1.0f, 0.0f) < 1.0f);
+
+    TEST_SECTION("erf, erfc, tgamma, lgamma");
+    CHECK_ZERO(erf(0.0f), 0);
+    CHECK_ZERO(erf(-0.0f), 1);
+    CHECK(erf(INFINITY) == 1.0f && erf(-INFINITY) == -1.0f && erf(10.0f) == 1.0f);
+    CHECK(erfc(INFINITY) == 0.0f && erfc(-INFINITY) == 2.0f);
+    CHECK_NAN(erf(NAN));
+    CHECK_NAN(erfc(NAN));
+    for (int i = -40; i <= 40; i++)
+    {
+        float x = (float)i * 0.1f;                                 // they add up to 1, far from the tail
+        CHECK(fabs(erf(x) + erfc(x) - 1.0f) < 2.5e-7f);
+        CHECK(erf(-x) == -erf(x));
+    }
+    CHECK(erfc(9.5f) > 0.0f && erfc(9.5f) < 1e-40f);             // subnormal, but there
+    CHECK(tgamma(1.0f) == 1.0f && tgamma(2.0f) == 1.0f && tgamma(5.0f) == 24.0f && tgamma(11.0f) == 3628800.0f);
+    CHECK(tgamma(13.0f) == 479001600.0f);                         // whole numbers are exact factorials
+    CHECK_REL(tgamma(0.5f), 1.77245385f, 3e-7f);                  // sqrt(pi)
+    errno = 0;
+    CHECK_INF(tgamma(0.0f), 0);
+    CHECK_EQ(errno, ERANGE);
+    CHECK_INF(tgamma(-0.0f), 1);
+    errno = 0;
+    CHECK_NAN(tgamma(-2.0f));
+    CHECK_EQ(errno, EDOM);
+    CHECK_NAN(tgamma(-INFINITY));
+    CHECK_INF(tgamma(INFINITY), 0);
+    errno = 0;
+    CHECK_INF(tgamma(36.0f), 0);
+    CHECK_EQ(errno, ERANGE);
+    CHECK(tgamma(-50.5f) == 0.0f);                                // underflows
+    CHECK(tgamma(-2.5f) < 0.0f && tgamma(-3.5f) > 0.0f);          // the sign alternates between the poles
+    CHECK_ZERO(lgamma(1.0f), 0);
+    CHECK_ZERO(lgamma(2.0f), 0);
+    (void)lgamma(-2.5f);
+    CHECK_EQ(signgam, -1);
+    (void)lgamma(-3.5f);
+    CHECK_EQ(signgam, 1);
+    (void)lgamma(-40.5f);                                         // by reflection
+    CHECK_EQ(signgam, -1);
+    CHECK_REL(lgamma(-40.5f), -111.029647f, 3e-6f);
+    errno = 0;
+    CHECK_INF(lgamma(0.0f), 0);
+    CHECK_EQ(errno, ERANGE);
+    CHECK_INF(lgamma(-3.0f), 0);
+    CHECK_INF(lgamma(-INFINITY), 0);
+    CHECK(erff(0.5f) == erf(0.5f) && tgammaf(3.0f) == 2.0f && lgammaf(3.0f) == lgamma(3.0f));
 }
 
 static void section_inverse_trigonometric_quadrants_and_specials(void)
@@ -581,9 +662,9 @@ static void section_aliases(void)
 int main(void)
 {
     TEST_SECTION("tables: trigonometric");
-    TABLE_1(sin, 34, 3e-7f);
-    TABLE_1(cos, 34, 3e-7f);
-    TABLE_1(tan, 22, 5e-7f);
+    TABLE_1(sin, 44, 3e-7f);
+    TABLE_1(cos, 44, 3e-7f);
+    TABLE_1(tan, 26, 5e-7f);
     TABLE_1(asin, 15, 3e-7f);
     TABLE_1(acos, 15, 3e-7f);
     TABLE_1(atan, 20, 3e-7f);
@@ -609,11 +690,18 @@ int main(void)
     TABLE_1(cbrt, 20, 3e-7f);
     TABLE_2(hypot, 11, 3e-7f);
 
+    TEST_SECTION("tables: error and gamma functions");
+    TABLE_1(erf, 20, 3e-7f);
+    TABLE_1(erfc, 18, 5e-7f);
+    TABLE_1(tgamma, 23, 2e-6f);
+    TABLE_1(lgamma, 21, 3e-6f);
+
 #ifndef MATH_REPORT
     section_classification();
     section_the_one_instruction_functions();
     section_macros_and_functions_agree();
     section_trigonometric_identities();
+    section_exponent_next_error_and_gamma();
     section_inverse_trigonometric_quadrants_and_specials();
     section_domain_and_range_errors();
     section_exp_and_log();

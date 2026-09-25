@@ -19,6 +19,7 @@
 #define FAULT_WRITE  2u
 #define FAULT_FETCH  3u
 #define SYS_FEATURE_DIV_FAULT 0x01                     // a division by zero raises interrupt 4 instead of only setting Trap
+#define SYS_FEATURE_IEEE_DIVIDE 0x02                   // a float division by zero gives +-inf or NaN, as IEEE 754 (CeresASM ad9c95a)
 
 // The three that stop the machine never return. On a machine without the system-control device they
 // halt with interrupts masked instead, which is as stopped as a program can make itself.

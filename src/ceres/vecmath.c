@@ -11,8 +11,8 @@ struct vec2 vec2_normalize(struct vec2 a)
 
 struct vec2 vec2_rotate(struct vec2 a, float radians)
 {
-    float c = cos(radians);
-    float s = sin(radians);
+    float s, c;
+    sincos(radians, &s, &c);                     // one argument reduction for both
     return vec2_make(a.x * c - a.y * s, a.x * s + a.y * c);
 }
 

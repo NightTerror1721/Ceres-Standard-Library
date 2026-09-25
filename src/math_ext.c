@@ -381,3 +381,56 @@ float atanh(float x)
     }
     return copysign(0.5f * log1p((ax + ax) / (1.0f - ax)), x);
 }
+
+// ---- the exponent, and the next float ----
+
+int ilogb(float x)
+{
+    if (x == 0.0f || isnan(x))
+    {
+        errno = EDOM;
+        return FP_ILOGB0;                                // FP_ILOGBNAN is the same number
+    }
+    if (isinf(x))
+    {
+        errno = EDOM;
+        return 2147483647;
+    }
+    int e;
+    frexp(x, &e);                                        // 0.5 <= |m| < 1: one below it is floor(log2|x|)
+    return e - 1;
+}
+
+float logb(float x)
+{
+    if (isnan(x))
+        return x;
+    if (isinf(x))
+        return INFINITY;
+    if (x == 0.0f)
+    {
+        errno = ERANGE;                                  // a pole
+        return -INFINITY;
+    }
+    return (float)ilogb(x);
+}
+
+float nextafter(float x, float y)
+{
+    if (isnan(x) || isnan(y))
+        return x + y;
+    if (x == y)
+        return y;                                        // y, so nextafter(0, -0) is -0
+    float r;
+    if (x == 0.0f)
+        r = copysign(float_from_bits(1u), y);            // the smallest subnormal, towards y
+    else
+    {
+        unsigned int bits = float_bits(x);
+        bits = ((x < y) == (x > 0.0f)) ? bits + 1u : bits - 1u;   // away from zero, or towards it
+        r = float_from_bits(bits);
+    }
+    if (isinf(r) || !isnormal(r))
+        errno = ERANGE;                                  // overflowed, or subnormal or zero
+    return r;
+}
