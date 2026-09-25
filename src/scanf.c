@@ -501,6 +501,17 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
             if (suppress)
                 continue;
             char* end;
+#ifdef __CERES_SOFT_DOUBLE__
+            if (narrow == 'l')
+            {
+                double d = strtod(field, &end);          // %lf: a real double
+                if (end == field)
+                    return assigned;
+                *va_arg(ap, double*) = d;
+                assigned++;
+                continue;
+            }
+#endif
             float v = strtof(field, &end);
             if (end == field)
                 return assigned;                         // "inf" was not a word after all, or a lone sign

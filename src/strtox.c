@@ -6,6 +6,7 @@
 #include "limits.h"
 #include "stdint.h"
 #include "math.h"
+#include "string.h"
 
 // ---- integers ----
 
@@ -209,9 +210,24 @@ static int hex_value(int c)
     return -1;
 }
 
+// A floating number as the text has it, before it is rounded to a format: inf, nan, a hexadecimal mantissa times a
+// power of two, or decimal digits times a power of ten. strtof rounds it to a float and strtod (under -fsoft-double)
+// to a double, so the two read exactly the same text.
+enum { REAL_NONE, REAL_INF, REAL_NAN, REAL_HEX, REAL_DECIMAL };
+
+struct real_text
+{
+    int kind;
+    int negative;
+    unsigned long long h;                            // REAL_HEX: the mantissa's first 60 bits
+    int nd;                                          // REAL_DECIMAL: the significant digits kept
+    int sticky;                                      // a nonzero digit past what was kept
+    int exp;                                         // the power of two (hex) or of ten (decimal) still to apply
+};
+
 // "0x1.8p3": hexadecimal digits with an optional point, then an optional binary exponent. p points after "0x";
 // returns the end, or 0 when no digit followed (the caller then takes the "0" alone).
-static const char* read_hex_float(const char* p, float* out, int* range)
+static const char* read_hex_float(const char* p, struct real_text* t)
 {
     unsigned long long h = 0;
     int exp2 = 0;
@@ -260,7 +276,101 @@ static const char* read_hex_float(const char* p, float* out, int* range)
             p = q;
         }
     }
-    *out = __fconv_binary(h, sticky, exp2, range);
+    t->kind = REAL_HEX;
+    t->h = h;
+    t->sticky = sticky;
+    t->exp = exp2;
+    return p;
+}
+
+// Reads a floating number from s into t, keeping at most `max_digits` significant decimal digits in `digits`: the
+// end of what was read, or s itself when there was no number (t->kind is then REAL_NONE).
+static const char* scan_real(const char* s, struct real_text* t, char* digits, int max_digits)
+{
+    const char* p = s;
+    t->kind = REAL_NONE;
+    t->negative = 0;
+    t->nd = 0;
+    t->sticky = 0;
+    t->exp = 0;
+    while (isspace((unsigned char)*p))
+        p++;
+    if (*p == '-')      { t->negative = 1; p++; }
+    else if (*p == '+') { p++; }
+
+    if (matches_word(p, "inf"))
+    {
+        t->kind = REAL_INF;
+        return p + (matches_word(p, "infinity") ? 8 : 3);
+    }
+    if (matches_word(p, "nan"))
+    {
+        t->kind = REAL_NAN;
+        return p + 3;
+    }
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
+    {
+        const char* after = read_hex_float(p + 2, t);
+        if (after != 0)
+            return after;
+        t->kind = REAL_DECIMAL;                      // "0x" alone: the 0
+        return p + 1;
+    }
+    int nd = 0;                                      // significant digits kept
+    int sticky = 0;                                  // a nonzero digit past them
+    int dexp = 0;                                    // the power of ten the digits still need
+    int any = 0;
+    int point = 0;
+    for (;; p++)
+    {
+        if (*p == '.' && !point)
+        {
+            point = 1;
+            continue;
+        }
+        if (*p < '0' || *p > '9')
+            break;
+        any = 1;
+        if (nd == 0 && *p == '0')
+        {
+            if (point) dexp--;                       // a leading zero after the point moves the digits down
+            continue;
+        }
+        if (nd < max_digits)
+        {
+            digits[nd++] = *p;
+            if (point) dexp--;
+        }
+        else
+        {
+            if (*p != '0') sticky = 1;
+            if (!point) dexp++;
+        }
+    }
+    if (!any)
+        return s;                                    // "." alone is not a number; "5." is
+    if (*p == 'e' || *p == 'E')
+    {
+        const char* q = p + 1;
+        int exp_negative = 0;
+        if (*q == '-')      { exp_negative = 1; q++; }
+        else if (*q == '+') { q++; }
+        if (*q >= '0' && *q <= '9')
+        {
+            int e = 0;
+            while (*q >= '0' && *q <= '9')
+            {
+                if (e < 100000) e = e * 10 + (*q - '0');
+                q++;
+            }
+            dexp += exp_negative ? -e : e;
+            p = q;
+        }
+    }
+    t->kind = REAL_DECIMAL;
+    t->nd = nd;
+    t->sticky = sticky;
+    t->exp = dexp;
     return p;
 }
 
@@ -270,104 +380,56 @@ static const char* read_hex_float(const char* p, float* out, int* range)
 // (to zero, or to a subnormal that is not exact).
 float strtof(const char* s, char** end)
 {
-    const char* p = s;
+    char digits[FCONV_MAX_DIGITS];
+    struct real_text t;
+    const char* after = scan_real(s, &t, digits, FCONV_MAX_DIGITS);
     if (end != 0)
-        *end = (char*)s;
-    while (isspace((unsigned char)*p))
-        p++;
-    int negative = 0;
-    if (*p == '-')      { negative = 1; p++; }
-    else if (*p == '+') { p++; }
-
-    if (matches_word(p, "inf"))
-    {
-        if (end != 0)
-            *end = (char*)(p + (matches_word(p, "infinity") ? 8 : 3));
-        return negative ? -INFINITY : INFINITY;
-    }
-    if (matches_word(p, "nan"))
-    {
-        if (end != 0)
-            *end = (char*)(p + 3);
-        return NAN;
-    }
-
+        *end = (char*)after;
     int range = 0;
-    float r;
-    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
+    float r = 0.0f;
+    switch (t.kind)
     {
-        const char* after = read_hex_float(p + 2, &r, &range);
-        if (after == 0)
-        {
-            if (end != 0)
-                *end = (char*)(p + 1);               // "0x" alone: the 0
-            return negative ? -0.0f : 0.0f;
-        }
-        if (end != 0)
-            *end = (char*)after;
-    }
-    else
-    {
-        char digits[FCONV_MAX_DIGITS];
-        int nd = 0;                                  // significant digits kept
-        int sticky = 0;                              // a nonzero digit past them
-        int dexp = 0;                                // the power of ten the digits still need
-        int any = 0;
-        int point = 0;
-        for (;; p++)
-        {
-            if (*p == '.' && !point)
-            {
-                point = 1;
-                continue;
-            }
-            if (*p < '0' || *p > '9')
-                break;
-            any = 1;
-            if (nd == 0 && *p == '0')
-            {
-                if (point) dexp--;                   // a leading zero after the point moves the digits down
-                continue;
-            }
-            if (nd < FCONV_MAX_DIGITS)
-            {
-                digits[nd++] = *p;
-                if (point) dexp--;
-            }
-            else
-            {
-                if (*p != '0') sticky = 1;
-                if (!point) dexp++;
-            }
-        }
-        if (!any)
-            return 0.0f;                             // "." alone is not a number; "5." is
-        if (*p == 'e' || *p == 'E')
-        {
-            const char* q = p + 1;
-            int exp_negative = 0;
-            if (*q == '-')      { exp_negative = 1; q++; }
-            else if (*q == '+') { q++; }
-            if (*q >= '0' && *q <= '9')
-            {
-                int e = 0;
-                while (*q >= '0' && *q <= '9')
-                {
-                    if (e < 100000) e = e * 10 + (*q - '0');
-                    q++;
-                }
-                dexp += exp_negative ? -e : e;
-                p = q;
-            }
-        }
-        if (end != 0)
-            *end = (char*)p;
-        r = __fconv_decimal(digits, nd, sticky, dexp, &range);
+    case REAL_NONE:    return 0.0f;
+    case REAL_INF:     r = INFINITY; break;
+    case REAL_NAN:     return NAN;
+    case REAL_HEX:     r = __fconv_binary(t.h, t.sticky, t.exp, &range); break;
+    default:           r = __fconv_decimal(digits, t.nd, t.sticky, t.exp, &range); break;
     }
     if (range)
         errno = ERANGE;
-    return negative ? -r : r;
+    return t.negative ? -r : r;
 }
 
+#ifdef __CERES_SOFT_DOUBLE__
+// The same for a real double (-fsoft-double), rounded once to binary64 from the exact digits.
+double strtod(const char* s, char** end)
+{
+    static char digits[FCONV64_MAX_DIGITS];          // (static: 780 bytes)
+    struct real_text t;
+    const char* after = scan_real(s, &t, digits, FCONV64_MAX_DIGITS);
+    if (end != 0)
+        *end = (char*)after;
+    int range = 0;
+    unsigned long long bits = 0;
+    switch (t.kind)
+    {
+    case REAL_NONE:    break;
+    case REAL_INF:     bits = 0x7FF0000000000000ull; break;
+    case REAL_NAN:     bits = 0x7FF8000000000000ull; break;
+    case REAL_HEX:     bits = __fconv64_binary(t.h, t.sticky, t.exp, &range); break;
+    default:           bits = __fconv64_decimal(digits, t.nd, t.sticky, t.exp, &range); break;
+    }
+    if (range)
+        errno = ERANGE;
+    if (t.negative && t.kind != REAL_NAN && t.kind != REAL_NONE)
+        bits |= 0x8000000000000000ull;
+    double d;
+    memcpy(&d, &bits, 8);
+    return d;
+}
+
+double atof(const char* s) { return strtod(s, 0); }
+#else
 float strtod(const char* s, char** end) { return strtof(s, end); }
 float atof(const char* s) { return strtof(s, 0); }
+#endif

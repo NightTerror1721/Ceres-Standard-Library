@@ -22,3 +22,12 @@ float __fconv_decimal(const char* digits, int n, int sticky, int exp10, int* ran
 
 // The float nearest H x 2^exp2, H the 64-bit hexadecimal mantissa of "0x1.8p3"; `sticky` as above.
 float __fconv_binary(unsigned long long h, int sticky, int exp2, int* range);
+
+// The same for binary64, on its bits (src/fconv64.c): what printf, scanf and strtod use for a double in a program
+// built with -fsoft-double. Its halfway points have up to 767 significant digits. Not reentrant: its big numbers
+// are static, being too large for a small stack.
+#define FCONV64_MAX_DIGITS 780
+
+int __fconv64_digits(unsigned long long bits, int significant, int count, char* out, int* exp10);
+unsigned long long __fconv64_decimal(const char* digits, int n, int sticky, int exp10, int* range);
+unsigned long long __fconv64_binary(unsigned long long h, int sticky, int exp2, int* range);

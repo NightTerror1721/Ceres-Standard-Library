@@ -31,7 +31,6 @@ int   posix_memalign(void** out, size_t alignment, size_t n); // 0, EINVAL or EN
 int          atoi(const char* s);
 int          atol(const char* s);
 long long    atoll(const char* s);
-float        atof(const char* s);
 int          strtol(const char* s, char** end, int base);
 unsigned int strtoul(const char* s, char** end, int base);
 long long    strtoll(const char* s, char** end, int base);
@@ -39,8 +38,16 @@ unsigned long long strtoull(const char* s, char** end, int base);
 float        strtof(const char* s, char** end);    // correctly rounded; decimal, 0x hex floats ("0x1.8p3"), inf/infinity and nan
 int          strfromf(char* restrict s, size_t n, const char* restrict format, float fp);   // C23: format is "%[.p]{aAeEfFgG}"
 int          ftoa_shortest(char* buf, size_t size, float x);   // the fewest digits that read back as x ("0.1", "1e+30"); its length
-float        strtod(const char* s, char** end);    // == strtof
+#ifdef __CERES_SOFT_DOUBLE__
+// -fsoft-double: a real double, read the way strtof reads a float and rounded once to binary64.
+double       strtod(const char* s, char** end);
+double       atof(const char* s);
+#define strtold   strtod
+#else
+float        strtod(const char* s, char** end);    // == strtof (double is float)
+float        atof(const char* s);
 #define strtold   strtof
+#endif
 
 // ---- multibyte (UTF-8) and wide characters (src/wchar.c; more in wchar.h and uchar.h) ----
 // wchar_t holds a code point. mblen/mbtowc return the bytes of the character at s (0 for the NUL, -1 with EILSEQ

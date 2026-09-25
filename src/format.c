@@ -180,15 +180,55 @@ static void fmt_integer64(struct __sink* s, uint64_t v, int is_signed, int neg, 
 // Every digit is exact (src/fconv.c): a float is converted from its exact decimal expansion, rounded to nearest
 // with ties to even at the place the conversion asks for. A precision past the float's last nonzero digit gets
 // zeros, put out after the body without a buffer to hold them.
-union fbits { float f; unsigned int u; };
-
-static int put_special(struct __sink* s, float v, int upper, int width, int flags)
+// A floating value as its bits: a float's in the low word, or - in a library built with -fsoft-double, where printf's
+// %f takes a real double - a binary64's. Everything below works on those bits, so one layout serves both.
+struct real
 {
-    union fbits b; b.f = v;
-    if (((b.u >> 23) & 255u) != 255u) return 0;
+    unsigned long long bits;
+    int wide;                                          // binary64, not binary32
+};
+
+static int real_negative(const struct real* v)
+{
+    return v->wide ? (int)(v->bits >> 63) : (int)((v->bits >> 31) & 1u);
+}
+
+// 1 for an infinity or a NaN (and *nan says which), 0 for a finite value.
+static int real_special(const struct real* v, int* nan)
+{
+    if (v->wide)
+    {
+        if (((v->bits >> 52) & 0x7FFu) != 0x7FFu) return 0;
+        *nan = (v->bits & 0x000FFFFFFFFFFFFFull) != 0;
+        return 1;
+    }
+    if (((v->bits >> 23) & 255u) != 255u) return 0;
+    *nan = (v->bits & 0x7FFFFFu) != 0;
+    return 1;
+}
+
+static int real_zero(const struct real* v)
+{
+    return v->wide ? (v->bits & 0x7FFFFFFFFFFFFFFFull) == 0 : (v->bits & 0x7FFFFFFFu) == 0;
+}
+
+// The digits of |v| as __fconv_digits gives them (fconv_priv.h).
+static int real_digits(const struct real* v, int significant, int count, char* out, int* x10)
+{
+#ifdef __CERES_SOFT_DOUBLE__
+    if (v->wide)
+        return __fconv64_digits(v->bits, significant, count, out, x10);
+#endif
+    return __fconv_digits(float_from_bits((unsigned int)v->bits & 0x7FFFFFFFu), significant, count, out, x10);
+}
+
+static int put_special(struct __sink* s, const struct real* v, int upper, int width, int flags)
+{
+    int nan;
+    if (!real_special(v, &nan)) return 0;
     const char* txt;
-    int neg = (int)(b.u >> 31);
-    if ((b.u & 0x7FFFFFu) != 0) { txt = upper ? "NAN" : "nan"; neg = 0; }
+    int neg = real_negative(v);
+    if (nan) { txt = upper ? "NAN" : "nan"; neg = 0; }
     else txt = upper ? "INF" : "inf";
     char prefix[2]; prefix[0] = 0; prefix[1] = 0;
     if (neg) prefix[0] = '-'; else if (flags & F_PLUS) prefix[0] = '+'; else if (flags & F_SPACE) prefix[0] = ' ';
@@ -227,27 +267,43 @@ static int exponent_tail(char* tail, int upper, char letter, int x, int min_digi
     return nt;
 }
 
-// %a: [-]0x1.hhhhhhp+e, the exact bits in hexadecimal (0x0.hhhhhhp-126 for a subnormal). Without a precision the
-// trailing zero digits are dropped; with one the mantissa is rounded to it, to nearest with ties to even.
-static void fmt_hex_float(struct __sink* s, float v, const char* prefix_sign, int upper, int width, int prec, int flags)
+// %a: [-]0x1.hhhhhhp+e, the exact bits in hexadecimal (0x0.hhhhhhp-126 for a subnormal) - six digits for a float,
+// thirteen for a double. Without a precision the trailing zero digits are dropped; with one the mantissa is rounded
+// to it, to nearest with ties to even.
+static void fmt_hex_float(struct __sink* s, const struct real* v, const char* prefix_sign, int upper, int width, int prec, int flags)
 {
-    union fbits b; b.f = v;
-    unsigned int biased = (b.u >> 23) & 255u;
-    unsigned int frac = (b.u & 0x7FFFFFu) << 1;            // 24 bits: six hex digits
-    unsigned int lead = biased != 0 ? 1u : 0u;
-    int e = biased != 0 ? (int)biased - 127 : (frac != 0 ? -126 : 0);
-    int digits = 6;
-    if (prec >= 0 && prec < 6)
+    unsigned long long frac;
+    unsigned int lead;
+    int e;
+    int ndig;
+    if (v->wide)
     {
-        int drop = (6 - prec) * 4;
-        unsigned int kept = frac >> drop;
-        unsigned int rest = frac & ((1u << drop) - 1u);
-        unsigned int half = 1u << (drop - 1);
+        unsigned int biased = (unsigned int)((v->bits >> 52) & 0x7FFu);
+        frac = v->bits & 0x000FFFFFFFFFFFFFull;          // 52 bits: thirteen hex digits
+        lead = biased != 0 ? 1u : 0u;
+        e = biased != 0 ? (int)biased - 1023 : (frac != 0 ? -1022 : 0);
+        ndig = 13;
+    }
+    else
+    {
+        unsigned int biased = (unsigned int)((v->bits >> 23) & 255u);
+        frac = (v->bits & 0x7FFFFFu) << 1;              // 24 bits: six hex digits
+        lead = biased != 0 ? 1u : 0u;
+        e = biased != 0 ? (int)biased - 127 : (frac != 0 ? -126 : 0);
+        ndig = 6;
+    }
+    int digits = ndig;
+    if (prec >= 0 && prec < ndig)
+    {
+        int drop = (ndig - prec) * 4;
+        unsigned long long kept = frac >> drop;
+        unsigned long long rest = frac & ((1ull << drop) - 1u);
+        unsigned long long half = 1ull << (drop - 1);
         if (rest > half || (rest == half && (kept & 1u)))
             kept++;
         if (kept >> (prec * 4))                             // carried into the leading digit
         {
-            kept &= (1u << (prec * 4)) - 1u;
+            kept &= (1ull << (prec * 4)) - 1u;
             lead++;
         }
         frac = kept << drop;
@@ -255,7 +311,7 @@ static void fmt_hex_float(struct __sink* s, float v, const char* prefix_sign, in
     }
     else if (prec < 0)
     {
-        while (digits > 0 && ((frac >> ((6 - digits) * 4)) & 15u) == 0)
+        while (digits > 0 && ((frac >> ((ndig - digits) * 4)) & 15u) == 0)
             digits--;                                       // only as many as the value needs
     }
     const char* hex = upper ? "0123456789ABCDEF" : "0123456789abcdef";
@@ -265,25 +321,31 @@ static void fmt_hex_float(struct __sink* s, float v, const char* prefix_sign, in
     prefix[np++] = '0';
     prefix[np++] = upper ? 'X' : 'x';
     prefix[np] = 0;
-    char body[12];
+    char body[20];
     int n = 0;
     body[n++] = hex[lead];
     if (digits > 0 || (flags & F_ALT)) body[n++] = '.';
     for (int i = 0; i < digits; i++)
-        body[n++] = hex[(frac >> (20 - 4 * i)) & 15u];
+        body[n++] = hex[(frac >> ((ndig - 1 - i) * 4)) & 15u];
     char tail[8];
     int nt = exponent_tail(tail, upper, 'p', e, 1);
-    int zeros = prec > 6 ? prec - 6 : 0;
+    int zeros = prec > ndig ? prec - ndig : 0;
     put_number(s, prefix, body, n, zeros, tail, nt, width, flags);
 }
 
-static void fmt_float(struct __sink* s, float v, int conv, int width, int prec, int flags)
+#ifdef __CERES_SOFT_DOUBLE__
+#define REAL_MAX_DIGITS FCONV64_MAX_DIGITS
+#define REAL_BUFFER static                             // 1.6 KiB: not on the stack of whatever called printf
+#else
+#define REAL_MAX_DIGITS FCONV_MAX_DIGITS
+#define REAL_BUFFER
+#endif
+
+static void fmt_float(struct __sink* s, const struct real* v, int conv, int width, int prec, int flags)
 {
     int upper = (conv == 'F' || conv == 'E' || conv == 'G' || conv == 'A');
     if (put_special(s, v, upper, width, flags)) return;
-    union fbits sb; sb.f = v;
-    int neg = (int)(sb.u >> 31);
-    if (neg) v = -v;
+    int neg = real_negative(v);
     char prefix[2]; prefix[0] = 0; prefix[1] = 0;
     if (neg) prefix[0] = '-'; else if (flags & F_PLUS) prefix[0] = '+'; else if (flags & F_SPACE) prefix[0] = ' ';
     int lc = conv | 32;                                // to lower case
@@ -293,15 +355,16 @@ static void fmt_float(struct __sink* s, float v, int conv, int width, int prec, 
         return;
     }
     if (prec < 0) prec = 6;
-    char dg[FCONV_MAX_DIGITS];
-    char body[FCONV_MAX_DIGITS + 64];
+    REAL_BUFFER char dg[REAL_MAX_DIGITS];
+    REAL_BUFFER char body[REAL_MAX_DIGITS + 64];
     int n = 0;
     int X = 0;
     int nd;
+    int zero = real_zero(v);
 
     if (lc == 'f')
     {
-        nd = v != 0.0f ? __fconv_digits(v, 0, prec, dg, &X) : 0;
+        nd = !zero ? real_digits(v, 0, prec, dg, &X) : 0;
         if (nd == 0) X = 0;
         // The integer part: the digits down to 10^0, or a 0.
         if (nd == 0 || X < 0) body[n++] = '0';
@@ -324,8 +387,8 @@ static void fmt_float(struct __sink* s, float v, int conv, int width, int prec, 
     int P = prec;
     if (lc == 'g') { if (P == 0) P = 1; }
     else P = prec + 1;
-    if (v != 0.0f)
-        nd = __fconv_digits(v, 1, P, dg, &X);
+    if (!zero)
+        nd = real_digits(v, 1, P, dg, &X);
     else
     {
         dg[0] = '0';
@@ -524,8 +587,17 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
         }
         else if (c == 'f' || c == 'F' || c == 'e' || c == 'E' || c == 'g' || c == 'G' || c == 'a' || c == 'A')
         {
+            struct real v;
+#ifdef __CERES_SOFT_DOUBLE__
+            double d = va_arg(ap, double);                  // a real double: a float was promoted to one
+            memcpy(&v.bits, &d, 8);
+            v.wide = 1;
+#else
             float f = va_arg(ap, float);
-            fmt_float(s, f, c, width, prec, flags);
+            v.bits = float_bits(f);
+            v.wide = 0;
+#endif
+            fmt_float(s, &v, c, width, prec, flags);
         }
         else if (c == 'n') { int* p = va_arg(ap, int*); *p = (int)s->len; }
         else { s->put(s, '%'); s->put(s, c); }
