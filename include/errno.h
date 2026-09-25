@@ -8,6 +8,7 @@ extern int errno;
 // same thing everywhere.
 #define EPERM         1
 #define ENOENT        2
+#define ESRCH         3
 #define EINTR         4
 #define EIO           5
 #define ENXIO         6
@@ -31,6 +32,7 @@ extern int errno;
 #define EROFS         30
 #define EPIPE         32
 #define EDOM          33
+#define EDEADLK       35
 #define ERANGE        34
 #define ENAMETOOLONG  36
 #define ENOSYS        38

@@ -33,6 +33,14 @@
 #define FS_MAX_OPEN 8
 #endif
 
+// How many tasks ceres/task.h can hold at once, main included, and the stack a task gets when it asks for 0.
+#ifndef TASK_MAX
+#define TASK_MAX 16
+#endif
+#ifndef TASK_STACK_DEFAULT
+#define TASK_STACK_DEFAULT 8192
+#endif
+
 // How many software timers timer_after() and timer_every() can hold at once. (ceres/timer.h)
 #ifndef TIMER_MAX_TASKS
 #define TIMER_MAX_TASKS 8

@@ -135,10 +135,24 @@ void heap_set_stack_reserve(unsigned int bytes)
 // The highest address the heap may reach: `heap_reserve` bytes below the stack pointer. A reserve
 // larger than sp (a machine started with little --memory, or a big heap_set_stack_reserve) leaves no
 // room at all, rather than wrapping round to an address near the top of the address space.
+// While a task of ceres/task.h runs on a stack of its own (a block of this heap), the heap's neighbour is still
+// main's stack: the scheduler says where it is here, and takes the heap's top in place of the stack limit.
+unsigned int __heap_main_sp = 0;
+void (*__heap_top_hook)(unsigned int top) = 0;
+
 static unsigned int heap_limit(void)
 {
-    unsigned int sp = sys_sp();
+    unsigned int sp = __heap_main_sp != 0 ? __heap_main_sp : sys_sp();
     return sp > heap_reserve ? sp - heap_reserve : 0u;
+}
+
+// The heap now ends at top: that is where the stack must stop (the scheduler decides when it is main's).
+static void heap_top_moved(unsigned int top)
+{
+    if (__heap_top_hook != 0)
+        __heap_top_hook(top);
+    else
+        sys_set_stack_limit(top);
 }
 
 static unsigned int heap_brk(void)
@@ -157,7 +171,7 @@ static int start_heap(void)
     heap_epilogue = heap_first;
     heap_epilogue->prev_size = 0;
     heap_epilogue->head = 0;
-    sys_set_stack_limit(heap_brk());
+    heap_top_moved(heap_brk());
     return 1;
 }
 
@@ -170,7 +184,7 @@ static int move_top(char* to)
     heap_epilogue = (struct blk*)to;
     heap_epilogue->prev_size = 0;
     heap_epilogue->head = 0;
-    sys_set_stack_limit(heap_brk());          // the stack stops where the heap now ends
+    heap_top_moved(heap_brk());               // the stack stops where the heap now ends
     return 1;
 }
 

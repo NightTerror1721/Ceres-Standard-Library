@@ -40,6 +40,8 @@ char* strerror(int e)
     case ENOTEMPTY:    return "Directory not empty";
     case EXDEV:        return "Invalid cross-device link";
     case ENOTSUP:      return "Operation not supported";
+    case EDEADLK:      return "Resource deadlock avoided";
+    case ESRCH:        return "No such process";
     case EOVERFLOW:    return "Value too large for defined data type";
     case EILSEQ:       return "Illegal byte sequence";
     case ETIMEDOUT:    return "Timed out";

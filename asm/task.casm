@@ -1,0 +1,52 @@
+// The context switch of ceres/task.h. A context is 14 words, what a call must preserve:
+//   0..3   r8-r11
+//   4      fp
+//   5      sp            pointing at the return address the call to __task_switch pushed
+//   6..13  f8-f15
+// __task_switch(save, load) stores the running task's registers in `save`, puts those of `load` back, and
+// returns - on `load`'s stack, to where `load` last called __task_switch. A new task's context has sp at a word
+// holding __task_entry, and fn, arg and the finisher in r8, r9 and r10: its first switch "returns" into
+// __task_entry, which calls fn(arg) and then the finisher (src/ceres/task.c's __task_finish), which never returns.
+// (A library asm unit cannot name a C function, so the C side hands it over.)
+@text
+
+global __task_switch:           // (save, load)
+    str [r0 + 0],  r8
+    str [r0 + 4],  r9
+    str [r0 + 8],  r10
+    str [r0 + 12], r11
+    str [r0 + 16], fp
+    str [r0 + 20], sp
+    str [r0 + 24], f8
+    str [r0 + 28], f9
+    str [r0 + 32], f10
+    str [r0 + 36], f11
+    str [r0 + 40], f12
+    str [r0 + 44], f13
+    str [r0 + 48], f14
+    str [r0 + 52], f15
+    ldr r8,  [r1 + 0]
+    ldr r9,  [r1 + 4]
+    ldr r10, [r1 + 8]
+    ldr r11, [r1 + 12]
+    ldr fp,  [r1 + 16]
+    ldr f8,  [r1 + 24]
+    ldr f9,  [r1 + 28]
+    ldr f10, [r1 + 32]
+    ldr f11, [r1 + 36]
+    ldr f12, [r1 + 40]
+    ldr f13, [r1 + 44]
+    ldr f14, [r1 + 48]
+    ldr f15, [r1 + 52]
+    ldr sp,  [r1 + 20]
+    ret
+
+global __task_entry:
+    mov r0, r9                  // fn(arg)
+    call r8
+    call r10                    // __task_finish: never returns
+    halt
+
+global __task_entry_address:    // where a new task's first switch goes
+    la r0, __task_entry
+    ret
