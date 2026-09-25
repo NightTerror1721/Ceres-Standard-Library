@@ -72,6 +72,14 @@ int main(void)
     CHECK_EQ(lz4_frame_decompress(checked, sizeof checked, out, sizeof out), 16);
     CHECK(memcmp(out, "aaaaaaaaahello!?", 16) == 0);
     CHECK_EQ(lz4_frame_decompress(checked, sizeof checked - 6, out, sizeof out), -1);   // a block's checksum cut off
+    static unsigned char two[64];                                      // one frame, and a second after it
+    memcpy(two, frame, sizeof frame);
+    memcpy(two + 32, frame, sizeof frame);
+    static char both[64];
+    CHECK_EQ(lz4_frame_decompress(two, 64, both, sizeof both), 34);
+    CHECK(memcmp(both + 17, "aaaaaaaaahelloxyz", 17) == 0);
+    memcpy(two + 32, "trailing bytes, no frame", 24);
+    CHECK_EQ(lz4_frame_decompress(two, 56, out, sizeof out), 17);      // what follows the last frame is left
     unsigned char bad[32];                                             // (sizeof frame: not a constant to Ceres-C)
     memcpy(bad, frame, sizeof frame);
     bad[4] = 0x20;                                                     // version 00

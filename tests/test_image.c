@@ -68,8 +68,14 @@ int main(void)
     CHECK_EQ(s->px[2], RGB(10, 20, 30));                         // its own colour
     image_free(s);
     errno = 0;
-    CHECK(image_decode(qoi, 20, KEY) == 0);                      // cut short
+    CHECK(image_decode(qoi, 20, KEY) == 0);                      // cut short: not even a header
     CHECK_EQ(errno, EINVAL);
+    CHECK(image_decode(qoi, 22, KEY) == 0);                      // a header, and the chunks cut short
+    CHECK(image_decode(qoi, 27, KEY) == 0);
+    static unsigned char huge[40];
+    memcpy(huge, qoi, 14);
+    huge[6] = 0x1F;                                              // 7938 x 3: far more pixels than 40 bytes can hold
+    CHECK_EQ(image_info(huge, sizeof huge, &w, &h), IMAGE_UNKNOWN);
     unsigned char big[64];
     memcpy(big, qoi, sizeof qoi);
     big[4] = 0x7F;                                               // 2 billion pixels wide
@@ -117,6 +123,15 @@ int main(void)
     put32(data + 74, 0x66554400);                                // transparent
     s = image_decode(data, 78, KEY);
     CHECK(s != 0 && s->px[0] == RGB(0x11, 0x22, 0x33) && s->px[1] == KEY);
+    image_free(s);
+
+    bmp_header(1, 1, 32, 3, 0, 12, 70);                          // a mask of all ones: 32 bits, not a hang
+    put32(data + 54, 0xFFFFFFFFu);
+    put32(data + 58, 0x0000FF00u);
+    put32(data + 62, 0x000000FFu);
+    put32(data + 66, 0x12345678u);
+    s = image_decode(data, 70, KEY);
+    CHECK(s != 0 && s->px[0] == RGB(0x12, 0x56, 0x78));
     image_free(s);
 
     bmp_header(2, 1, 8, 1, 0, 0, 60);                            // RLE8: refused

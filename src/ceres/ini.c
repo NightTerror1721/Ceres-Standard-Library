@@ -154,6 +154,8 @@ static struct ini_entry* find(const struct ini* d, const char* section, const ch
 {
     if (section == 0)
         section = "";
+    if (key == 0)
+        return 0;
     for (int i = 0; i < d->count; i++)
         if (strcasecmp(d->entries[i].section, section) == 0 && strcasecmp(d->entries[i].key, key) == 0)
             return &d->entries[i];
@@ -169,15 +171,32 @@ static char* copy(const char* s)
     return c;
 }
 
+// Whether a name reads back as itself from the text ini_write makes of it: no line break, nothing that would end it
+// early or start a comment, and no blanks at its ends (they would be trimmed away).
+static int writable_name(const char* s, int is_key)
+{
+    size_t n = strlen(s);
+    if (is_key && (n == 0 || s[0] == '[' || s[0] == ';' || s[0] == '#'))
+        return 0;
+    if (n > 0 && (blank(s[0]) || blank(s[n - 1])))
+        return 0;
+    for (size_t i = 0; i < n; i++)
+    {
+        if (s[i] == '\n' || (!is_key && s[i] == ']') || (is_key && (s[i] == '=' || s[i] == ':')))
+            return 0;
+    }
+    return 1;
+}
+
 int ini_set(struct ini* d, const char* section, const char* key, const char* value)
 {
-    if (key == 0 || value == 0)
+    if (section == 0)
+        section = "";
+    if (key == 0 || value == 0 || !writable_name(section, 0) || !writable_name(key, 1))
     {
         errno = EINVAL;
         return -1;
     }
-    if (section == 0)
-        section = "";
     char* v = copy(value);
     if (v == 0)
     {
@@ -312,7 +331,10 @@ int ini_get_int(const struct ini* d, const char* section, const char* key, int f
         return fallback;
     char* end;
     errno = 0;
-    long n = strtol(v, &end, 0);
+    int base = v[0] == '0' && (v[1] == 'x' || v[1] == 'X') ? 16 : 10;   // not octal: 010 is ten
+    if (v[0] == '-' || v[0] == '+')
+        base = v[1] == '0' && (v[2] == 'x' || v[2] == 'X') ? 16 : 10;
+    long n = strtol(v, &end, base);
     return *end == 0 && errno == 0 ? (int)n : fallback;
 }
 

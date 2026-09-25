@@ -21,7 +21,9 @@
 //
 // The parser follows RFC 8259 strictly (no comments, no trailing commas, no single quotes) and nests 64 deep at
 // most. json_parse returns how many tokens it used, or -1 with errno: EINVAL for text that is not JSON (its byte
-// offset in *json_error_at), ENOSPC when there are more values than tokens.
+// offset in json_error_at, which the next parse overwrites), ENOSPC when there are more values than tokens. The
+// n bytes are the text, a NUL among them included. A token index given to the getters must come from the parse
+// that filled the array (they cannot check it against a count they are not given).
 //
 // WRITING goes into a buffer, commas and quotes taken care of:
 //
@@ -71,7 +73,7 @@ struct json_writer
     size_t cap, len;            // len goes on counting past cap, so a failed write says how much it needed
     int depth;
     int failed;
-    unsigned char state[JSON_MAX_DEPTH];   // per level: object or array, and whether a value or a key came last
+    unsigned char state[JSON_MAX_DEPTH + 1];   // per level (0 the top): object or array, and what came last
 };
 
 void json_writer_init(struct json_writer* w, char* buf, size_t cap);

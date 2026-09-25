@@ -63,7 +63,7 @@ static float reduce_large(float ax, int* quad)
     long long r = (long long)fraction;                 // the fraction, now in [-1/2, 1/2), times 2^64
     *quad = q & 3;
     int negative = r < 0;
-    unsigned long long a = negative ? (unsigned long long)(-r) : (unsigned long long)r;
+    unsigned long long a = negative ? 0ull - (unsigned long long)r : (unsigned long long)r;   // -2^63 has no signed negation
     if (a == 0)
         return 0.0f;
     int shift = 0;

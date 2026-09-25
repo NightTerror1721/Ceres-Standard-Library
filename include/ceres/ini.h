@@ -54,7 +54,9 @@ const char* ini_get(const struct ini* d, const char* section, const char* key, c
 int   ini_get_int(const struct ini* d, const char* section, const char* key, int fallback);     // decimal or 0x
 float ini_get_float(const struct ini* d, const char* section, const char* key, float fallback);
 int   ini_get_bool(const struct ini* d, const char* section, const char* key, int fallback);    // yes/no, true/false, on/off, 1/0
-int  ini_set(struct ini* d, const char* section, const char* key, const char* value);   // 0, or -1 (ENOMEM)
+// A section name may not hold ] or a line break, a key = : or a line break (nor start with [ ; #), and neither may
+// start or end with a blank: they would not read back. Those are EINVAL.
+int  ini_set(struct ini* d, const char* section, const char* key, const char* value);   // 0, or -1 (ENOMEM, EINVAL)
 int  ini_set_int(struct ini* d, const char* section, const char* key, int value);
 int  ini_set_float(struct ini* d, const char* section, const char* key, float value);
 int  ini_remove(struct ini* d, const char* section, const char* key);  // 0, or -1 (ENOENT)

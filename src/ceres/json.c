@@ -32,7 +32,7 @@ static int fail(struct parser* p, int e)
 
 static int at_end(const struct parser* p)
 {
-    return p->pos >= p->n || p->s[p->pos] == 0;
+    return p->pos >= p->n;                           // a NUL within the n bytes is no end: it is not JSON
 }
 
 static void skip_space(struct parser* p)
@@ -445,7 +445,7 @@ static void open_level(struct json_writer* w, unsigned char kind, const char* br
 {
     before_value(w);
     emit(w, bracket, 1);
-    if (w->depth + 1 >= JSON_MAX_DEPTH)
+    if (w->depth + 1 > JSON_MAX_DEPTH)                 // as deep as the reader goes, and no deeper
     {
         w->failed = 1;
         return;

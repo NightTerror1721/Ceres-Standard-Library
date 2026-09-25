@@ -440,8 +440,13 @@ int wcscoll(const wchar_t* a, const wchar_t* b)
 size_t wcsxfrm(wchar_t* dst, const wchar_t* src, size_t n)
 {
     size_t length = wcslen(src);
-    if (length < n)
-        wcscpy(dst, src);
+    if (n != 0)
+    {
+        size_t copy = length < n - 1 ? length : n - 1;   // cut short, and terminated, as strxfrm does
+        for (size_t i = 0; i < copy; i++)
+            dst[i] = src[i];
+        dst[copy] = 0;
+    }
     return length;
 }
 

@@ -60,6 +60,26 @@ int main(void)
     CHECK(ini_get(&cfg, "player", "age", 0) == 0);
     CHECK_EQ(ini_get_int(&cfg, "sound", "volume", 80), 80);
 
+    char longline[700];
+    memset(longline, 'k', sizeof longline);
+    strcpy(longline + 600, " = v\n[unclosed\nq = \"open\nr = \"x\" y\nok = 1\n");
+    struct ini broken;
+    ini_init(&broken);
+    CHECK_EQ(ini_read(&broken, longline), 1);                        // the first bad line: too long
+    CHECK_EQ(broken.count, 1);                                       // only ok survives
+    CHECK_STR(ini_get(&broken, "", "ok", "?"), "1");
+    CHECK(ini_get(&broken, "", 0, "none") != 0);                     // no key: the fallback, not a crash
+    ini_free(&broken);
+    CHECK_EQ(ini_set(&cfg, "bad]", "k", "v"), -1);                   // would not read back
+    CHECK_EQ(ini_set(&cfg, "s", "a=b", "v"), -1);
+    CHECK_EQ(ini_set(&cfg, "s", " padded", "v"), -1);
+    CHECK_EQ(ini_set(&cfg, "s", "", "v"), -1);
+    ini_init(&broken);
+    ini_read(&broken, "n = 010\nh = -0x10\n");
+    CHECK_EQ(ini_get_int(&broken, "", "n", 0), 10);                  // decimal, not octal
+    CHECK_EQ(ini_get_int(&broken, "", "h", 0), -16);
+    ini_free(&broken);
+
     TEST_SECTION("changing and writing");
     CHECK_EQ(ini_set_int(&cfg, "video", "scale", 2), 0);
     CHECK_EQ(ini_set_float(&cfg, "video", "ratio", 0.1f), 0);

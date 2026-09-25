@@ -14,7 +14,8 @@
 //   ...
 //   save_write("slot1", 2, &me, sizeof me);
 //
-// The version is the program's own, stored with the bytes, for telling an old layout from the current one.
+// The version is the program's own, stored with the bytes, for telling an old layout from the current one. Two
+// writes to one save must not overlap (from an interrupt handler; tasks do not switch inside a save).
 // Failures are -1 (NULL) with errno: ENOENT when there is no good copy at all, ENOSPC when it does not fit in the
 // buffer, EIO when a file cannot be written whole, and whatever fopen said.
 

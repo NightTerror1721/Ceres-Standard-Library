@@ -79,11 +79,16 @@ float erfc(float x)
     {
         if (x >= 0.5f)
             return horner(erfc_half, 8, x - 0.75f);      // x - 0.75 is exact
-        return x > -1.0f ? 1.0f - erf_below_one(x) : 2.0f - erfc(-x);
+        if (x > -1.0f)
+            return 1.0f - erf_below_one(x);
+        if (x <= -10.1f)
+            return 2.0f;                             // 2 - (a tail that underflowed): exactly 2, and no ERANGE
+        return 2.0f - erfc(-x);
     }
     if (x >= 10.1f)
     {
-        errno = ERANGE;                              // below the smallest float
+        if (isfinite(x))
+            errno = ERANGE;                          // below the smallest float (and exact for +inf)
         return 0.0f;
     }
     return erfc_tail(x);
@@ -140,7 +145,7 @@ static float rising_product(float f, int n, float g)
         e += shift;
     }
     // m has 32 bits: its top 24, rounded, as a float, then g and the exponent.
-    unsigned int top = (m + 0x80u) >> 8;
+    unsigned int top = (unsigned int)(((unsigned long long)m + 0x80u) >> 8);   // m near 2^32 must not wrap
     int extra = 8;
     if (top >= 0x1000000u)
     {

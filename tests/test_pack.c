@@ -103,7 +103,15 @@ int main(void)
     errno = 0;
     CHECK_EQ(pack_open_memory(&p, pack, 30), -1);                // the directory cut short
     CHECK_EQ(errno, EINVAL);
-    CHECK_EQ(pack_open_memory(&p, "CPAQ", 4), -1);
+    CHECK_EQ(pack_open_memory(&p, "CPAQ", 4), -1);                 // too short
+    pack[0] = 'Q';
+    errno = EIO;                                                 // a stale errno must not leak through
+    CHECK_EQ(pack_open_memory(&p, pack, used), -1);              // long enough, but not a pack
+    CHECK_EQ(errno, EINVAL);
+    pack[0] = 'C';
+    put32(pack + 8, 0xFFFFFFF0u);                                // a directory near the top of the address range
+    CHECK_EQ(pack_open_memory(&p, pack, used), -1);
+    CHECK_EQ(errno, EINVAL);
     build(names, texts, 3);
 
     TEST_SECTION("in a file");

@@ -124,7 +124,8 @@ function main(argv) {
         let stored = data;
         if (!store && data.length > 0) {
             const packed = lz4Compress(data);
-            lz4Decompress(packed, data.length);            // the pack is only written if every entry comes back
+            if (!lz4Decompress(packed, data.length).equals(data))   // the pack is only written if every entry comes back
+                throw new Error("the LZ4 check failed");
             if (packed.length < data.length) stored = packed;
         }
         return { name, data, stored };

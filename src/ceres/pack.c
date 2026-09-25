@@ -74,12 +74,16 @@ static int load_directory(struct pack* p)
     p->count = 0;
     p->entries = 0;
     p->cached = 0;
-    if (fetch(p, 0, header, HEADER) != 0 || memcmp(header, "CPAK", 4) != 0 || le16(header + 4) != 1)
-        return fail(errno == EIO ? EIO : EINVAL);
+    if (fetch(p, 0, header, HEADER) != 0)
+        return -1;                                   // too short to be one (EINVAL), or the medium failed (EIO)
+    if (memcmp(header, "CPAK", 4) != 0 || le16(header + 4) != 1)
+        return fail(EINVAL);                         // not a pack
     int count = (int)le16(header + 6);
     unsigned int directory = le32(header + 8);
     if (count == 0)
         return 0;
+    if ((unsigned long long)directory + (unsigned long long)count * ENTRY > p->length)
+        return fail(EINVAL);                         // the directory runs off the end
     p->entries = (struct pack_entry*)malloc((size_t)count * sizeof(struct pack_entry));
     if (p->entries == 0)
         return fail(ENOMEM);
@@ -122,7 +126,7 @@ int pack_open(struct pack* p, const struct blockdev* dev)
     p->kind = FROM_DEVICE;
     p->device = *dev;
     unsigned int sectors = dev->sectors(dev->ctx);
-    p->length = sectors >= 0xFFFFFFFFu / BLOCKDEV_SECTOR ? 0xFFFFFFFFu : sectors * BLOCKDEV_SECTOR;
+    p->length = sectors > 0xFFFFFFFFu / BLOCKDEV_SECTOR ? 0xFFFFFFFFu : sectors * BLOCKDEV_SECTOR;
     return load_directory(p);
 }
 
@@ -228,6 +232,11 @@ void* pack_load(struct pack* p, const char* name, size_t* size)
     const struct pack_entry* e = pack_find(p, name);
     if (e == 0)
         return 0;
+    if (e->size == 0xFFFFFFFFu)
+    {
+        errno = ENOMEM;                              // the NUL after it would not fit in a size_t
+        return 0;
+    }
     char* data = (char*)malloc((size_t)e->size + 1u);
     if (data == 0)
     {

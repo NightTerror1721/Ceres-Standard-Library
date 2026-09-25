@@ -83,6 +83,7 @@ int main(void)
     deep[140] = 0;
     CHECK(!parses(deep));                                        // deeper than 64
     CHECK_EQ(json_parse("[1]xyz", 3, t, 64), 2);                 // n bytes, whatever follows
+    CHECK_EQ(json_parse("[1]\0xyz", 7, t, 64), -1);              // a NUL among the n bytes is not an end
 
     TEST_SECTION("writing");
     char out[256];

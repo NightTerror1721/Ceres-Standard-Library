@@ -3,6 +3,7 @@
 #include "ceres/test.h"
 #include "ceres/save.h"
 #include "ceres/fs.h"
+#include "ceres/hash.h"
 #include "stdio.h"
 #include "string.h"
 #include "stdlib.h"
@@ -108,5 +109,25 @@ int main(void)
     errno = 0;
     CHECK_EQ(save_write("a-name-far-too-long-for-any-save-file-to-have-at-all-0123456789", 1, "x", 1), -1);
     CHECK_EQ(errno, ENAMETOOLONG);
+    // The sequence number wraps round: a copy numbered 0 is newer than one numbered 0xFFFFFFFF.
+    CHECK_EQ(save_write("host:wrap", 1, "old", 3), 0);
+    CHECK_EQ(save_write("host:wrap", 1, "new", 3), 0);
+    unsigned char head[32];
+    for (int which = 0; which < 2; which++)
+    {
+        const char* name = which == 0 ? "host:wrap.a" : "host:wrap.b";
+        long n = file_bytes(name, head, sizeof head);
+        unsigned int seq = which == 0 ? 0xFFFFFFFFu : 0u;
+        for (int i = 0; i < 4; i++)
+            head[8 + i] = (unsigned char)(seq >> (8 * i));
+        unsigned int crc = hash_crc32(head, 20);
+        for (int i = 0; i < 4; i++)
+            head[20 + i] = (unsigned char)(crc >> (8 * i));
+        CHECK_EQ(file_put(name, head, (size_t)n), 0);
+    }
+    char text[4] = { 0 };
+    CHECK_EQ((int)save_read("host:wrap", 0, text, 3), 3);
+    CHECK(memcmp(text, "new", 3) == 0);
+    CHECK_EQ(save_erase("host:wrap"), 0);
     return test_summary();
 }

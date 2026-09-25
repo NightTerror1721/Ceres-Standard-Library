@@ -16,12 +16,6 @@ struct header
     unsigned int version, sequence, size, crc;
 };
 
-struct copy
-{
-    int good;
-    struct header h;
-};
-
 static void put32(unsigned char* p, unsigned int v)
 {
     for (int i = 0; i < 4; i++)
@@ -49,76 +43,115 @@ static int name_of(char* name, const char* path, int which)
     return 0;
 }
 
-// One copy's header, and whether its bytes check out. With `data`, the bytes go there too: a copy larger than `cap`
-// is not read, and not good.
-static int examine(const char* path, int which, struct copy* c, void* data, size_t cap)
+// Opens one copy and reads its header: 1 with *out open at its bytes when the header checks out, 0 when the copy is
+// not there or its header does not, and -1 (errno) when it is there but could not be opened - which must not pass
+// for "no copy", or a write would go over a good save that was only unreadable for a moment.
+static int open_copy(const char* path, int which, struct header* h, FILE** out)
 {
     char name[SAVE_PATH_MAX + 3];
-    c->good = 0;
+    *out = 0;
     if (name_of(name, path, which) != 0)
         return -1;
     FILE* f = fopen(name, "rb");
     if (f == 0)
-        return 0;
+        return errno == ENOENT ? 0 : -1;
     unsigned char raw[HEADER];
-    int ok = fread(raw, 1, HEADER, f) == HEADER && get32(raw) == MAGIC && get32(raw + 20) == hash_crc32(raw, 20);
-    if (ok)
+    if (fread(raw, 1, HEADER, f) != HEADER || get32(raw) != MAGIC || get32(raw + 20) != hash_crc32(raw, 20))
     {
-        c->h.version = get32(raw + 4);
-        c->h.sequence = get32(raw + 8);
-        c->h.size = get32(raw + 12);
-        c->h.crc = get32(raw + 16);
-        if (data != 0 && c->h.size > cap)
-            ok = 0;
-        // The bytes, a piece at a time through the CRC, into `data` when there is somewhere to put them.
-        unsigned int crc = 0;
-        unsigned char piece[128];
-        unsigned int left = c->h.size;
-        unsigned char* out = (unsigned char*)data;
-        while (ok && left > 0)
-        {
-            unsigned int n = left < sizeof piece ? left : (unsigned int)sizeof piece;
-            unsigned char* into = out != 0 ? out : piece;
-            ok = fread(into, 1, n, f) == n;
-            crc = hash_crc32_update(crc, into, n);
-            if (out != 0)
-                out += n;
-            left -= n;
-        }
-        ok = ok && crc == c->h.crc && fgetc(f) == EOF;           // nothing after it either
+        fclose(f);
+        return 0;
     }
-    fclose(f);
-    c->good = ok;
-    return 0;
+    h->version = get32(raw + 4);
+    h->sequence = get32(raw + 8);
+    h->size = get32(raw + 12);
+    h->crc = get32(raw + 16);
+    *out = f;
+    return 1;
 }
 
-// Which copy is the newest good one: 0 (a), 1 (b), or -1 with ENOENT.
-static int newest(const char* path, struct copy copies[2])
+// The bytes after a good header, a piece at a time through the CRC, into `data` when it is not NULL (it has room for
+// them all): 1 when every one is there, the CRC matches and nothing follows.
+static int read_body(FILE* f, const struct header* h, void* data)
 {
-    if (examine(path, 0, &copies[0], 0, 0) != 0 || examine(path, 1, &copies[1], 0, 0) != 0)
-        return -1;
-    if (copies[0].good && copies[1].good)
-        return copies[1].h.sequence - copies[0].h.sequence < 0x80000000u ? 1 : 0;   // the sequence wraps round
-    if (copies[0].good)
-        return 0;
-    if (copies[1].good)
-        return 1;
-    errno = ENOENT;
-    return -1;
+    unsigned int crc = 0;
+    unsigned char piece[128];
+    unsigned int left = h->size;
+    unsigned char* out = (unsigned char*)data;
+    int ok = 1;
+    while (ok && left > 0)
+    {
+        unsigned int n = left < sizeof piece ? left : (unsigned int)sizeof piece;
+        unsigned char* into = out != 0 ? out : piece;
+        ok = fread(into, 1, n, f) == n;
+        if (ok)
+            crc = hash_crc32_update(crc, into, n);
+        if (out != 0)
+            out += n;
+        left -= n;
+    }
+    return ok && crc == h->crc && fgetc(f) == EOF;
+}
+
+// The newest good copy: both headers are read, the newer (by sequence number, which wraps round) is tried first and
+// taken if its bytes check out, else the other. It returns 0 (a) or 1 (b) with its header in *h and, when data is
+// not NULL, its bytes there - each copy's bytes are read at most once. -1 with ENOENT when no copy is good, ENOSPC
+// when the good one does not fit in cap, or the error that kept a copy from being opened.
+static int newest(const char* path, struct header* h, void* data, size_t cap)
+{
+    struct header heads[2];
+    FILE* files[2] = { 0, 0 };
+    int result = -1;
+    int error = ENOENT;
+    for (int which = 0; which < 2 && error == ENOENT; which++)
+        if (open_copy(path, which, &heads[which], &files[which]) < 0)
+            error = errno;
+    if (error == ENOENT)
+    {
+        int first = 0;
+        if (files[0] == 0 || (files[1] != 0 && heads[1].sequence - heads[0].sequence < 0x80000000u))
+            first = 1;
+        for (int k = 0; k < 2 && result < 0; k++)
+        {
+            int which = k == 0 ? first : 1 - first;
+            if (files[which] == 0)
+                continue;
+            if (data != 0 && heads[which].size > cap)
+            {
+                if (read_body(files[which], &heads[which], 0))
+                {
+                    error = ENOSPC;                                  // good, and too big: not the older one instead
+                    break;
+                }
+                continue;
+            }
+            if (read_body(files[which], &heads[which], data))
+            {
+                *h = heads[which];
+                result = which;
+            }
+        }
+    }
+    for (int which = 0; which < 2; which++)
+        if (files[which] != 0)
+            fclose(files[which]);
+    if (result < 0)
+        errno = error;
+    return result;
 }
 
 int save_write(const char* path, unsigned int version, const void* data, size_t size)
 {
-    struct copy copies[2];
+    struct header latest_header;
     int saved_errno = errno;
-    int latest = newest(path, copies);
+    int latest = newest(path, &latest_header, 0, 0);
     if (latest < 0 && errno != ENOENT)
         return -1;
     errno = saved_errno;
     int which = latest == 0 ? 1 : 0;                                 // over the older one, or a when there is none
-    unsigned int sequence = latest >= 0 ? copies[latest].h.sequence + 1u : 1u;
+    unsigned int sequence = latest >= 0 ? latest_header.sequence + 1u : 1u;
     char name[SAVE_PATH_MAX + 3];
-    name_of(name, path, which);
+    if (name_of(name, path, which) != 0)
+        return -1;
     unsigned char raw[HEADER];
     put32(raw, MAGIC);
     put32(raw + 4, version);
@@ -142,27 +175,12 @@ int save_write(const char* path, unsigned int version, const void* data, size_t 
 
 long save_read(const char* path, unsigned int* version, void* data, size_t cap)
 {
-    struct copy copies[2];
-    int latest = newest(path, copies);
-    if (latest < 0)
+    struct header h;
+    if (newest(path, &h, data, cap) < 0)
         return -1;
-    if (copies[latest].h.size > cap)
-    {
-        errno = ENOSPC;
-        return -1;
-    }
-    // Read again, into data this time: had the file changed since, its CRC would say so.
-    struct copy again;
-    if (examine(path, latest, &again, data, cap) != 0)
-        return -1;
-    if (!again.good)
-    {
-        errno = EIO;
-        return -1;
-    }
     if (version != 0)
-        *version = again.h.version;
-    return (long)again.h.size;
+        *version = h.version;
+    return (long)h.size;
 }
 
 void* save_load(const char* path, unsigned int* version, size_t* size)
@@ -176,7 +194,7 @@ void* save_load(const char* path, unsigned int* version, size_t* size)
         errno = ENOMEM;
         return 0;
     }
-    long got = save_read(path, version, data, (size_t)n);
+    long got = save_read(path, version, data, (size_t)n);            // (a newer save since would not fit: ENOSPC)
     if (got < 0)
     {
         int e = errno;
@@ -191,16 +209,15 @@ void* save_load(const char* path, unsigned int* version, size_t* size)
 
 long save_size(const char* path)
 {
-    struct copy copies[2];
-    int latest = newest(path, copies);
-    return latest < 0 ? -1 : (long)copies[latest].h.size;
+    struct header h;
+    return newest(path, &h, 0, 0) < 0 ? -1 : (long)h.size;
 }
 
 int save_exists(const char* path)
 {
-    struct copy copies[2];
+    struct header h;
     int saved = errno;
-    int yes = newest(path, copies) >= 0;
+    int yes = newest(path, &h, 0, 0) >= 0;
     errno = saved;
     return yes;
 }
@@ -213,12 +230,14 @@ int save_erase(const char* path)
     {
         if (name_of(name, path, which) != 0)
             return -1;
-        FILE* f = fopen(name, "rb");
-        if (f == 0)
-            continue;                                                // not there: nothing to erase
-        fclose(f);
+        int saved = errno;
         if (remove(name) != 0)
-            result = -1;
+        {
+            if (errno == ENOENT)
+                errno = saved;                                       // not there: nothing to erase
+            else
+                result = -1;
+        }
     }
     return result;
 }

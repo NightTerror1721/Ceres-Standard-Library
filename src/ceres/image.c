@@ -37,6 +37,10 @@ static int qoi_header(const u8* p, size_t n, int* w, int* h)
     unsigned int width = be32(p + 4), height = be32(p + 8);
     if (!sides_ok(width, height) || (p[12] != 3 && p[12] != 4) || p[13] > 1)
         return -1;
+    // Every chunk makes 62 pixels at most: fewer bytes than that allows are no image of this size (and a hostile
+    // header does not get its pixels allocated before a byte of them is seen).
+    if (((unsigned long long)width * height + 61u) / 62u > n - QOI_HEADER - 8)
+        return -1;
     *w = (int)width;
     *h = (int)height;
     return 0;
@@ -286,12 +290,12 @@ static unsigned int field(unsigned int v, unsigned int mask)
         shift++;
     unsigned int top = mask >> shift;
     int bits = 0;
-    while ((top >> bits) & 1u)
+    while (bits < 32 && ((top >> bits) & 1u))       // a mask of all ones is 32 bits: no further
         bits++;
     unsigned int value = (v & mask) >> shift;
     if (bits >= 8)
         return value >> (bits - 8);
-    return value * 255u / ((1u << bits) - 1u);
+    return value * 255u / ((1u << bits) - 1u);      // bits >= 1: mask is not 0
 }
 
 static int bmp_decode(const u8* p, const struct bmp* b, unsigned int* px, unsigned int transparent)
