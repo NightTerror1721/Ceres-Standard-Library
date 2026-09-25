@@ -3,6 +3,7 @@
 level one
 -- writing, appending, renaming, removing
 -- listing
+  images/
   levels/
   readme.txt
   saves/

@@ -23,18 +23,7 @@ typedef unsigned char  char8_t;
 typedef unsigned short char16_t;
 typedef unsigned int   char32_t;
 
-#ifndef __CERES_MBSTATE_T
-#define __CERES_MBSTATE_T
-// Where a conversion is between calls: the bits of a character read so far, or the units still to hand out.
-typedef struct
-{
-    unsigned int __bits;
-    unsigned char __need;       // continuation bytes still to read
-    unsigned char __lead;       // the lead byte, until the second byte has been checked against it
-    unsigned char __pending;    // units still to hand out (mbrtoc16, mbrtoc8), or 1 when c16rtomb holds a lead
-    unsigned char __unused;
-} mbstate_t;
-#endif
+#include "__mbstate.h"
 
 #define __STDC_UTF_16__ 1   // char16_t values are UTF-16
 #define __STDC_UTF_32__ 1   // char32_t values are UTF-32

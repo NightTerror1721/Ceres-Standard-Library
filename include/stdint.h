@@ -79,8 +79,10 @@ typedef unsigned int            uintptr_t;
 #define UINTMAX_MAX   UINT64_MAX
 #define PTRDIFF_MIN   INT32_MIN
 #define PTRDIFF_MAX   INT32_MAX
+#ifndef WCHAR_MIN                    // <wchar.h> has them too; whichever comes first wins
 #define WCHAR_MIN     INT32_MIN      // wchar_t is int (<stddef.h>)
 #define WCHAR_MAX     INT32_MAX
+#endif
 
 #ifndef SIZE_MAX
 #define SIZE_MAX      UINT32_MAX     // <limits.h> spells it UINT_MAX; whichever comes first wins

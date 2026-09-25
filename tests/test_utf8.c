@@ -154,6 +154,21 @@ int main(void)
     CHECK(wmemcmp(wide, L"zzz", 3) == 0);
     wmemmove(wide + 1, wide, 2);
     CHECK(wmemchr(wide, 'z', 3) == wide);
+    wcscpy(w1, L"ab");
+    wcsncat(w1, L"cdef", 2);
+    CHECK(wcscmp(w1, L"abcd") == 0);
+    CHECK_EQ((int)wcsspn(L"aab!", L"ab"), 3);
+    CHECK_EQ((int)wcscspn(L"xy,z", L",;"), 2);
+    CHECK(wcspbrk(L"xy;z", L",;") != 0 && *wcspbrk(L"xy;z", L",;") == ';');
+    wchar_t tokens[16];
+    wcscpy(tokens, L" uno, dos ");
+    wchar_t* save = 0;
+    wchar_t* first = wcstok(tokens, L" ,", &save);
+    wchar_t* second = wcstok(0, L" ,", &save);
+    CHECK(first != 0 && wcscmp(first, L"uno") == 0 && second != 0 && wcscmp(second, L"dos") == 0);
+    CHECK(wcstok(0, L" ,", &save) == 0);
+    CHECK(wcscoll(L"a", L"b") < 0);
+    CHECK_EQ((int)wcsxfrm(w1, L"xyz", 16), 3);
 
     TEST_SECTION("printf and scanf");
     char line[32];

@@ -40,5 +40,5 @@ struct lconv
     char int_n_sign_posn;
 };
 
-char* setlocale(int category, const char* locale);   // "C" for NULL, "", "C" and "POSIX"; NULL for any other name or an unknown category
+char* setlocale(int category, const char* locale);   // "C" for NULL, "", "C", "POSIX", "C.UTF-8" and "C.utf8"; NULL for any other name or an unknown category
 struct lconv* localeconv(void);                      // the "C" locale, always the same object

@@ -64,6 +64,14 @@ int main(void)
     CHECK_EQ(lz4_frame_decompress(linked, sizeof linked, out, sizeof out), 19);
     CHECK(memcmp(out, "aaaaaaaaahelloaaaaz", 19) == 0);
     CHECK_EQ((int)lz4_frame_content_size(linked + 10, sizeof linked - 10), 19);
+    static const unsigned char checked[] = {
+        0x04, 0x22, 0x4D, 0x18, 0x70, 0x40, 0x11,                      // with a checksum after every block
+        10, 0, 0, 0, 0x14, 'a', 0x01, 0x00, 0x50, 'h', 'e', 'l', 'l', 'o', 1, 2, 3, 4,
+        2, 0, 0, 0x80, '!', '?', 5, 6, 7, 8,
+        0, 0, 0, 0 };
+    CHECK_EQ(lz4_frame_decompress(checked, sizeof checked, out, sizeof out), 16);
+    CHECK(memcmp(out, "aaaaaaaaahello!?", 16) == 0);
+    CHECK_EQ(lz4_frame_decompress(checked, sizeof checked - 6, out, sizeof out), -1);   // a block's checksum cut off
     unsigned char bad[32];                                             // (sizeof frame: not a constant to Ceres-C)
     memcpy(bad, frame, sizeof frame);
     bad[4] = 0x20;                                                     // version 00

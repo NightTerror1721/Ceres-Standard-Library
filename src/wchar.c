@@ -377,6 +377,74 @@ wchar_t* wcsstr(const wchar_t* haystack, const wchar_t* needle)
     return 0;
 }
 
+wchar_t* wcsncat(wchar_t* dst, const wchar_t* src, size_t n)
+{
+    wchar_t* d = dst + wcslen(dst);
+    size_t i = 0;
+    for (; i < n && src[i] != 0; i++)
+        d[i] = src[i];
+    d[i] = 0;
+    return dst;
+}
+
+size_t wcsspn(const wchar_t* s, const wchar_t* accept)
+{
+    size_t n = 0;
+    while (s[n] != 0 && wcschr(accept, s[n]) != 0)
+        n++;
+    return n;
+}
+
+size_t wcscspn(const wchar_t* s, const wchar_t* reject)
+{
+    size_t n = 0;
+    while (s[n] != 0 && wcschr(reject, s[n]) == 0)
+        n++;
+    return n;
+}
+
+wchar_t* wcspbrk(const wchar_t* s, const wchar_t* accept)
+{
+    s += wcscspn(s, accept);
+    return *s != 0 ? (wchar_t*)s : 0;
+}
+
+wchar_t* wcstok(wchar_t* s, const wchar_t* delim, wchar_t** save)
+{
+    if (s == 0)
+        s = *save;
+    if (s == 0)
+        return 0;
+    s += wcsspn(s, delim);
+    if (*s == 0)
+    {
+        *save = 0;
+        return 0;
+    }
+    wchar_t* end = s + wcscspn(s, delim);
+    if (*end != 0)
+    {
+        *end = 0;
+        *save = end + 1;
+    }
+    else
+        *save = 0;
+    return s;
+}
+
+int wcscoll(const wchar_t* a, const wchar_t* b)
+{
+    return wcscmp(a, b);                             // the "C" locale orders by code point
+}
+
+size_t wcsxfrm(wchar_t* dst, const wchar_t* src, size_t n)
+{
+    size_t length = wcslen(src);
+    if (length < n)
+        wcscpy(dst, src);
+    return length;
+}
+
 wchar_t* wmemcpy(wchar_t* dst, const wchar_t* src, size_t n)
 {
     for (size_t i = 0; i < n; i++)

@@ -7,21 +7,16 @@
 // the two and the string functions of wide strings; the wide stdio (fwprintf, getwc...) and wcsftime are not
 // provided - printf's %lc and %ls write wide characters and strings as UTF-8, and scanf's read them.
 
-#ifndef __CERES_MBSTATE_T
-#define __CERES_MBSTATE_T
-typedef struct
-{
-    unsigned int __bits;
-    unsigned char __need;
-    unsigned char __lead;
-    unsigned char __pending;
-    unsigned char __unused;
-} mbstate_t;
-#endif
+#include "__mbstate.h"
 
+#ifndef __CERES_WINT_T
+#define __CERES_WINT_T
 typedef unsigned int wint_t;
+#endif
+#ifndef WEOF
 #define WEOF ((wint_t)0xFFFFFFFFu)
-#ifndef WCHAR_MIN
+#endif
+#ifndef WCHAR_MIN                              // <stdint.h> has them too; whichever comes first wins
 #define WCHAR_MIN (-2147483647 - 1)
 #define WCHAR_MAX 2147483647
 #endif
@@ -42,7 +37,7 @@ size_t wcsrtombs(char* dst, const wchar_t** src, size_t len, mbstate_t* ps);
 wint_t btowc(int c);                                       // a byte that is a character alone (ASCII), else WEOF
 int    wctob(wint_t c);                                    // ... and back, else EOF
 
-// ---- wide strings, as their string.h namesakes ----
+// ---- wide strings, as their string.h namesakes (wcscoll and wcsxfrm as in the one locale: wcscmp and a copy) ----
 size_t   wcslen(const wchar_t* s);
 int      wcscmp(const wchar_t* a, const wchar_t* b);
 int      wcsncmp(const wchar_t* a, const wchar_t* b, size_t n);
@@ -52,6 +47,13 @@ wchar_t* wcscat(wchar_t* dst, const wchar_t* src);
 wchar_t* wcschr(const wchar_t* s, wchar_t c);
 wchar_t* wcsrchr(const wchar_t* s, wchar_t c);
 wchar_t* wcsstr(const wchar_t* haystack, const wchar_t* needle);
+wchar_t* wcsncat(wchar_t* dst, const wchar_t* src, size_t n);
+size_t   wcsspn(const wchar_t* s, const wchar_t* accept);
+size_t   wcscspn(const wchar_t* s, const wchar_t* reject);
+wchar_t* wcspbrk(const wchar_t* s, const wchar_t* accept);
+wchar_t* wcstok(wchar_t* s, const wchar_t* delim, wchar_t** save);
+int      wcscoll(const wchar_t* a, const wchar_t* b);
+size_t   wcsxfrm(wchar_t* dst, const wchar_t* src, size_t n);
 wchar_t* wmemcpy(wchar_t* dst, const wchar_t* src, size_t n);
 wchar_t* wmemmove(wchar_t* dst, const wchar_t* src, size_t n);
 wchar_t* wmemset(wchar_t* dst, wchar_t c, size_t n);

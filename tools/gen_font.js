@@ -124,7 +124,7 @@ function capital(letter, accent) {
 }
 
 function small(letter, accent) {
-    const body = letter === "i" ? [0x0C, 0x04, 0x04, 0x04, 0x0E] : rows[letter].slice(2);   // i loses its dot
+    const body = rows[letter].slice(2);                  // the top two rows are the accent's (the i's dot goes too)
     return accents[accent].concat(body);
 }
 
@@ -221,7 +221,10 @@ for (let code = 0; code < 256; code++) {
 
 function hex(v) { return "0x" + v.toString(16).toUpperCase().padStart(2, "0"); }
 function label(code) {
+    if (code === 127) return "DEL: an empty box";
     if (code >= 32 && code < 127) return JSON.stringify(String.fromCharCode(code));
+    if (code === 0xA0) return "U+00A0 no-break space";
+    if (code === 0xAD) return "U+00AD soft hyphen";
     if (code >= 0xA0) return "U+00" + code.toString(16).toUpperCase() + " " + String.fromCharCode(code);
     return "";
 }
