@@ -1,7 +1,7 @@
 #include "ceres/terminal.h"
 #include "ceres/irq.h"
 
-#define check_status() (read_port(TERM_STATUS, TERM_STATUS_TYPE) & TERM_INPUT_READY)
+#define check_status() (read_port(TERM_STATUS) & TERM_INPUT_READY)
 
 int term_read_ready(void)
 {
@@ -10,7 +10,7 @@ int term_read_ready(void)
 
 int term_eof(void)
 {
-    return (read_port(TERM_STATUS, TERM_STATUS_TYPE) & TERM_INPUT_EOF) != 0;
+    return (read_port(TERM_STATUS) & TERM_INPUT_EOF) != 0;
 }
 
 // Waits until a byte can be read (returns 1) or the input has ended (returns 0). The status word is read once
@@ -25,7 +25,7 @@ static int wait_for_input(enum term_read_mode_t mode)
     int ready;
     for (;;)
     {
-        unsigned int status = read_port(TERM_STATUS, TERM_STATUS_TYPE);
+        unsigned int status = read_port(TERM_STATUS);
         if (status & TERM_INPUT_READY)
         {
             ready = 1;
@@ -51,23 +51,23 @@ static int wait_for_input(enum term_read_mode_t mode)
 
 int term_set_raw(int on)
 {
-    write_port(TERM_MODE, unsigned int, on ? TERM_MODE_RAW : 0u);
-    return (int)read_port(TERM_MODE, unsigned int);
+    write_port(TERM_MODE, on ? TERM_MODE_RAW : 0u);
+    return (int)read_port(TERM_MODE);
 }
 
 int term_bytes_available(void)
 {
-    return (int)read_port(TERM_BYTES_AVAIL, TERM_BYTES_AVAIL_TYPE);
+    return (int)read_port(TERM_BYTES_AVAIL);
 }
 
 int term_dropped(void)
 {
-    return (int)read_port(TERM_DROPPED, TERM_DROPPED_TYPE);
+    return (int)read_port(TERM_DROPPED);
 }
 
 void term_write_char(int ch)
 {
-    write_port(TERM_OUT, TERM_OUT_TYPE, (unsigned int)ch);
+    write_port(TERM_OUT, (unsigned int)ch);
 }
 
 int term_read_char(enum term_read_mode_t mode)
@@ -81,25 +81,25 @@ int term_read_char(enum term_read_mode_t mode)
     {
         return -1;   // nothing available, and we must not block
     }
-    return (int)read_port(TERM_IN, TERM_IN_TYPE);
+    return (int)read_port(TERM_IN);
 }
 
 void term_write(const char* restrict buf, int len)
 {
     if (!buf || len <= 0)
         return;
-    write_port(TERM_BLOCK_ADDR, TERM_BLOCK_ADDR_TYPE, (unsigned int)buf);
-    write_port(TERM_BLOCK_LEN, TERM_BLOCK_LEN_TYPE, (unsigned int)len);
-    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_TYPE, TERM_BLOCK_CMD_WRITE);
+    write_port(TERM_BLOCK_ADDR, (unsigned int)buf);
+    write_port(TERM_BLOCK_LEN, (unsigned int)len);
+    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_WRITE);
 }
 
 void term_write_error(const char* restrict buf, int len)
 {
     if (!buf || len <= 0)
         return;
-    write_port(TERM_BLOCK_ADDR, TERM_BLOCK_ADDR_TYPE, (unsigned int)buf);
-    write_port(TERM_BLOCK_LEN, TERM_BLOCK_LEN_TYPE, (unsigned int)len);
-    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_TYPE, TERM_BLOCK_CMD_WRITE_ERR);
+    write_port(TERM_BLOCK_ADDR, (unsigned int)buf);
+    write_port(TERM_BLOCK_LEN, (unsigned int)len);
+    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_WRITE_ERR);
 }
 
 int term_read(char* buf, int max, enum term_read_mode_t mode)
@@ -115,8 +115,8 @@ int term_read(char* buf, int max, enum term_read_mode_t mode)
 
     // Block-transfer up to `max` bytes. The device moves whatever is available
     // and reports the exact count, so a short read is observable (0 when empty).
-    write_port(TERM_BLOCK_ADDR, TERM_BLOCK_ADDR_TYPE, (unsigned int)buf);
-    write_port(TERM_BLOCK_LEN, TERM_BLOCK_LEN_TYPE, (unsigned int)max);
-    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_TYPE, TERM_BLOCK_CMD_READ);
-    return (int)read_port(TERM_BLOCK_READ_CNT, TERM_BLOCK_READ_CNT_TYPE);
+    write_port(TERM_BLOCK_ADDR, (unsigned int)buf);
+    write_port(TERM_BLOCK_LEN, (unsigned int)max);
+    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_READ);
+    return (int)read_port(TERM_BLOCK_READ_CNT);
 }

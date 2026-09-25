@@ -38,7 +38,7 @@ void sys_set_stack_limit(unsigned int address)
 
 void sys_exit(void)
 {
-    mmio_w8(SYS_CTRL_CMD, 1);
+    mmio_w32(SYS_CTRL_CMD, 1);
     stop_here();
 }
 
@@ -65,7 +65,7 @@ void sys_set_features(unsigned int features)
 
 void sys_reset(void)
 {
-    mmio_w8(SYS_CTRL_BASE, 2);
+    mmio_w32(SYS_CTRL_BASE, 2);
     stop_here();
 }
 

@@ -20,14 +20,9 @@ Ceres reaches its devices through memory-mapped I/O at the top of the address sp
 #define BLITTER_BASE        0xFF0C0000   // 2D rectangle operations (ceres/blitter.h)
 #define SYS_CTRL_BASE       0xFFFF0000
 
-// Volatile access with an explicit width. The width is part of the register's contract: the
-// terminal's output register wants BYTES, and a 32-bit store there emits the byte plus three
-// NULs. Prefer these over write_port(), which leaves the type to the caller.
-#define mmio_r8(a)      (*((volatile unsigned char*)(a)))
-#define mmio_r16(a)     (*((volatile unsigned short*)(a)))
+// A device register is 32 bits wide and takes 32-bit accesses only: a byte or halfword access to one
+// is a fault. A register that carries a byte, like the terminal's output, uses the word's low byte.
 #define mmio_r32(a)     (*((volatile unsigned int*)(a)))
-#define mmio_w8(a, v)   (*((volatile unsigned char*)(a)) = (unsigned char)(v))
-#define mmio_w16(a, v)  (*((volatile unsigned short*)(a)) = (unsigned short)(v))
 #define mmio_w32(a, v)  (*((volatile unsigned int*)(a)) = (unsigned int)(v))
 
 // The RAM map (CeresASM docs/02-Memory.md).
@@ -42,8 +37,8 @@ Ceres reaches its devices through memory-mapped I/O at the top of the address sp
 #define wait_irq()          __builtin_halt()
 
 // Kept for existing code (terminal.c and friends); new code should use mmio_*.
-#define read_port(port, type) (*((volatile type*)(port)))
-#define write_port(port, type, value) (*((volatile type*)(port)) = (value))
+#define read_port(port)            mmio_r32(port)
+#define write_port(port, value)     mmio_w32(port, value)
 
 void sys_exit(void) __attribute__((__noreturn__));      // halt the VM with status 0 (write 1 to the system-control device)
 void sys_exit_status(int status) __attribute__((__noreturn__));   // halt it; the low eight bits of status are the exit status of `ceres run`

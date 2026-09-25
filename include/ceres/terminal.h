@@ -19,18 +19,6 @@
 #define TERM_BLOCK_LEN        (TERMINAL_BASE + 0xF4)
 #define TERM_BLOCK_CMD        (TERMINAL_BASE + 0xF8)  // write: 1 = read, 2 = write, 3 = write to the error stream
 
-#define TERM_STATUS_TYPE          unsigned int
-// The output register takes BYTES. Storing an unsigned int here writes the character plus three
-// NULs, so every putchar() would put four bytes on stdout.
-#define TERM_OUT_TYPE             unsigned char
-#define TERM_IN_TYPE              unsigned int
-#define TERM_BYTES_AVAIL_TYPE     unsigned int
-#define TERM_BLOCK_READ_CNT_TYPE  unsigned int
-#define TERM_DROPPED_TYPE         unsigned int
-#define TERM_BLOCK_ADDR_TYPE      unsigned int
-#define TERM_BLOCK_LEN_TYPE       unsigned int
-#define TERM_BLOCK_CMD_TYPE       unsigned int
-
 #define TERM_INPUT_READY   0x01
 #define TERM_OUTPUT_READY  0x02
 #define TERM_INPUT_EOF     0x04   // the host closed the input and every byte it sent has been read
