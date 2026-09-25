@@ -13,6 +13,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "errno.h"
+#include "ceres/mmu.h"                         // MMU_PAGE
 
 struct ctx { unsigned int w[14]; };
 
@@ -24,7 +25,7 @@ extern unsigned int __heap_main_sp;                  // malloc.c
 extern void (*__heap_top_hook)(unsigned int top);
 extern void (*__task_stack_guard)(unsigned char* stack, int guard);   // task_guard.c, set by ceres/mmu.h
 
-#define GUARD 4096u                                  // a guarded stack's first page, left unmapped
+#define GUARD MMU_PAGE                               // a guarded stack's first page, left unmapped
 
 #define T_FREE      0
 #define T_READY     1
@@ -85,7 +86,7 @@ static void start(void)
 
 static int id_of(int slot)
 {
-    return tasks[slot].generation * TASK_MAX + slot;
+    return (int)(((unsigned int)tasks[slot].generation * TASK_MAX + (unsigned int)slot) & 0x7FFFFFFFu);   // wraps, never negative
 }
 
 // The slot of a live id, or -1.
@@ -247,6 +248,11 @@ int task_spawn(task_fn fn, void* arg, unsigned int stack_size)
     }
     if (stack_size == 0)
         stack_size = TASK_STACK_DEFAULT;
+    if (stack_size > 0x7FFFFFFFu)
+    {
+        errno = ENOMEM;                              // no machine has that much, and the sums below would wrap
+        return -1;
+    }
     stack_size = (stack_size + 7u) & ~7u;
     if (stack_size < 512u)
         stack_size = 512u;
@@ -372,6 +378,8 @@ void chan_free(struct chan* c)
         return;
     free(c->buf);
     c->buf = 0;
+    c->count = 0;                                    // nothing left to receive: a receiver gets EPIPE
+    c->head = 0;
     c->closed = 1;
     wake(c);
 }

@@ -47,10 +47,17 @@ int mmu_space_init(struct mmu_space* s)
     return 0;
 }
 
+static struct mmu_space* guard_space = 0;
+
 void mmu_space_free(struct mmu_space* s)
 {
     if (s == 0 || s->directory == 0 || s == active)
         return;
+    if (s == guard_space)
+    {
+        guard_space = 0;                                 // stacks spawned from now on are not guarded
+        __task_stack_guard = 0;
+    }
     for (int i = 0; i < 1024; i++)
         if (s->directory[i] & MMU_PRESENT)
             free((void*)(s->directory[i] & FRAME_MASK));
@@ -156,7 +163,10 @@ int mmu_translate(const struct mmu_space* s, unsigned int va, unsigned int* pa)
     unsigned int* table = table_of(s, va, 0);
     unsigned int entry = table != 0 ? table[(va >> 12) & 1023u] : 0u;
     if (!(entry & MMU_PRESENT))
+    {
+        errno = ENOENT;
         return -1;
+    }
     if (pa != 0)
         *pa = (entry & FRAME_MASK) | (va & (MMU_PAGE - 1u));
     return (int)(entry & FLAG_MASK);
@@ -190,10 +200,13 @@ struct mmu_space* mmu_active(void)
 
 // ---- guard pages under task stacks ----
 
-static struct mmu_space* guard_space = 0;
-
+// The heap is identity-mapped in the guarding space (mmu_identity), so a stack's page goes back to itself. Only the
+// page's entry changes - its table exists, since the page was mapped - so neither call can fail for want of memory.
+// A stack spawned before the space was freed keeps its page unmapped: the space, and so the fault, is gone.
 static void guard_stack(unsigned char* stack, int guard)
 {
+    if (guard_space == 0)
+        return;
     if (guard)
         mmu_unmap(guard_space, (unsigned int)stack, MMU_PAGE);
     else

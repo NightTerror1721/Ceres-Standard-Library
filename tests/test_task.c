@@ -117,6 +117,8 @@ int main(void)
     CHECK_EQ(errno, EAGAIN);
     CHECK_EQ((int)chan_len(&lonely), 1);
     chan_free(&lonely);
+    CHECK_EQ(chan_try_recv(&lonely, &v), -1);         // freed with a message queued: gone, not read from NULL
+    CHECK_EQ(errno, EPIPE);
 
     TEST_SECTION("stacks of their own");
     unsigned int before = heap_used();

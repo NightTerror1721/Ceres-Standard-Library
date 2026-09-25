@@ -43,7 +43,7 @@
 //   EBUSY  the file is open elsewhere   EINVAL bad argument        ENAMETOOLONG a name too long
 //   ENOTDIR a path goes through a file  EISDIR it names a directory ENOTEMPTY a directory with files in it
 //   EROFS  a cartridge                  EXDEV  a rename between volumes   ENOTSUP no directories on version 1
-//   EIO    the device reported an error
+//   EIO    the device reported an error  ENFILE no free volume slot     ENOMEM out of memory (fs_check)
 
 #define FS_NAME_MAX     47             // a name in a version 2 directory (23 on version 1)
 #define FS_NAME_MAX_V1  23

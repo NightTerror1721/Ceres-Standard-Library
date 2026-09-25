@@ -94,7 +94,7 @@ int main(void)
     CHECK_EQ(bits(strtof("1.17549435e-38", 0)), 0x00800000u);       // FLT_MIN
     char longtext[200];
     strcpy(longtext, "0.");
-    for (int i = 0; i < 150; i++) strcat(longtext, i == 0 ? "3" : "3");
+    for (int i = 0; i < 150; i++) strcat(longtext, "3");
     CHECK(strtof(longtext, 0) == 1.0f / 3.0f);
     CHECK(strtof("1000000000000000000000000000000000000000e-39", 0) == 1.0f);   // 10^39 x 10^-39
 
@@ -115,6 +115,7 @@ int main(void)
     float scanned = 0.0f;
     CHECK_EQ(sscanf("0x1.4p2 rest", "%a", &scanned), 1);
     CHECK(scanned == 5.0f);
+    CHECK_EQ(sscanf("0x z", "%f", &scanned), 0);               // a prefix and no digits: no number
 
     TEST_SECTION("every float reads back from nine digits");
     int wrong = 0;
@@ -160,6 +161,8 @@ int main(void)
     CHECK_EQ(strfromf(s, sizeof s, "%a", 0.5f), 6);
     CHECK_STR(s, "0x1p-1");
     CHECK_EQ(strfromf(s, sizeof s, "%5.1f", 1.0f), -1);             // no width: not a C23 strfromf format
+    CHECK_EQ(errno, EINVAL);
+    CHECK_EQ(strfromf(s, sizeof s, "%.3", 1.0f), -1);                // no conversion at all
     CHECK_EQ(errno, EINVAL);
     return test_summary();
 }

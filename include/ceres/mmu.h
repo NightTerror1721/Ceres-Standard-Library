@@ -37,10 +37,12 @@ struct mmu_space
 int  mmu_space_init(struct mmu_space* s);      // an empty space: nothing mapped; 0, or -1 (ENOMEM)
 void mmu_space_free(struct mmu_space* s);      // its directory and tables (it must not be active)
 
+// mmu_map replaces whatever a page mapped before. A range is done a page at a time, so a call that fails half way
+// (ENOMEM for a table; EINVAL in mmu_protect for a page not mapped) leaves the pages before that one done.
 int  mmu_map(struct mmu_space* s, unsigned int va, unsigned int pa, unsigned int bytes, unsigned int flags);
 int  mmu_unmap(struct mmu_space* s, unsigned int va, unsigned int bytes);   // an access there now faults
 int  mmu_protect(struct mmu_space* s, unsigned int va, unsigned int bytes, unsigned int flags);   // mapped pages only
-int  mmu_translate(const struct mmu_space* s, unsigned int va, unsigned int* pa);   // its flags (with MMU_PRESENT), -1 when unmapped
+int  mmu_translate(const struct mmu_space* s, unsigned int va, unsigned int* pa);   // its flags (with MMU_PRESENT), -1 (ENOENT) when unmapped
 int  mmu_identity(struct mmu_space* s, unsigned int flags);   // every page of RAM below the system stack, to itself
 
 void mmu_activate(struct mmu_space* s);        // this space's tables, and translation on
@@ -50,6 +52,7 @@ struct mmu_space* mmu_active(void);            // the space in use, or NULL
 // Guard pages at the bottom of every task stack (ceres/task.h) spawned from now on: each stack gets one page more,
 // page-aligned, whose first page `s` leaves unmapped, so a store that runs off the bottom of the stack faults
 // instead of writing into the heap below. (A push or a frame too large - enter - is the stack limit's to catch.)
+// The space must identity-map the heap (mmu_identity). Freeing it (mmu_space_free) stops the guarding.
 int  mmu_guard_task_stacks(struct mmu_space* s);
 
 // ---- page faults (the optional "mmu" module: it binds the PageFault vector, so not with the fault module) ----

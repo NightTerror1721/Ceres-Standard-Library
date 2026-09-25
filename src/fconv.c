@@ -262,6 +262,8 @@ int __fconv_digits(float v, int significant, int count, char* out, int* exp10)
         keep = count < 1 ? 1 : count;
     else
     {
+        if (count > FCONV_MAX_DIGITS)
+            count = FCONV_MAX_DIGITS;                // past every digit there is, and the sum stays in range
         keep = x10 + 1 + count;                      // the digits down to 10^-count
         if (keep <= 0)
         {

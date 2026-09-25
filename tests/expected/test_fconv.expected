@@ -6,4 +6,4 @@
 -- every float reads back from nine digits
 -- the shortest digits
 -- strfromf
-ALL PASSED 77/77
+ALL PASSED 80/80

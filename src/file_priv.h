@@ -3,6 +3,7 @@
 // a program only ever sees `FILE*`.
 
 #include "stddef.h"
+#include "stdio.h"                   // BUFSIZ
 
 #define FILE_TERM_IN    0    // stdin: the terminal's input, one waiting byte at a time
 #define FILE_TERM_OUT   1    // stdout
@@ -11,7 +12,7 @@
 #define FILE_DISK       4    // fopen: a CeresFS file, reached through the operations in `ops`
 #define FILE_HOST       5    // fopen("host:..."): a host file (ceres/hostfs.h), through `ops` as well
 
-#define FILE_BUFSIZ     512  // the buffer a disk or host stream gets unless setvbuf says otherwise: a sector
+#define FILE_BUFSIZ     BUFSIZ // the buffer a disk or host stream gets unless setvbuf says otherwise: a sector
 
 struct __file;
 

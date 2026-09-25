@@ -148,6 +148,7 @@ static int read_float_field(struct scan* s, int width, char* buf)
         if ((c == 'x' || c == 'X') && width > 0)
         {
             hex = 1;
+            digits = 0;                                  // the prefix alone is not a number
             buf[n++] = (char)c;
             width--;
             c = next_char(s);

@@ -22,7 +22,7 @@ int strfromf(char* restrict s, size_t n, const char* restrict format, float fp)
             f++;
     }
     char c = *f++;
-    if (*f != 0 || (c != 'a' && c != 'A' && c != 'e' && c != 'E' && c != 'f' && c != 'F' && c != 'g' && c != 'G'))
+    if (c == 0 || *f != 0 || (c != 'a' && c != 'A' && c != 'e' && c != 'E' && c != 'f' && c != 'F' && c != 'g' && c != 'G'))
     {
         errno = EINVAL;
         return -1;

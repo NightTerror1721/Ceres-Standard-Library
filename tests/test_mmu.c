@@ -47,7 +47,8 @@ int main(void)
     CHECK(mmu_active() == &space);
     printf("still running, translated\n");
     unsigned int pa = 0;
-    CHECK(mmu_translate(&space, (unsigned int)&space, &pa) & MMU_PRESENT);
+    int flags = mmu_translate(&space, (unsigned int)&space, &pa);
+    CHECK(flags != -1 && (flags & MMU_PRESENT));
     CHECK(pa == (unsigned int)&space);
 
     TEST_SECTION("a page mapped elsewhere");
