@@ -1,4 +1,4 @@
-// CeresFS and the files built on it. The disk is the default one: 64 sectors, in memory, all zeros - so the
+// CeresFS version 1 (the flat layout; version 2 is test_fs_dirs) and the files built on it. The disk is the default one: 64 sectors, in memory, all zeros - so the
 // file system starts unformatted, has 60 data clusters (30720 bytes) and room for 32 files.
 #include "ceres/test.h"
 #include "ceres/fs.h"
@@ -68,7 +68,7 @@ static void unformatted(void)
     CHECK_EQ(fs_unmount(), 0);                          // nothing to do
 
     TEST_SECTION("format");
-    CHECK_EQ(fs_format(), 0);
+    CHECK_EQ(fs_format_version(1), 0);
     CHECK_EQ(fs_mounted(), 1);
     CHECK_EQ((int)fs_total_bytes(), (int)TOTAL);
     CHECK_EQ((int)fs_free_bytes(), (int)TOTAL);
@@ -492,10 +492,10 @@ static void persistence(void)
 
     TEST_SECTION("formatting starts over");
     int busy = fs_open("p1", FS_O_RDONLY);
-    CHECK_EQ(fs_format(), -1);                          // not while something is open
+    CHECK_EQ(fs_format_version(1), -1);                          // not while something is open
     CHECK_EQ(errno, EBUSY);
     fs_close(busy);
-    CHECK_EQ(fs_format(), 0);
+    CHECK_EQ(fs_format_version(1), 0);
     CHECK_EQ(fs_stat("p1", &st), -1);
     CHECK_EQ((int)fs_free_bytes(), (int)TOTAL);
 }

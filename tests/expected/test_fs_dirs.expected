@@ -1,0 +1,12 @@
+-- a version 2 disk
+-- directories and paths
+-- reading a directory
+  old/ 0
+  slot1.dat 7
+-- a directory grows past a sector
+-- rename moves between directories
+-- a stick in port 0
+-- a read-only volume
+-- a version 1 disk still works, flat
+-- fs_check finds and repairs
+ALL PASSED 121/121

@@ -39,6 +39,7 @@ char* strerror(int e)
     case ENOSYS:       return "Function not implemented";
     case ENOTEMPTY:    return "Directory not empty";
     case EXDEV:        return "Invalid cross-device link";
+    case ENOTSUP:      return "Operation not supported";
     case EOVERFLOW:    return "Value too large for defined data type";
     case EILSEQ:       return "Illegal byte sequence";
     case ETIMEDOUT:    return "Timed out";

@@ -1,0 +1,2 @@
+--port 0=build/ports/test_fs_dirs_stick.img
+--cart 2=tests/data/game.cart
