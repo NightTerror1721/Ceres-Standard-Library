@@ -12,14 +12,40 @@ headers by `node tools/gendocs.js`.
 
 ## Building
 
+On any system, with CMake 3.21+ (and Ninja, when it is there), GNU Make 4.2+ and Node 16+ for the tests:
+
 ```sh
-powershell tools/mklib.ps1                      # build/lib/O0, O1 and O2: libceres.car and libceres.decls.casm
-powershell tools/mklib.ps1 -SoftDouble          # the same for -fsoft-double programs, in build/lib/O<n>-sd
-powershell tools/install.ps1 -Prefix <dir>      # a sysroot: <dir>/include and <dir>/lib
+make                                        # the library at -O2: build/cmake/O2/libceres.car, libceres.decls.casm, obj/
+make OPT=s                                  # at -Os (OPT: 0, 1, 2, 3, s, g), in build/cmake/Os
+make -j levels LEVELS="0 1 2 s"             # several levels at once, one directory each
+make SOFT_DOUBLE=1                          # for -fsoft-double programs, in build/cmake/O2-sd
+make FS_MAX_OPEN=4 CERES_HEAP_DEBUG=1       # any setting of include/ceres/config.h
+make FLAGS="-fno-inline" DEFINES="NDEBUG"   # optimizations one by one, more macros
+make sysroot PREFIX=<dir>                   # <dir>/include, <dir>/lib and <dir>/lib/soft-double
+make help                                   # everything else
 ```
 
-`ceresc` and `ceres` are found next to this checkout (`../../Ceres-C`, `../../CeresASM`) or through the `CERESC`
-and `CERES_PATH` environment variables.
+The build is `CMakeLists.txt`, and the Makefile only drives it; CMake works on its own too, with any generator:
+
+```sh
+cmake --preset O2 && cmake --build --preset O2 && ctest --preset O2      # CMakePresets.json: O0 ... Og, O2-sd, ...
+cmake -S . -B build/cmake/mine -G Ninja -DCERES_OPT_LEVEL=s -DFS_MAX_OPEN=4 -DCERES_SOFT_DOUBLE=ON
+cmake --build build/cmake/mine -j && cmake --install build/cmake/mine --prefix <dir>
+```
+
+Every C file is compiled on its own and assembled against the library's merged declarations, so the build is
+parallel and incremental: a changed source rebuilds its unit, a changed header the units that include it. Its
+cache variables are the settings: `CERES_OPT_LEVEL`, `CERES_SOFT_DOUBLE`, `CERES_WERROR`, `CERES_OPT_FLAGS`,
+`CERES_DEFINES`, `CERES_EXTRA_FLAGS`, `CERES_OPTIONAL_MODULES`, `CERES_LIBDIR`, and one for every setting of
+`include/ceres/config.h` (read from the header, so a new one there is one here). `<build>/libceres.flags` records
+the flags a build was compiled with.
+
+`ceresc` and `ceres` are found next to this checkout (`../../Ceres-C`, `../../CeresASM`), through the `CERESC`
+and `CERES_PATH` environment variables, or on `PATH`; `make CERESC=... CERES=...` (or `-DCERESC=`, `-DCERES=`)
+names them outright.
+
+The PowerShell scripts of before still work on Windows: `tools/mklib.ps1` (build/lib/O<n>, `-SoftDouble`) and
+`tools/install.ps1 -Prefix <dir>`.
 
 ## Using it
 
@@ -52,11 +78,16 @@ A few things this library is that a desktop libc is not:
 ## Testing
 
 ```sh
-node tools/runtests.js                  # every test at -O0, -O1 and -O2, each header alone, the examples
-node tools/runtests.js --test test_json --levels 2
-node tools/runtests.js --update         # write tests/expected/<name>.expected from what the tests print
+make test                               # every test at each level of LEVELS (0 1 2), against the libraries built here
+make test-test_json LEVELS=2            # one test
+make update-test_json                   # rewrite its tests/expected/test_json.expected from a -O0 run
+make check                              # ctest in the build directory: programs linked against it, and the suite
+node tools/runtests.js                  # the runner alone: it builds build/lib/O<n> itself (or --library <dir>)
 powershell tools/runtests.ps1           # the same runner in PowerShell (-Test, -Levels, -Update, -GcSections)
 ```
+
+`make test` runs the suite against the library as configured (`make test FS_MAX_OPEN=3` tests that one); what
+the tests must print was written for the defaults, without soft double.
 
 A test is `tests/<name>.c`; what it must print is `tests/expected/<name>.expected`, byte for byte. Beside it can be
 `.stderr` (its error stream), `.status` (its exit status), `.stdin` (what it reads), `.flags` (compiler options -
@@ -68,8 +99,10 @@ optional module.
 
 | Script | What it does |
 | --- | --- |
-| `tools/mklib.ps1` | Builds the library archives, per optimization level. |
-| `tools/install.ps1` | Lays out a sysroot for `ceresc --sysroot`. |
+| `Makefile`, `CMakeLists.txt`, `CMakePresets.json` | The build: `make help`. |
+| `tools/cmake/*.cmake` | The build's steps: header dependencies, merging the declarations, the verify tests. |
+| `tools/mklib.ps1` | Builds the library archives per optimization level, in PowerShell. |
+| `tools/install.ps1` | Lays out a sysroot for `ceresc --sysroot`, in PowerShell. |
 | `tools/runtests.js`, `tools/runtests.ps1` | The test runner. |
 | `tools/gendocs.js` | Writes `docs/reference` from the headers. |
 | `tools/mkpack.js` | Builds a resource pack (`ceres/pack.h`) from host files, as a cartridge image. |

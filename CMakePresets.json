@@ -1,0 +1,44 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/cmake/${presetName}",
+            "cacheVariables": { "CERES_OPT_LEVEL": "2", "CERES_SOFT_DOUBLE": "OFF" }
+        },
+        { "name": "O0", "inherits": "base", "displayName": "-O0: every optimization off", "cacheVariables": { "CERES_OPT_LEVEL": "0" } },
+        { "name": "O1", "inherits": "base", "displayName": "-O1: everything but inlining", "cacheVariables": { "CERES_OPT_LEVEL": "1" } },
+        { "name": "O2", "inherits": "base", "displayName": "-O2: everything, inlining included" },
+        { "name": "O3", "inherits": "base", "displayName": "-O3: the same as -O2", "cacheVariables": { "CERES_OPT_LEVEL": "3" } },
+        { "name": "Os", "inherits": "base", "displayName": "-Os: for size", "cacheVariables": { "CERES_OPT_LEVEL": "s" } },
+        { "name": "Og", "inherits": "base", "displayName": "-Og: for debugging", "cacheVariables": { "CERES_OPT_LEVEL": "g" } },
+        { "name": "O0-sd", "inherits": "O0", "displayName": "-O0, for -fsoft-double programs", "cacheVariables": { "CERES_SOFT_DOUBLE": "ON" } },
+        { "name": "O2-sd", "inherits": "O2", "displayName": "-O2, for -fsoft-double programs", "cacheVariables": { "CERES_SOFT_DOUBLE": "ON" } },
+        { "name": "O2-heap-debug", "inherits": "O2", "displayName": "-O2, with malloc checking itself (CERES_HEAP_DEBUG)", "cacheVariables": { "CERES_HEAP_DEBUG": "1" } }
+    ],
+    "buildPresets": [
+        { "name": "O0", "configurePreset": "O0" },
+        { "name": "O1", "configurePreset": "O1" },
+        { "name": "O2", "configurePreset": "O2" },
+        { "name": "O3", "configurePreset": "O3" },
+        { "name": "Os", "configurePreset": "Os" },
+        { "name": "Og", "configurePreset": "Og" },
+        { "name": "O0-sd", "configurePreset": "O0-sd" },
+        { "name": "O2-sd", "configurePreset": "O2-sd" },
+        { "name": "O2-heap-debug", "configurePreset": "O2-heap-debug" }
+    ],
+    "testPresets": [
+        { "name": "O0", "configurePreset": "O0", "output": { "outputOnFailure": true } },
+        { "name": "O1", "configurePreset": "O1", "output": { "outputOnFailure": true } },
+        { "name": "O2", "configurePreset": "O2", "output": { "outputOnFailure": true } },
+        { "name": "O3", "configurePreset": "O3", "output": { "outputOnFailure": true } },
+        { "name": "Os", "configurePreset": "Os", "output": { "outputOnFailure": true } },
+        { "name": "Og", "configurePreset": "Og", "output": { "outputOnFailure": true } },
+        { "name": "O0-sd", "configurePreset": "O0-sd", "output": { "outputOnFailure": true } },
+        { "name": "O2-sd", "configurePreset": "O2-sd", "output": { "outputOnFailure": true } },
+        { "name": "O2-heap-debug", "configurePreset": "O2-heap-debug", "output": { "outputOnFailure": true } }
+    ]
+}

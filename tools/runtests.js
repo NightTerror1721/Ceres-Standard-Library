@@ -3,12 +3,15 @@
 //
 //   node tools/runtests.js                        everything: every test at -O0, -O1 and -O2, the headers, the examples
 //   node tools/runtests.js --test test_malloc     one test (or several: --test a,b)
-//   node tools/runtests.js --levels 0,2           only those optimization levels
+//   node tools/runtests.js --levels 0,2           only those optimization levels (0, 1, 2, 3, s, g)
 //   node tools/runtests.js --update               write tests/expected/<name>.expected from what the tests print
 //   node tools/runtests.js --headers              only compile each header alone
 //   node tools/runtests.js --from-sources         compile the whole library into every test instead of the archive
 //   node tools/runtests.js --gc-sections          link every program leaving out the functions nothing reaches
 //   node tools/runtests.js --build-library        only (re)build build/lib/O<level>/ for the levels asked for
+//   node tools/runtests.js --library <dir>        test against a library built elsewhere - a CMake build directory
+//                                                 (<dir>/libceres.car, libceres.decls.casm, obj/) - at every level;
+//                                                 {level} in <dir> is the level (--library build/cmake/O{level})
 //
 // The tools are found next to this checkout (../../Ceres-C, ../../CeresASM) or through CERESC (ceresc) and
 // CERES_PATH (ceres: its directory, or the executable). What a test is compared against lives in tests/expected/:
@@ -31,7 +34,9 @@ const exe = process.platform === "win32" ? ".exe" : "";
 
 // ---- options ----
 const args = process.argv.slice(2);
-const opt = { tests: [], levels: [0, 1, 2], headers: false, update: false, fromSources: false, gc: false, buildOnly: false, timeout: 180 };
+const opt = { tests: [], levels: ["0", "1", "2"], headers: false, update: false, fromSources: false, gc: false, buildOnly: false, timeout: 180, library: null };
+const LevelOrder = ["0", "1", "2", "3", "s", "g"];                 // what -O takes
+const byLevel = (a, b) => LevelOrder.indexOf(a) - LevelOrder.indexOf(b);
 const valueOf = (i) => {
     if (i >= args.length) { console.error(`${args[i - 1]} needs a value`); process.exit(2); }
     return args[i];
@@ -39,7 +44,8 @@ const valueOf = (i) => {
 for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--test") opt.tests.push(...valueOf(++i).split(",").filter(Boolean));
-    else if (a === "--levels") opt.levels = valueOf(++i).split(/[,; ]+/).filter(Boolean).map(Number);
+    else if (a === "--levels") opt.levels = valueOf(++i).split(/[,; ]+/).filter(Boolean);
+    else if (a === "--library") opt.library = path.resolve(valueOf(++i));
     else if (a === "--headers") opt.headers = true;
     else if (a === "--update") opt.update = true;
     else if (a === "--from-sources") opt.fromSources = true;
@@ -48,6 +54,8 @@ for (let i = 0; i < args.length; i++) {
     else if (a === "--timeout") opt.timeout = Number(valueOf(++i));
     else { console.error(`unknown option ${a}`); process.exit(2); }
 }
+for (const level of opt.levels)
+    if (!LevelOrder.includes(level)) { console.error(`--levels: '${level}' is not a level (0, 1, 2, 3, s, g)`); process.exit(2); }
 
 // ---- the tools ----
 function onPath(name) {
@@ -105,7 +113,7 @@ const Asm = fs.readdirSync("asm").filter((f) => f.endsWith(".casm")).map((f) => 
 const OptionalAsm = OptionalFiles.filter((f) => f.endsWith(".casm"));
 fs.mkdirSync("build", { recursive: true });
 
-const libraryDir = (level) => `build/lib/O${level}`;
+const libraryDir = (level) => (opt.library ? opt.library.split("{level}").join(level) : `build/lib/O${level}`);
 const flatName = (p) => p.replace(/\.[^./\\]+$/, "").replace(/[/\\.]/g, "_");
 
 // ---- running a tool ----
@@ -390,6 +398,10 @@ function testOne(name) {
 // ---- main ----
 console.log(`ceresc  ${Ceresc}`);
 console.log(`ceres   ${CeresDir}`);
+if (opt.library)
+    for (const level of [...new Set([...opt.levels, "2"])])      // the examples are built at -O2
+        if (!fs.existsSync(path.join(libraryDir(level), "libceres.car")))
+            throw new Error(`--library: there is no libceres.car in ${libraryDir(level)}`);
 if (opt.buildOnly) {
     for (const level of opt.levels) buildLibrary(level);
     process.exit(0);
@@ -402,7 +414,7 @@ let tests = fs.readdirSync("tests").filter((f) => f.endsWith(".c")).map((f) => f
 if (opt.tests.length) tests = tests.filter((t) => opt.tests.includes(t));
 if (!tests.length) throw new Error("no tests match");
 fs.mkdirSync("tests/expected", { recursive: true });
-if (!opt.fromSources) ensureLibrary([...new Set([...opt.levels, 2])].sort((a, b) => a - b));
+if (!opt.fromSources && !opt.library) ensureLibrary([...new Set([...opt.levels, "2"])].sort(byLevel));
 for (const name of tests) testOne(name);
 testHeaders();
 testExamples();
