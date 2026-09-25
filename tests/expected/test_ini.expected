@@ -1,0 +1,19 @@
+-- reading
+-- changing and writing
+top = level
+
+[Video]
+scale = 2
+fullscreen = yes
+ratio = 0.100000001
+empty =
+
+[player]
+name = "Ana María ; #1"
+motto = "say \"hi\"\n"
+url = http://x.org/#top
+
+[sound]
+volume = "  loud  "
+-- files
+ALL PASSED 34/34
