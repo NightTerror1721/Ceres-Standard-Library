@@ -35,6 +35,7 @@ char** sys_envp(void)
 }
 
 static char** owned = 0;          // the copy setenv/unsetenv edit; 0 until one of them is called
+static unsigned char* mine = 0;   // for each entry of the copy: 1 when setenv allocated its string
 static int owned_count = 0;
 static int owned_cap = 0;
 
@@ -64,6 +65,8 @@ static char* find(const char* name, int* index)
 
 char* getenv(const char* name)
 {
+    if (name == 0 || name[0] == 0 || strchr(name, '=') != 0)
+        return 0;                                        // no such name can be there (and getenv sets no errno)
     char* entry = find(name, 0);
     return entry == 0 ? 0 : entry + strlen(name) + 1;
 }
@@ -88,13 +91,21 @@ static int take_ownership(void)
         while (env != 0 && env[count] != 0)
             count++;
         owned = (char**)malloc(sizeof(char*) * (size_t)(count + 8));
-        if (owned == 0)
+        mine = (unsigned char*)malloc((size_t)(count + 8));
+        if (owned == 0 || mine == 0)
         {
+            free(owned);
+            free(mine);
+            owned = 0;
+            mine = 0;
             errno = ENOMEM;
             return 0;
         }
         for (int i = 0; i < count; i++)
+        {
             owned[i] = env[i];
+            mine[i] = 0;                                 // the loader's strings stay where it put them
+        }
         owned[count] = 0;
         owned_count = count;
         owned_cap = count + 8;
@@ -108,6 +119,13 @@ static int take_ownership(void)
             return 0;
         }
         owned = bigger;
+        unsigned char* flags = (unsigned char*)realloc(mine, (size_t)(owned_cap * 2));
+        if (flags == 0)
+        {
+            errno = ENOMEM;
+            return 0;
+        }
+        mine = flags;
         owned_cap *= 2;
     }
     return 1;
@@ -137,10 +155,14 @@ int setenv(const char* name, const char* value, int overwrite)
     entry[name_length + 1 + value_length] = 0;
     if (at >= 0)
     {
-        owned[at] = entry;          // the old string may be the loader's: it is left where it is
+        if (mine[at])
+            free(owned[at]);        // one setenv made; the loader's are left where they are
+        owned[at] = entry;
+        mine[at] = 1;
     }
     else
     {
+        mine[owned_count] = 1;
         owned[owned_count++] = entry;
         owned[owned_count] = 0;
     }
@@ -154,10 +176,15 @@ int unsetenv(const char* name)
     int at = -1;
     if (find(name, &at) == 0)
         return 0;
-    if (!take_ownership())
+    if (owned == 0 && !take_ownership())                 // a removal needs the copy, but no room in it
         return -1;
+    if (mine[at])
+        free(owned[at]);
     for (int i = at; i < owned_count; i++)
+    {
         owned[i] = owned[i + 1];
+        mine[i] = mine[i + 1];
+    }
     owned_count--;
     return 0;
 }

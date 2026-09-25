@@ -307,6 +307,33 @@ static int in_heap(void* p)
         at <= (unsigned int)heap_epilogue;
 }
 
+// Whether p is the payload of a block malloc handed out and has not taken back: inside the heap, and its header
+// agreeing with the headers around it. A pointer into the middle of a block, or one freed and since swallowed by
+// a free neighbour below it, fails one of these instead of being trusted as a header.
+static int live_block(void* p)
+{
+    if (!in_heap(p))
+        return 0;
+    struct blk* b = OF(p);
+    if ((b->head & (B_FREE | 4u)) != 0 || SIZE(b) < MIN_PAYLOAD)
+        return 0;
+    unsigned int end = (unsigned int)PAYLOAD(b) + SIZE(b);
+    if (end < (unsigned int)PAYLOAD(b) || end > (unsigned int)heap_epilogue)
+        return 0;
+    if (NEXT_PHYS(b)->head & B_PREV_FREE)
+        return 0;                                          // the block above takes this one for free
+    if (b->head & B_PREV_FREE)
+    {
+        unsigned int below = (unsigned int)b - HDR - b->prev_size;
+        if (b->prev_size < MIN_PAYLOAD || below < (unsigned int)heap_first || below >= (unsigned int)b)
+            return 0;
+        struct blk* prev = PREV_PHYS(b);
+        if ((prev->head & B_FREE) == 0 || SIZE(prev) != b->prev_size)
+            return 0;
+    }
+    return 1;
+}
+
 #if CERES_HEAP_DEBUG
 // The debug trailer: canary bytes from what was asked for up to the last word, which holds that size.
 static void arm(struct blk* b, size_t n)
@@ -404,6 +431,11 @@ void free(void* p)
         heap_error("double free", p);
         return;
     }
+    if (!live_block(p))
+    {
+        heap_error("free of a pointer that is not a live block", p);   // inside a block, or freed and merged away
+        return;
+    }
 #if CERES_HEAP_DEBUG
     if (!canary_intact(b))
     {
@@ -430,7 +462,7 @@ void* calloc(size_t n, size_t size)
 
 size_t malloc_usable_size(void* p)
 {
-    if (p == 0 || !in_heap(p))
+    if (p == 0 || !live_block(p))
         return 0;
     return SIZE(OF(p)) - TRAILER;
 }
@@ -445,9 +477,10 @@ void* realloc(void* p, size_t n)
         return 0;
     }
     struct blk* b = OF(p);
-    if (!in_heap(p) || (b->head & B_FREE))
+    if (!live_block(p))
     {
-        heap_error(in_heap(p) ? "realloc of a freed block" : "realloc of a pointer malloc did not return", p);
+        heap_error(!in_heap(p) ? "realloc of a pointer malloc did not return" :
+            (b->head & B_FREE) ? "realloc of a freed block" : "realloc of a pointer that is not a live block", p);
         return 0;
     }
     if (n > MAX_REQUEST)
@@ -509,9 +542,14 @@ void* realloc(void* p, size_t n)
 
 void* aligned_alloc(size_t alignment, size_t n)
 {
-    if (alignment == 0 || (alignment & (alignment - 1)) != 0 || alignment > MAX_REQUEST)
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0)
     {
         errno = EINVAL;
+        return 0;
+    }
+    if (alignment > MAX_REQUEST)
+    {
+        errno = ENOMEM;                                    // a valid alignment no machine has room for
         return 0;
     }
     if (alignment <= 8)
@@ -650,10 +688,13 @@ int heap_check(void)
 #if CERES_HEAP_DEBUG
             if (!fill_intact(b))
                 return (int)at;
+#endif
         }
-        else if (!canary_intact(b))
+        else
         {
-            return (int)at;
+#if CERES_HEAP_DEBUG
+            if (!canary_intact(b))
+                return (int)at;
 #endif
         }
         prev_free = is_free;

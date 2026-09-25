@@ -22,9 +22,14 @@ int main(int argc, char** argv)
     CHECK_STR(getenv("LANG"), "es");
     CHECK(getenv("HOM") == 0);                          // a prefix is not a name
     CHECK(getenv("PATH") == 0);                         // nothing of the host's comes through
-    char** envp = sys_envp();
-    CHECK_STR(envp[0], "HOME=/save");
-    CHECK(envp[2] == 0);
+    char** envp = sys_envp();                           // what test_args.run gives, in its order
+    int entries = 0, home_at = -1;
+    for (int i = 0; envp[i] != 0; i++, entries++)
+        if (strcmp(envp[i], "HOME=/save") == 0)
+            home_at = i;
+    CHECK_EQ(entries, 2);
+    CHECK(home_at >= 0);
+    CHECK(getenv("") == 0);                             // no name, no match (even with an entry "=x")
 
     TEST_SECTION("setenv and unsetenv");
     CHECK_EQ(setenv("HOME", "/other", 0), 0);
@@ -45,10 +50,17 @@ int main(int argc, char** argv)
         CHECK_EQ(setenv(name, "x", 1), 0);
     }
     CHECK_STR(getenv("VBN"), "x");
+    for (int i = 0; i < 200; i++)                       // overwritten and unset over and over: nothing kept
+        CHECK_EQ(setenv("LOOP", i % 2 ? "one" : "two", 1), 0);
+    CHECK_EQ(unsetenv("LOOP"), 0);
     errno = 0;
     CHECK_EQ(setenv("A=B", "x", 1), -1);
     CHECK_EQ(errno, EINVAL);
+    errno = 0;
     CHECK_EQ(setenv("", "x", 1), -1);
+    CHECK_EQ(errno, EINVAL);
+    errno = 0;
     CHECK_EQ(unsetenv(0), -1);
+    CHECK_EQ(errno, EINVAL);
     return test_summary();
 }

@@ -209,6 +209,8 @@ int fputs(const char* s, FILE* f)
 // product would move fewer bytes than asked and report a count that matches neither.
 static size_t byte_total(FILE* f, size_t size, size_t count)
 {
+    if (size == 0)
+        return 0;
     if (count > (size_t)-1 / size)
     {
         f->error = 1;

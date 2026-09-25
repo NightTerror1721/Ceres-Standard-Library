@@ -219,6 +219,7 @@ int main(void)
     CHECK_EQ(posix_memalign(&pm, 64, 100), 0);
     CHECK_EQ((int)((unsigned int)pm & 63u), 0);
     CHECK_EQ(posix_memalign(&pm, 2, 100), EINVAL);      // below sizeof(void*)
+    CHECK_EQ(posix_memalign(&pm, 0x80000000u, 8), ENOMEM);   // a valid alignment, but too large
     free(pm);
     free(a4k);
     free(a256);
@@ -239,6 +240,21 @@ int main(void)
     CHECK_EQ(errors_seen, 2);
     CHECK(realloc(once, 64) == 0);                      // a freed block cannot be resized
     CHECK_EQ(errors_seen, 3);
+    char* pair = (char*)malloc(24);
+    memset(pair, 0, 24);
+    free(pair + 8);                                     // inside a block: not a header to trust
+    CHECK_EQ(errors_seen, 4);
+    CHECK_EQ((int)malloc_usable_size(pair + 8), 0);
+    char* lowb = (char*)malloc(24);
+    char* highb = (char*)malloc(24);
+    char* guard = (char*)malloc(24);
+    free(lowb);
+    free(highb);                                        // merged into the free block below it
+    free(highb);                                        // its old header is stale now: refused
+    CHECK_EQ(errors_seen, 5);
+    CHECK_EQ(heap_check(), 0);
+    free(guard);
+    free(pair);
     CHECK_EQ(heap_check(), 0);                          // and the heap is none the worse
     free(other);
     heap_set_error_handler(0);

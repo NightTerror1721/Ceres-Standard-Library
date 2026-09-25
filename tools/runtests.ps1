@@ -22,7 +22,7 @@
     it is not there, and is new for every level).
 
     A test with a tests/expected/<name>.run file passes what it holds to `ceres run`: `--env NAME=value`, and
-    `-- a b` for main's arguments. With `--host-dir build/host` the directory is made afresh for every level,
+    `-- a b` for main's arguments. Words are split at white space, so no value can contain any. With `--host-dir build/host` the directory is made afresh for every level,
     with a copy of tests/data/host in it.
 
     What a test writes to its error stream (stderr, perror, assert, abort) is compared with
