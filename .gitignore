@@ -11,3 +11,4 @@ asm/*.cobj
 *.car
 
 examples/*.casm
+config.mk

@@ -19,12 +19,26 @@ ifneq ($(filter 3.% 4.0% 4.1%,$(MAKE_VERSION)),)
 $(error GNU Make 4.2 or later is needed (this is $(MAKE_VERSION)); on macOS: brew install make, then gmake)
 endif
 
+# ---- a configuration of your own ----------------------------------------------------------------------------------
+# config.mk (or CONFIG_FILE=<file>), when there is one, sets any variable below once for every command - OPT = s,
+# FS_MAX_OPEN = 4, PREFIX = /opt/ceres - so a build, its install and its tests agree without repeating them. What
+# the command line says still wins. It is not part of the repository (.gitignore).
+CONFIG_FILE ?= config.mk
+-include $(CONFIG_FILE)
+
 # ---- the tools ----------------------------------------------------------------------------------------------------
 CMAKE ?= cmake
 CTEST ?= ctest
 NODE ?= node
 CERESC ?=
 CERES ?=
+# The test runner finds the tools through the environment: CERESC, and CERES_PATH for ceres.
+ifneq ($(strip $(CERESC)),)
+export CERESC
+endif
+ifneq ($(strip $(CERES)),)
+export CERES_PATH := $(CERES)
+endif
 
 # ---- what to build ------------------------------------------------------------------------------------------------
 OPT ?= 2
