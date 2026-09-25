@@ -96,15 +96,22 @@ static int read_body(FILE* f, const struct header* h, void* data)
 // taken if its bytes check out, else the other. It returns 0 (a) or 1 (b) with its header in *h and, when data is
 // not NULL, its bytes there - each copy's bytes are read at most once. -1 with ENOENT when no copy is good, ENOSPC
 // when the good one does not fit in cap, or the error that kept a copy from being opened.
-static int newest(const char* path, struct header* h, void* data, size_t cap)
+//
+// A copy that is there but cannot be opened stops a write (strict): the write would go to the other file, and the
+// unopenable one may be the newest. A read takes the good copy it can open, and fails with that copy's error only
+// when there is no other.
+static int newest(const char* path, struct header* h, void* data, size_t cap, int strict)
 {
     struct header heads[2];
     FILE* files[2] = { 0, 0 };
     int result = -1;
     int error = ENOENT;
-    for (int which = 0; which < 2 && error == ENOENT; which++)
+    int unopened = ENOENT;                                           // the error of a copy that could not be opened
+    for (int which = 0; which < 2 && (unopened == ENOENT || !strict); which++)
         if (open_copy(path, which, &heads[which], &files[which]) < 0)
-            error = errno;
+            unopened = errno;
+    if (strict)
+        error = unopened;
     if (error == ENOENT)
     {
         int first = 0;
@@ -135,7 +142,7 @@ static int newest(const char* path, struct header* h, void* data, size_t cap)
         if (files[which] != 0)
             fclose(files[which]);
     if (result < 0)
-        errno = error;
+        errno = error == ENOENT ? unopened : error;
     return result;
 }
 
@@ -143,7 +150,7 @@ int save_write(const char* path, unsigned int version, const void* data, size_t 
 {
     struct header latest_header;
     int saved_errno = errno;
-    int latest = newest(path, &latest_header, 0, 0);
+    int latest = newest(path, &latest_header, 0, 0, 1);
     if (latest < 0 && errno != ENOENT)
         return -1;
     errno = saved_errno;
@@ -176,7 +183,7 @@ int save_write(const char* path, unsigned int version, const void* data, size_t 
 long save_read(const char* path, unsigned int* version, void* data, size_t cap)
 {
     struct header h;
-    if (newest(path, &h, data, cap) < 0)
+    if (newest(path, &h, data, cap, 0) < 0)
         return -1;
     if (version != 0)
         *version = h.version;
@@ -210,14 +217,14 @@ void* save_load(const char* path, unsigned int* version, size_t* size)
 long save_size(const char* path)
 {
     struct header h;
-    return newest(path, &h, 0, 0) < 0 ? -1 : (long)h.size;
+    return newest(path, &h, 0, 0, 0) < 0 ? -1 : (long)h.size;
 }
 
 int save_exists(const char* path)
 {
     struct header h;
     int saved = errno;
-    int yes = newest(path, &h, 0, 0) >= 0;
+    int yes = newest(path, &h, 0, 0, 0) >= 0;
     errno = saved;
     return yes;
 }

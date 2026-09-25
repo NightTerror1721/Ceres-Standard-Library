@@ -299,7 +299,8 @@ static void fmt_hex_float(struct __sink* s, const struct real* v, const char* pr
         unsigned long long kept = frac >> drop;
         unsigned long long rest = frac & ((1ull << drop) - 1u);
         unsigned long long half = 1ull << (drop - 1);
-        if (rest > half || (rest == half && (kept & 1u)))
+        unsigned long long last = prec > 0 ? kept : lead;          // no digit kept after the point: the lead is last
+        if (rest > half || (rest == half && (last & 1u)))
             kept++;
         if (kept >> (prec * 4))                             // carried into the leading digit
         {
@@ -335,7 +336,9 @@ static void fmt_hex_float(struct __sink* s, const struct real* v, const char* pr
 
 #ifdef __CERES_SOFT_DOUBLE__
 #define REAL_MAX_DIGITS FCONV64_MAX_DIGITS
-#define REAL_BUFFER static                             // 1.6 KiB: not on the stack of whatever called printf
+#define REAL_BUFFER static                             // 1.6 KiB: not on the stack of whatever called printf - so
+                                                       // printing a double does not nest (an interrupt handler that
+                                                       // prints one while the program does garbles the program's)
 #else
 #define REAL_MAX_DIGITS FCONV_MAX_DIGITS
 #define REAL_BUFFER

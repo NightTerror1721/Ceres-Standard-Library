@@ -1,8 +1,14 @@
 // Generates tests/f64_vectors.inc (node tools/gen_f64_vectors.js tests/f64_vectors.inc): operands and results for
 // test_f64.c. Node's numbers are IEEE binary64 rounded to nearest-even, so what it computes is what the soft
-// double must give, bit for bit. The operands come from a fixed seed: the file only changes when this does.
+// double must give, bit for bit (Math.sqrt too: every engine computes it with the IEEE square root instruction,
+// correctly rounded, though the language does not promise it). The operands come from a fixed seed: the file only
+// changes when this does.
 const fs = require("fs");
 const out = process.argv[2];
+if (!out) {
+    console.error("usage: node tools/gen_f64_vectors.js <output.inc>");
+    process.exit(1);
+}
 
 let seed = 0x9E3779B97F4A7C15n;
 function next64() {                                   // xorshift64*

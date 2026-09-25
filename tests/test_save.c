@@ -98,6 +98,9 @@ static void run(const char* where, const char* a, const char* b)
     CHECK_EQ((int)save_size(where), 0);
     CHECK_EQ(save_erase(where), 0);
     CHECK_EQ(save_exists(where), 0);
+    CHECK_EQ(save_write(where, 1, &me, sizeof me), 0);          // only .a: erasing finds no .b, and that is fine
+    CHECK_EQ(save_erase(where), 0);
+    CHECK_EQ(save_exists(where), 0);
     CHECK(file_bytes(a, bytes, sizeof bytes) < 0 && file_bytes(b, bytes, sizeof bytes) < 0);
 }
 

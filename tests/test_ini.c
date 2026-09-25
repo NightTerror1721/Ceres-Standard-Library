@@ -5,6 +5,7 @@
 #include "string.h"
 #include "stdlib.h"
 #include "stdio.h"
+#include "errno.h"
 
 static const char* settings =
     "\xEF\xBB\xBF; the game's settings\n"
@@ -74,10 +75,23 @@ int main(void)
     CHECK_EQ(ini_set(&cfg, "s", "a=b", "v"), -1);
     CHECK_EQ(ini_set(&cfg, "s", " padded", "v"), -1);
     CHECK_EQ(ini_set(&cfg, "s", "", "v"), -1);
+    {
+        static char long_value[600];
+        memset(long_value, 'x', 505);
+        CHECK_EQ(ini_set(&cfg, "s", "k", long_value), 0);            // "k = " and 505: 509 bytes, it reads back
+        long_value[505] = 'x';
+        long_value[506] = 'x';
+        long_value[507] = 'x';
+        errno = 0;
+        CHECK_EQ(ini_set(&cfg, "s", "k", long_value), -1);           // 512: a reader would drop the line
+        CHECK_EQ(errno, EINVAL);
+        CHECK_EQ(ini_remove(&cfg, "s", "k"), 0);
+    }
     ini_init(&broken);
-    ini_read(&broken, "n = 010\nh = -0x10\n");
+    ini_read(&broken, "n = 010\nh = -0x10\nq = \" 0x10\"\n");
     CHECK_EQ(ini_get_int(&broken, "", "n", 0), 10);                  // decimal, not octal
     CHECK_EQ(ini_get_int(&broken, "", "h", 0), -16);
+    CHECK_EQ(ini_get_int(&broken, "", "q", 0), 16);                  // a quoted value keeps its blank; still hex
     ini_free(&broken);
 
     TEST_SECTION("changing and writing");

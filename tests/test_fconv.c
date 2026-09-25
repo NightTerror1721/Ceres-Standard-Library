@@ -73,6 +73,8 @@ int main(void)
     CHECK_STR(fmt1("%a", from(1)), "0x0.000002p-126");
     CHECK_STR(fmt1("%a", 0.0f), "0x0p+0");
     CHECK_STR(fmt1("%.1a", 1.96875f), "0x2.0p+0");                  // 0x1.f8 rounded to one digit
+    CHECK_STR(fmt1("%.0a", 1.5f), "0x2p+0");                        // a tie, and the lead 1 is odd: up to even
+    CHECK_STR(fmt1("%.0a", 2.5f), "0x1p+1");                        // 0x1.4p+1: below the half, down
     CHECK_STR(fmt1("%.8a", 1.5f), "0x1.80000000p+0");
     CHECK_STR(fmt1("%#a", 2.0f), "0x1.p+1");
 

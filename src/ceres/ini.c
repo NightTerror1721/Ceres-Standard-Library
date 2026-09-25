@@ -188,11 +188,15 @@ static int writable_name(const char* s, int is_key)
     return 1;
 }
 
+static size_t written_length(const char* v);
+
 int ini_set(struct ini* d, const char* section, const char* key, const char* value)
 {
     if (section == 0)
         section = "";
-    if (key == 0 || value == 0 || !writable_name(section, 0) || !writable_name(key, 1))
+    // A line longer than a reader takes would not read back either: "[section]", and "key = value" as written.
+    if (key == 0 || value == 0 || !writable_name(section, 0) || !writable_name(key, 1) ||
+        strlen(section) + 2 >= LINE_MAX_BYTES || strlen(key) + 3 + written_length(value) >= LINE_MAX_BYTES)
     {
         errno = EINVAL;
         return -1;
@@ -331,9 +335,12 @@ int ini_get_int(const struct ini* d, const char* section, const char* key, int f
         return fallback;
     char* end;
     errno = 0;
-    int base = v[0] == '0' && (v[1] == 'x' || v[1] == 'X') ? 16 : 10;   // not octal: 010 is ten
-    if (v[0] == '-' || v[0] == '+')
-        base = v[1] == '0' && (v[2] == 'x' || v[2] == 'X') ? 16 : 10;
+    const char* p = v;                               // strtol skips the blanks a quoted value can keep
+    while (blank(*p))
+        p++;
+    int base = p[0] == '0' && (p[1] == 'x' || p[1] == 'X') ? 16 : 10;   // not octal: 010 is ten
+    if (p[0] == '-' || p[0] == '+')
+        base = p[1] == '0' && (p[2] == 'x' || p[2] == 'X') ? 16 : 10;
     long n = strtol(v, &end, base);
     return *end == 0 && errno == 0 ? (int)n : fallback;
 }
@@ -379,6 +386,19 @@ static int needs_quotes(const char* v)
         if (v[i] == '\n' || ((v[i] == ';' || v[i] == '#') && i > 0 && blank(v[i - 1])))
             return 1;
     return 0;
+}
+
+// How long a value is once ini_write has written it: quoted and escaped when it has to be.
+static size_t written_length(const char* v)
+{
+    size_t n = strlen(v);
+    if (!needs_quotes(v))
+        return n;
+    size_t length = n + 2;
+    for (size_t i = 0; i < n; i++)
+        if (v[i] == '"' || v[i] == '\\' || v[i] == '\n' || v[i] == '\t')
+            length++;
+    return length;
 }
 
 struct text

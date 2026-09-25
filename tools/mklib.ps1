@@ -114,7 +114,8 @@ if ($LevelList -contains 2 -and -not $SoftDouble) {
 if (-not $NoVerify -and ($LevelList -contains 2)) {
     $dir = "$(Get-LibraryDir 2)$Suffix"
     New-Item -ItemType Directory -Force build/verify | Out-Null
-    foreach ($name in @('hello', 'test_user_irq17')) {
+    $programs = if ($SoftDouble) { @('hello', 'test_user_irq17', 'test_double') } else { @('hello', 'test_user_irq17') }
+    foreach ($name in $programs) {
         $code = Invoke-Tool $Ceresc "tests/$name.c $dir/libceres.car --decls $dir/libceres.decls.casm -I include -O2 $ExtraFlags -o build/verify/$name.cres --run --clean --ceres-path `"$CeresDir`"" "build/verify/$name.out" build/mklib.v.err
         if ($code -ne 0) { Fail "building and running $name against libceres.car" build/mklib.v.err }
 

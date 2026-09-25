@@ -154,6 +154,11 @@ int main(void)
     float f2 = 0;
     CHECK_EQ(sscanf("3.25 1.5", "%lf %f", &d, &f2), 2);
     CHECK(d == 3.25 && f2 == 1.5f);
+    long double ld = 0;
+    CHECK_EQ(sscanf("0.1", "%Lf", &ld), 1);                     // long double is a double here: all eight bytes
+    CHECK(bits(ld) == 0x3FB999999999999Aull);
+    snprintf(out, sizeof out, "%.0a %.0a", 1.5, 3.5);
+    CHECK_STR(out, "0x2p+0 0x2p+1");                             // ties to even on the lead digit
     CHECK(bits(DBL_EPSILON) == 0x3CB0000000000000ull && DBL_MANT_DIG == 53);
     return test_summary();
 }

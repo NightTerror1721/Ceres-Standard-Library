@@ -47,6 +47,7 @@ Ceres has one floating-point format: IEEE 754 binary32. `double` and `long doubl
 #define LDBL_TRUE_MIN      DBL_TRUE_MIN
 #define LDBL_HAS_SUBNORM   1
 #else
+#define DECIMAL_DIG        FLT_DECIMAL_DIG
 #define DBL_MANT_DIG       FLT_MANT_DIG
 #define DBL_DIG            FLT_DIG
 #define DBL_DECIMAL_DIG    FLT_DECIMAL_DIG

@@ -288,13 +288,15 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
             i++;
         }
         int narrow = 0;                                  // 'H' = hh, 'h' = h, 'W' = ll (64-bit), 0 = 32 bits
+        int long_double = 0;                             // L: long double, a double under -fsoft-double
         for (;;)
         {
             char m = fmt[i];
             if (m == 'h') narrow = (narrow == 'h') ? 'H' : 'h';
             else if (m == 'l') narrow = (narrow == 'l') ? 'W' : 'l';
             else if (m == 'j' || m == 'q') narrow = 'W';       // intmax_t is long long
-            else if (m == 'z' || m == 't' || m == 'L') { }
+            else if (m == 'L') long_double = 1;
+            else if (m == 'z' || m == 't') { }
             else break;
             i++;
         }
@@ -502,9 +504,9 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
                 continue;
             char* end;
 #ifdef __CERES_SOFT_DOUBLE__
-            if (narrow == 'l')
+            if (narrow == 'l' || long_double)
             {
-                double d = strtod(field, &end);          // %lf: a real double
+                double d = strtod(field, &end);          // %lf and %Lf: a real double
                 if (end == field)
                     return assigned;
                 *va_arg(ap, double*) = d;

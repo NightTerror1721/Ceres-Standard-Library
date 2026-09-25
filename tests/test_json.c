@@ -7,6 +7,7 @@
 #include "math.h"
 
 static struct json_token t[64];
+static struct json_token many[80];                               // room for 65 levels: depth, not space, decides
 
 static int parses(const char* text)
 {
@@ -82,6 +83,27 @@ int main(void)
     for (int i = 0; i < 70; i++) deep[70 + i] = ']';
     deep[140] = 0;
     CHECK(!parses(deep));                                        // deeper than 64
+    for (int i = 0; i < 64; i++) deep[i] = '[';
+    for (int i = 0; i < 64; i++) deep[64 + i] = ']';
+    deep[128] = 0;
+    CHECK(json_parse(deep, 128, many, 80) >= 0);                  // exactly 64 deep
+    memmove(deep + 1, deep, 129);
+    deep[0] = '[';
+    deep[129] = ']';
+    deep[130] = 0;
+    CHECK(json_parse(deep, 130, many, 80) < 0);                   // 65
+    {
+        char nest[200];
+        struct json_writer nw;
+        json_writer_init(&nw, nest, sizeof nest);
+        for (int i = 0; i < 64; i++) json_array_begin(&nw);
+        for (int i = 0; i < 64; i++) json_array_end(&nw);
+        CHECK_EQ(json_writer_end(&nw), 128);                     // the writer takes as deep as the reader
+        json_writer_init(&nw, nest, sizeof nest);
+        for (int i = 0; i < 65; i++) json_array_begin(&nw);
+        for (int i = 0; i < 65; i++) json_array_end(&nw);
+        CHECK_EQ(json_writer_end(&nw), -1);
+    }
     CHECK_EQ(json_parse("[1]xyz", 3, t, 64), 2);                 // n bytes, whatever follows
     CHECK_EQ(json_parse("[1]\0xyz", 7, t, 64), -1);              // a NUL among the n bytes is not an end
 

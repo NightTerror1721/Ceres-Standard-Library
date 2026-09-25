@@ -27,6 +27,7 @@ static u64 nan_of(u64 a, u64 b)
     return F64_NAN;
 }
 
+// The zero bits above the highest one. m must not be 0 (every caller has ruled it out).
 static int leading_zeros(u64 m)
 {
     int n = 0;
