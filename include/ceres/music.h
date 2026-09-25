@@ -45,7 +45,7 @@ void channel_set(int ch, const struct voice_settings* v);
 void channel_note_on(int ch, unsigned int hz);           // the attack starts
 void channel_note_off(int ch);                           // the release starts
 void channel_stop(int ch);                               // silent at once
-int  channel_sounding(int ch);                           // 1 until its release has run out (the host mixes it)
+int  channel_sounding(int ch);                           // 1 until its release has run out (the host mixes it); 0 with no host that does
 
 // ---- songs ----
 struct music_song

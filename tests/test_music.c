@@ -30,7 +30,7 @@ int main(void)
     CHECK_EQ(VOL(2), 150u);
     channel_note_on(2, 523);
     CHECK_EQ(FREQ(2), 523u);
-    CHECK_EQ(channel_sounding(2), 1);                 // keyed on (a host would now mix its attack)
+    CHECK_EQ(channel_sounding(2), 0);                 // keyed on, but no host mixes it here: nothing to wait for
     channel_stop(2);
     CHECK_EQ(channel_sounding(2), 0);
 
