@@ -1,0 +1,30 @@
+// The MMU's instructions (CeresASM docs/27-Virtual-Memory-and-Paging.md), one per function, for src/ceres/mmu.c.
+@text
+
+global __mmu_set_directory:     // (directory): PTBR, and a flushed TLB
+    mtp r0
+    ret
+
+global __mmu_directory:
+    mfp r0
+    ret
+
+global __mmu_enable:            // every access from here on is translated
+    pgon
+    ret
+
+global __mmu_disable:
+    pgoff
+    ret
+
+global __mmu_invalidate:        // (address): forget the page's cached translation
+    invlpg r0
+    ret
+
+global __mmu_flush:             // forget every cached translation
+    flpg
+    ret
+
+global __mmu_fault_address:     // the virtual address that last faulted
+    mfpf r0
+    ret

@@ -22,6 +22,9 @@ void __task_finish(void) __attribute__((__noreturn__));
 
 extern unsigned int __heap_main_sp;                  // malloc.c
 extern void (*__heap_top_hook)(unsigned int top);
+extern void (*__task_stack_guard)(unsigned char* stack, int guard);   // task_guard.c, set by ceres/mmu.h
+
+#define GUARD 4096u                                  // a guarded stack's first page, left unmapped
 
 #define T_FREE      0
 #define T_READY     1
@@ -36,6 +39,7 @@ struct task
     struct ctx ctx;
     unsigned char* stack;            // 0 for main
     unsigned int stack_size;
+    int guarded;                     // its first page is a guard page (ceres/mmu.h)
     unsigned long long wake_ns;
     const void* waiting_on;          // a struct task or a struct chan
     int deadlocked;                  // woken because nothing else ever could
@@ -49,10 +53,11 @@ static int started = 0;
 static int alive = 1;                // main
 static unsigned int main_limit;      // main's stack limit: the heap's top
 static unsigned char* to_free = 0;   // a finished task's stack, freed once we are off it
+static int to_free_guarded = 0;
 
 static unsigned int limit_of(int i)
 {
-    return i == 0 ? main_limit : (unsigned int)tasks[i].stack;
+    return i == 0 ? main_limit : (unsigned int)tasks[i].stack + (tasks[i].guarded ? GUARD : 0u);
 }
 
 static void set_limit(unsigned int limit)
@@ -98,8 +103,11 @@ static void release_finished(void)
 {
     if (to_free != 0)
     {
+        if (to_free_guarded && __task_stack_guard != 0)
+            __task_stack_guard(to_free, 0);           // mapped again before the heap hands it out
         free(to_free);
         to_free = 0;
+        to_free_guarded = 0;
     }
 }
 
@@ -212,6 +220,7 @@ void __task_finish(void)
     t->state = T_DONE;
     alive--;
     to_free = t->stack;                               // freed by whoever runs next, off this stack
+    to_free_guarded = t->guarded;
     t->stack = 0;
     wake(t);
     schedule();                                       // never comes back: nothing makes a DONE task ready
@@ -241,11 +250,18 @@ int task_spawn(task_fn fn, void* arg, unsigned int stack_size)
     stack_size = (stack_size + 7u) & ~7u;
     if (stack_size < 512u)
         stack_size = 512u;
-    unsigned char* stack = (unsigned char*)malloc(stack_size);
+    int guarded = __task_stack_guard != 0;
+    unsigned char* stack = guarded ? (unsigned char*)aligned_alloc(GUARD, stack_size + GUARD)
+                                   : (unsigned char*)malloc(stack_size);
     if (stack == 0)
     {
         errno = ENOMEM;
         return -1;
+    }
+    if (guarded)
+    {
+        __task_stack_guard(stack, 1);
+        stack_size += GUARD;                          // the frames live above the guard page
     }
     struct task* t = &tasks[slot];
     int generation = t->generation + 1;
@@ -253,6 +269,7 @@ int task_spawn(task_fn fn, void* arg, unsigned int stack_size)
     t->generation = generation;
     t->stack = stack;
     t->stack_size = stack_size;
+    t->guarded = guarded;
     t->fn = fn;
     t->arg = arg;
     // The first switch "returns" to __task_entry, which calls r8(r9) = task_start(slot), then r10.

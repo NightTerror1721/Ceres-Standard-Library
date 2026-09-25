@@ -1,0 +1,29 @@
+// The page fault handler of ceres/mmu.h's mmu_on_fault. OPTIONAL, like the fault module and for the same reason:
+// it binds a vector, PageFault, and the linker allows one binding per vector (so a program has this or the fault
+// module, not both). src/ceres/mmu_fault.c references __mmu_fault_present, which is what links this object.
+//
+// A page fault can be fixed and the access retried (demand paging), so the handler saves every register the C
+// side may change, asks it, and irets when it says the page is there now - the machine then runs the faulting
+// instruction again. The C function is reached through __mmu_fault_target (a library asm unit cannot name one).
+
+interrupt PageFault: __mmu_page_fault
+
+@data
+
+global let __mmu_fault_target: u32 = 0
+
+@text
+
+global __mmu_fault_present:
+    ret
+
+__mmu_page_fault:
+    pushm 0x1FFF                // r0-r12: thirteen words
+    fpushm 0x00FF               // f0-f7: eight more
+    mfpf r0                     // the address that faulted
+    ldr r1, [sp + 84]           // the instruction that faulted, under the 21 words just pushed
+    ldv r4, __mmu_fault_target
+    call r4                     // nonzero: mapped now, run it again; zero: it has reported and stopped
+    fpopm 0x00FF
+    popm 0x1FFF
+    iret

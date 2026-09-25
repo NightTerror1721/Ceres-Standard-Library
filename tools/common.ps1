@@ -46,6 +46,7 @@ $Ceres = Join-Path $CeresDir 'ceres.exe'
 $Optional = @{
     irq   = @('src/ceres/irq.c')
     fault = @('src/ceres/fault.c', 'asm/optional/fault.casm')
+    mmu   = @('src/ceres/mmu_fault.c', 'asm/optional/mmu_fault.casm')
 }
 $OptionalFiles = @($Optional.Values | ForEach-Object { $_ })
 $OptionalAsm = @($OptionalFiles | Where-Object { $_ -like '*.casm' })
