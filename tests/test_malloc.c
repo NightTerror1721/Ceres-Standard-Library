@@ -257,7 +257,14 @@ int main(void)
     free(pair);
     CHECK_EQ(heap_check(), 0);                          // and the heap is none the worse
     free(other);
-    heap_set_error_handler(0);
+    CHECK(heap_set_error_handler(0) == count_error);   // it says what it replaces
+    CHECK(heap_set_error_handler(0) != count_error);   // and 0 put the default back
+    void* none = &errors_seen;
+    CHECK_EQ(posix_memalign(&none, 16, 0), 0);          // a size of 0: NULL, and no error
+    CHECK(none == 0);
+    void* small = aligned_alloc(8, 24);                 // malloc's own alignment: a plain block
+    CHECK(small != 0 && ((unsigned int)small & 7u) == 0);
+    free(small);
     CHECK_EQ((int)heap_used(), 0);
 
     TEST_SECTION("stats");

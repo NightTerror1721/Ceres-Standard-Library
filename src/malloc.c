@@ -318,7 +318,7 @@ static int in_heap(void* p)
 {
     unsigned int at = (unsigned int)p;
     return heap_first != 0 && (at & 7u) == 0 && at >= (unsigned int)PAYLOAD(heap_first) &&
-        at <= (unsigned int)heap_epilogue;
+        at < (unsigned int)heap_epilogue;
 }
 
 // Whether p is the payload of a block malloc handed out and has not taken back: inside the heap, and its header
@@ -725,7 +725,7 @@ int heap_check(void)
             struct blk* head = bins[fl * SL_COUNT + sl];
             int has = (sl_map[fl] & (1u << sl)) != 0;
             if ((head != 0) != has || (has && (fl_map & (1u << fl)) == 0))
-                return head ? (int)(unsigned int)head : -1;
+                return head ? (int)(unsigned int)head : (int)(unsigned int)heap_epilogue;
             struct blk* before = 0;
             for (struct blk* f = head; f; f = f->next_free)
             {
@@ -737,10 +737,10 @@ int heap_check(void)
             }
         }
         if (sl_map[fl] == 0 && (fl_map & (1u << fl)) != 0)
-            return -1;
+            return (int)(unsigned int)heap_epilogue;
     }
     if (listed != free_blocks)
-        return -1;
+        return (int)(unsigned int)heap_epilogue;          // an address, as the contract says: the lists are wrong
     return 0;
 }
 

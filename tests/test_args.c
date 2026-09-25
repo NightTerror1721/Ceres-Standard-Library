@@ -50,6 +50,9 @@ int main(int argc, char** argv)
         CHECK_EQ(setenv(name, "x", 1), 0);
     }
     CHECK_STR(getenv("VBN"), "x");
+    CHECK_STR(getenv("VAA"), "x");                      // the first added, from before the copy grew
+    CHECK_STR(getenv("HOME"), "/other");                // and one the loader gave
+    CHECK_STR(getenv("LEVEL"), "3");
     for (int i = 0; i < 200; i++)                       // overwritten and unset over and over: nothing kept
         CHECK_EQ(setenv("LOOP", i % 2 ? "one" : "two", 1), 0);
     CHECK_EQ(unsetenv("LOOP"), 0);

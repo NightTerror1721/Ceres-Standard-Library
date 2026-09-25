@@ -2,15 +2,13 @@
 #include "stdio.h"
 #include "ceres.h"
 #include "ceres/terminal.h"
+#include "string.h"
 
 void __abort_now(void) __attribute__((__noreturn__));        // exit.c: the SIGABRT handler, if any, then status 134
 
 static void err(const char* s)
 {
-    int n = 0;
-    while (s[n] != 0)
-        n++;
-    term_write_error(s, n);
+    term_write_error(s, (int)strlen(s));
 }
 
 // Called by assert() when its expression is 0. It reports on the error stream, as C asks, with nothing

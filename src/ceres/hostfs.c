@@ -2,6 +2,7 @@
 // and returns the result register - a count, a handle or a size, or minus an errno.
 #include "ceres/hostfs.h"
 #include "ceres.h"
+#include "errno.h"
 
 #define HOST_STATUS    (HOSTFS_BASE + 0x00)
 #define HOST_COMMAND   (HOSTFS_BASE + 0x04)
@@ -23,8 +24,6 @@
 #define CMD_STAT     9
 #define CMD_LIST     10
 #define CMD_MKDIR    11
-
-#define ENODEV_ 19
 
 static void reg(unsigned int address, unsigned int value)
 {
@@ -49,7 +48,7 @@ int host_available(void)
 static int checked(int result)
 {
     if (result == -1 && *(volatile unsigned int*)HOST_STATUS == 0xFFFFFFFFu)
-        return -ENODEV_;
+        return -ENODEV;
     return result;
 }
 

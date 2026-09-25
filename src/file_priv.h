@@ -70,7 +70,6 @@ extern void (*__file_flush_all_hook)(void);
 
 int __file_parse_mode(const char* mode, int* readable, int* writable, int* truncate, int* append);   // "r" "w" "a" + optional "+" and "b"; 0 ok
 int __file_putc(struct __file* f, int c);        // one byte to any writable stream
-int __file_is_terminal_out(struct __file* f);    // stdout or stderr, still on the terminal
 void __file_list(struct __file* f);              // put f on the list of streams exit and fflush(NULL) flush
 void __file_forget(struct __file* f);            // and take it off
 int __file_flush(struct __file* f);              // write out what f holds back; 0, or EOF with f->error set

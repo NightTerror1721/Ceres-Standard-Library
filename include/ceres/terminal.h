@@ -14,7 +14,7 @@
 #define TERM_BLOCK_READ_CNT   (TERMINAL_BASE + 0x10)  // read: bytes the last block read moved
 #define TERM_DROPPED          (TERMINAL_BASE + 0x14)  // read: bytes dropped by a full ring
 #define TERM_MODE             (TERMINAL_BASE + 0x18)  // write: TERM_MODE_RAW to ask for keys as pressed; read: what was granted
-#define TERM_ERR              (TERMINAL_BASE + 0x1C)  // write: one byte -> the error stream (the host's stderr)
+#define TERM_ERR              (TERMINAL_BASE + 0x1C)  // write: one byte -> the error stream (term_write_error uses the block form)
 #define TERM_BLOCK_ADDR       (TERMINAL_BASE + 0xF0)
 #define TERM_BLOCK_LEN        (TERMINAL_BASE + 0xF4)
 #define TERM_BLOCK_CMD        (TERMINAL_BASE + 0xF8)  // write: 1 = read, 2 = write, 3 = write to the error stream
@@ -40,6 +40,7 @@
 
 #define TERM_BLOCK_CMD_READ   0x01
 #define TERM_BLOCK_CMD_WRITE  0x02
+#define TERM_BLOCK_CMD_WRITE_ERR 0x03   // RAM out to the error stream
 
 // How a read behaves when there is no input yet. The two blocking modes stop waiting when the input ends
 // (the host closed stdin and everything it sent has been read): the read then reports no input, as if it

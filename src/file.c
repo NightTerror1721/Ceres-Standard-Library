@@ -30,11 +30,6 @@ FILE* stdin = &stdin_file;
 FILE* stdout = &stdout_file;
 FILE* stderr = &stderr_file;
 
-int __file_is_terminal_out(struct __file* f)
-{
-    return f->kind == FILE_TERM_OUT || f->kind == FILE_TERM_ERR;
-}
-
 static int has_ops(struct __file* f)
 {
     return f->kind == FILE_DISK || f->kind == FILE_HOST;

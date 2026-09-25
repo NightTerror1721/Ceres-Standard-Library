@@ -112,21 +112,23 @@ static int take_ownership(void)
     }
     if (owned_count + 1 >= owned_cap)
     {
-        char** bigger = (char**)realloc(owned, sizeof(char*) * (size_t)(owned_cap * 2));
-        if (bigger == 0)
-        {
-            errno = ENOMEM;
-            return 0;
-        }
-        owned = bigger;
-        unsigned char* flags = (unsigned char*)realloc(mine, (size_t)(owned_cap * 2));
+        // The flags first: a flag array larger than the entries is harmless, the other way round is not.
+        int new_cap = owned_cap * 2;
+        unsigned char* flags = (unsigned char*)realloc(mine, (size_t)new_cap);
         if (flags == 0)
         {
             errno = ENOMEM;
             return 0;
         }
         mine = flags;
-        owned_cap *= 2;
+        char** bigger = (char**)realloc(owned, sizeof(char*) * (size_t)new_cap);
+        if (bigger == 0)
+        {
+            errno = ENOMEM;
+            return 0;
+        }
+        owned = bigger;
+        owned_cap = new_cap;
     }
     return 1;
 }

@@ -9,4 +9,4 @@
 -- a read-only volume
 -- a version 1 disk still works, flat
 -- fs_check finds and repairs
-ALL PASSED 121/121
+ALL PASSED 123/123

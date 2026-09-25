@@ -248,11 +248,11 @@ foreach ($name in $tests) {
         }
         $stdin = "tests/expected/$name.stdin"        # what the program reads from the terminal, if it reads
         if (-not (Test-Path $stdin)) { $stdin = '' }
-        if ((Test-Path $runFile) -and ((Get-Content $runFile -Raw) -match '--host-dir\s+build/host')) {
+        if ((Test-Path $runFile) -and ((Get-Content $runFile -Raw) -match '--host-dir\s+build/host(\s|$)')) {
             # a new, empty host directory for every level, as for the sticks
             Remove-Item "build/host" -Recurse -Force -ErrorAction SilentlyContinue
             New-Item -ItemType Directory -Force "build/host" | Out-Null
-            if (Test-Path "tests/data/host") { Copy-Item "tests/data/host/*" "build/host" -Recurse -Force }
+            if (Test-Path "tests/data/host") { Get-ChildItem "tests/data/host" -Force | Copy-Item -Destination "build/host" -Recurse -Force }
         }
         $code = Invoke-Tool $Ceresc $cmdLine $out $err $stdin
         $errText = Read-Text $err
@@ -287,8 +287,10 @@ foreach ($name in $tests) {
         $errExpectedPath = "tests/expected/$name.stderr"
         $errExpected = Read-Text $errExpectedPath
         $errExpected = if ($null -eq $errExpected) { '' } else { $errExpected -replace "`r`n", "`n" }
-        if ($Update -and $level -eq $LevelList[0] -and $errActual -ne '') {
-            [System.IO.File]::WriteAllBytes("$Root\$errExpectedPath", $Latin1.GetBytes($errActual))
+        if ($Update -and $level -eq $LevelList[0]) {
+            # the file follows what the test writes now: gone when it writes nothing
+            if (Same $errActual '') { Remove-Item $errExpectedPath -Force -ErrorAction SilentlyContinue }
+            else { [System.IO.File]::WriteAllBytes("$Root\$errExpectedPath", $Latin1.GetBytes($errActual)) }
             $errExpected = $errActual
         }
         if (-not (Same $errExpected $errActual)) {

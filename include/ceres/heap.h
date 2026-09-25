@@ -7,8 +7,8 @@
 // malloc and free take the same time however many blocks the heap holds: the free blocks are kept in lists
 // by size (a two-level segregated fit), a block is split when it is larger than needed, and free() merges it
 // with its free neighbours at once, through the size every free block leaves in the header above it.
-// realloc grows a block in place when the block above it is free or it is the last one, and shrinks it in
-// place. Payloads are 8-byte aligned, the header is 8 bytes, and the smallest payload is 8.
+// realloc grows a block in place when the free block above it has the room, or when it is the last one and the
+// heap may grow that far; otherwise it moves it. It shrinks a block in place. Payloads are 8-byte aligned, the header is 8 bytes, and the smallest payload is 8.
 //
 // The stack cannot run into the heap: each time the heap grows, malloc makes its new top the machine's
 // stack limit (sys_set_stack_limit, CeresASM fcf7d4c), and a stack that comes down to it is a
@@ -18,7 +18,7 @@ void*  malloc(size_t n);               // NULL when n == 0 or nothing fits
 void*  calloc(size_t n, size_t size);  // zeroed; NULL on overflow of n * size
 void*  realloc(void* p, size_t n);     // realloc(NULL, n) == malloc(n); realloc(p, 0) frees
 void   free(void* p);                  // free(NULL) is a no-op
-void*  aligned_alloc(size_t alignment, size_t n);   // alignment a power of two; NULL and EINVAL otherwise
+void*  aligned_alloc(size_t alignment, size_t n);   // alignment a power of two (NULL and EINVAL otherwise); ENOMEM when nothing fits
 int    posix_memalign(void** out, size_t alignment, size_t n);   // 0, EINVAL or ENOMEM
 size_t malloc_usable_size(void* p);    // what the block can hold: at least what was asked for
 

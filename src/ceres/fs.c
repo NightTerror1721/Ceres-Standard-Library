@@ -404,7 +404,9 @@ static int resolve(const char* path, struct where* w)
     const char* rest = path;
     const char* colon = strchr(path, ':');
     const char* slash = strchr(path, '/');
-    if (colon != 0 && (slash == 0 || colon < slash))
+    // "name:/..." or "name:" names a volume; a ':' anywhere else is part of a file's name.
+    if (colon != 0 && (slash == 0 || colon < slash) && (colon[1] == '/' || colon[1] == 0) &&
+        colon > path && colon - path <= FS_POINT_MAX)
     {
         w->v = volume_named(path, (size_t)(colon - path));
         rest = colon + 1;
@@ -507,6 +509,11 @@ static int resolve(const char* path, struct where* w)
         if (!(e.flags & E_DIR))
         {
             errno = ENOTDIR;
+            return -1;
+        }
+        if (e.first == 0)
+        {
+            errno = EIO;                     // a directory with no cluster: damaged (fs_check finds it)
             return -1;
         }
         dir = e.first;
@@ -1202,7 +1209,7 @@ int fs_remove(const char* path)
         errno = EBUSY;
         return -1;
     }
-    if ((e.flags & E_DIR) && !dir_empty(v, e.first))
+    if ((e.flags & E_DIR) && e.first != 0 && !dir_empty(v, e.first))
     {
         errno = ENOTEMPTY;
         return -1;
@@ -1386,6 +1393,11 @@ int fs_opendir(const char* path, struct fs_dir* dir)
             errno = ENOTDIR;
             return -1;
         }
+        if (e.first == 0)
+        {
+            errno = EIO;                     // 0 would be the root: a damaged entry must not alias it
+            return -1;
+        }
         dir->first = e.first;
     }
     return 0;
@@ -1408,8 +1420,7 @@ struct fs_dirent* fs_readdir(struct fs_dir* dir)
         dir->entry.is_dir = (e.flags & E_DIR) != 0;
         return &dir->entry;
     }
-    v->io_bad = 0;
-    return 0;
+    return 0;                                // a failed transfer stays noted, for fs_list or fs_sync to report
 }
 
 void fs_closedir(struct fs_dir* dir)

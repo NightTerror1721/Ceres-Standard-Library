@@ -7,9 +7,10 @@
 // cartridge in a peripheral port. It makes fopen() real, and can be used directly.
 //
 // VOLUMES. Several can be mounted at once, each under a name: "disk" for the internal disk, "stickN" and "cartN"
-// for what is in port N (fs_mount_port), or any name up to 7 characters (fs_mount_device). A path names one:
-// "stick0:/saves/slot1.dat", "cart1:/level1.map". A path with no name before a ':' is on the disk, so every
-// program written for one disk goes on working. fopen() takes the same paths ("host:..." is ceres/hostfs.h).
+// for what is in port N (fs_mount_port), or any name up to 7 characters (fs_mount_device). A path names one with
+// "name:/" - "stick0:/saves/slot1.dat", "cart1:/level1.map" - and one that does not start that way is on the
+// disk, so every program written for one disk goes on working (and a name may hold a ':' not followed by '/').
+// fopen() takes the same paths ("host:..." is ceres/hostfs.h).
 //
 // LAYOUT (512-byte sectors):
 //   sector 0            the superblock: 'CFS2' (or 'CFS1'), the version, and where everything else is
@@ -22,8 +23,8 @@
 // VERSION 2 (what fs_format() makes) has DIRECTORIES: a directory is a chain of clusters holding 64-byte entries,
 // 8 to a sector - a name of up to 47 characters, the first cluster, the size, the time of the last change
 // (seconds since 1970, from the machine's clock) and whether it is a directory. '/' separates the parts of a
-// path; "." and ".." mean what they always do. The root holds 16 entries per root sector (the default 64-sector
-// disk has 2: 16 names in the root, as many as fit in each directory below it).
+// path; "." and ".." mean what they always do. A sector holds 8 entries: the default 64-sector disk has 2 root
+// sectors, 16 names in the root; a directory below it grows a sector at a time.
 //
 // VERSION 1 (fs_format_version(1), and every disk formatted before) is flat: one directory of 32-byte entries,
 // a name of up to 23 characters in which '/' is a character like any other, and no times. It mounts and works as
@@ -90,7 +91,7 @@ unsigned int fs_free_bytes(void);
 // ---- other volumes ----
 int  fs_format_device(struct blockdev* dev, int version);   // puts a CeresFS on a device, not mounted
 int  fs_mount_device(const char* point, struct blockdev* dev);   // mounts it as `point`
-int  fs_mount_port(int port);              // what is in port N, as "stickN" or "cartN" (read only)
+int  fs_mount_port(int port);              // what is in port N, as "stickN" or "cartN" (read only when the medium is)
 int  fs_unmount_point(const char* point);  // saves and forgets it (the disk too, as "disk")
 int  fs_is_mounted(const char* point);
 int  fs_space(const char* point, unsigned int* total, unsigned int* free_bytes);
@@ -122,7 +123,7 @@ struct fs_dir
     unsigned int index;                // the next entry to look at
     struct fs_dirent entry;
 };
-int  fs_opendir(const char* path, struct fs_dir* dir);   // 0, or -1; "stick0:/" or "" is a root
+int  fs_opendir(const char* path, struct fs_dir* dir);   // 0, or -1; "/" or "stick0:/" is a root ("" is EINVAL)
 struct fs_dirent* fs_readdir(struct fs_dir* dir);        // the next entry, or NULL after the last
 void fs_closedir(struct fs_dir* dir);
 
@@ -137,6 +138,7 @@ struct fs_check_report
     unsigned int bad_sizes;            // a size its chain cannot hold, or a chain longer than its size needs
 };
 // Walks every directory and chain of the volume and counts what is wrong; 0 when nothing is. With `repair`, lost
-// clusters are freed, a broken or over-long chain is cut, a size is brought within its chain, and an entry whose
-// chain crosses another's is emptied; the volume must have no open files (EBUSY).
+// clusters are freed, a broken or over-long chain is cut, a size is brought within its chain, and a chain that
+// crosses another's is cut at the crossing (its entry emptied when the first cluster itself is shared); the
+// volume must have no open files (EBUSY).
 int  fs_check(const char* point, int repair, struct fs_check_report* out);

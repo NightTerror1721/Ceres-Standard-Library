@@ -99,7 +99,7 @@ void term_write_error(const char* restrict buf, int len)
         return;
     write_port(TERM_BLOCK_ADDR, TERM_BLOCK_ADDR_TYPE, (unsigned int)buf);
     write_port(TERM_BLOCK_LEN, TERM_BLOCK_LEN_TYPE, (unsigned int)len);
-    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_TYPE, 3u);
+    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_TYPE, TERM_BLOCK_CMD_WRITE_ERR);
 }
 
 int term_read(char* buf, int max, enum term_read_mode_t mode)

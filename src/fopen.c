@@ -159,10 +159,15 @@ static int open_into(struct __file* f, const char* path, const char* mode)
     int owned = f->owned;
     int listed = f->listed;
     struct __file* next = f->next_open;
+    int temporary = f->temporary;                        // tmpfile(): still removed when finally closed
+    char name[24];
+    memcpy(name, f->name, sizeof name);
     memset(f, 0, sizeof(struct __file));
     f->owned = owned;
     f->listed = listed;
     f->next_open = next;
+    f->temporary = temporary;
+    memcpy(f->name, name, sizeof name);
     f->kind = kind;
     f->readable = readable;
     f->writable = writable;

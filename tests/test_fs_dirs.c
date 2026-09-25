@@ -73,6 +73,9 @@ int main(void)
     name48[48] = 0;
     CHECK_EQ(fs_open(name48, FS_O_WRONLY | FS_O_CREAT), -1);
     CHECK_EQ(errno, ENAMETOOLONG);
+    make("12:30.log", "noon");                        // a ':' not followed by '/' is part of a name
+    CHECK_EQ(fs_stat("12:30.log", &st), 0);
+    CHECK_EQ(fs_remove("12:30.log"), 0);
 
     TEST_SECTION("reading a directory");
     struct fs_dir d;
