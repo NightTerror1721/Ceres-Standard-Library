@@ -1,0 +1,9 @@
+-- in memory
+-- broken
+-- in a file
+-- a cartridge made by mkpack.js
+pack/story.txt              2831   271
+host/images/dotnet24.bmp     102    91
+host/images/dotnet32.bmp      78    67
+host/readme.txt                7     7
+ALL PASSED 41/41
