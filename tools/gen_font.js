@@ -1,5 +1,5 @@
 // Generates src/ceres/font_data.inc: the 8x8 bitmap font of ceres/font.h, from 5x7 glyph patterns.
-//   node tools/gen_font.js
+//   node tools/gen_font.js [path of the CeresASM text_font.h, to regenerate it too]
 //
 // The glyphs are the classic 5x7 dot-matrix shapes (seven rows of five bits, the leftmost dot being bit 4)
 // drawn by hand for this library. In the output each glyph is eight bytes, one per row, top to bottom, with
@@ -107,6 +107,96 @@ const rows = {
     "~": [0x00, 0x00, 0x08, 0x15, 0x02, 0x00, 0x00],
 };
 
+// Latin-1, 0xA0 to 0xFF, so that text in Spanish, French, German or Portuguese shows its accents. An accented
+// letter is its base letter with the accent above: a lowercase body already leaves the top two rows free, and a
+// capital is squeezed into the bottom five (its rows 0, 2, 3, 4 and 6) to make room.
+const accents = {
+    grave: [0x08, 0x04],
+    acute: [0x02, 0x04],
+    circumflex: [0x04, 0x0A],
+    tilde: [0x0D, 0x12],
+    diaeresis: [0x0A, 0x00],
+};
+
+function capital(letter, accent) {
+    const r = rows[letter];
+    return accents[accent].concat([r[0], r[2], r[3], r[4], r[6]]);
+}
+
+function small(letter, accent) {
+    const body = letter === "i" ? [0x0C, 0x04, 0x04, 0x04, 0x0E] : rows[letter].slice(2);   // i loses its dot
+    return accents[accent].concat(body);
+}
+
+const latin1 = {
+    0xA0: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],   // no-break space
+    0xA1: [0x04, 0x00, 0x04, 0x04, 0x04, 0x04, 0x04],   // inverted !
+    0xA2: [0x04, 0x0E, 0x15, 0x14, 0x15, 0x0E, 0x04],   // cent
+    0xA3: [0x06, 0x09, 0x08, 0x1C, 0x08, 0x09, 0x16],   // pound
+    0xA4: [0x00, 0x11, 0x0E, 0x0A, 0x0E, 0x11, 0x00],   // currency
+    0xA5: [0x11, 0x0A, 0x04, 0x1F, 0x04, 0x1F, 0x04],   // yen
+    0xA6: [0x04, 0x04, 0x04, 0x00, 0x04, 0x04, 0x04],   // broken bar
+    0xA7: [0x0E, 0x10, 0x0E, 0x11, 0x0E, 0x01, 0x0E],   // section
+    0xA8: [0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],   // diaeresis
+    0xA9: [0x0E, 0x11, 0x17, 0x15, 0x17, 0x11, 0x0E],   // copyright
+    0xAA: [0x0E, 0x01, 0x0F, 0x11, 0x0F, 0x00, 0x1F],   // feminine ordinal
+    0xAB: [0x00, 0x05, 0x0A, 0x14, 0x0A, 0x05, 0x00],   // left guillemet
+    0xAC: [0x00, 0x00, 0x1F, 0x01, 0x01, 0x00, 0x00],   // not
+    0xAD: [0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00],   // soft hyphen
+    0xAE: [0x0E, 0x11, 0x1D, 0x1D, 0x1B, 0x11, 0x0E],   // registered
+    0xAF: [0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],   // macron
+    0xB0: [0x0C, 0x12, 0x12, 0x0C, 0x00, 0x00, 0x00],   // degree
+    0xB1: [0x04, 0x04, 0x1F, 0x04, 0x04, 0x00, 0x1F],   // plus-minus
+    0xB2: [0x0C, 0x02, 0x04, 0x08, 0x0E, 0x00, 0x00],   // superscript 2
+    0xB3: [0x0C, 0x02, 0x0C, 0x02, 0x0C, 0x00, 0x00],   // superscript 3
+    0xB4: [0x02, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00],   // acute
+    0xB5: [0x00, 0x00, 0x11, 0x11, 0x13, 0x1D, 0x10],   // micro
+    0xB6: [0x0F, 0x1D, 0x1D, 0x0D, 0x05, 0x05, 0x05],   // pilcrow
+    0xB7: [0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00],   // middle dot
+    0xB8: [0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x08],   // cedilla
+    0xB9: [0x04, 0x0C, 0x04, 0x04, 0x0E, 0x00, 0x00],   // superscript 1
+    0xBA: [0x0E, 0x11, 0x11, 0x11, 0x0E, 0x00, 0x1F],   // masculine ordinal
+    0xBB: [0x00, 0x14, 0x0A, 0x05, 0x0A, 0x14, 0x00],   // right guillemet
+    0xBC: [0x10, 0x10, 0x12, 0x14, 0x0A, 0x17, 0x02],   // one quarter
+    0xBD: [0x10, 0x10, 0x12, 0x15, 0x09, 0x02, 0x07],   // one half
+    0xBE: [0x18, 0x08, 0x1A, 0x0C, 0x0A, 0x17, 0x02],   // three quarters
+    0xBF: [0x04, 0x00, 0x04, 0x08, 0x10, 0x11, 0x0E],   // inverted ?
+    0xC0: capital("A", "grave"), 0xC1: capital("A", "acute"), 0xC2: capital("A", "circumflex"),
+    0xC3: capital("A", "tilde"), 0xC4: capital("A", "diaeresis"),
+    0xC5: [0x04, 0x0A, 0x04, 0x0A, 0x11, 0x1F, 0x11],   // A ring
+    0xC6: [0x0F, 0x14, 0x14, 0x1F, 0x14, 0x14, 0x17],   // AE
+    0xC7: [0x0E, 0x11, 0x10, 0x10, 0x11, 0x0E, 0x0C],   // C cedilla
+    0xC8: capital("E", "grave"), 0xC9: capital("E", "acute"), 0xCA: capital("E", "circumflex"), 0xCB: capital("E", "diaeresis"),
+    0xCC: capital("I", "grave"), 0xCD: capital("I", "acute"), 0xCE: capital("I", "circumflex"), 0xCF: capital("I", "diaeresis"),
+    0xD0: [0x1C, 0x12, 0x11, 0x1D, 0x11, 0x12, 0x1C],   // Eth
+    0xD1: capital("N", "tilde"),
+    0xD2: capital("O", "grave"), 0xD3: capital("O", "acute"), 0xD4: capital("O", "circumflex"),
+    0xD5: capital("O", "tilde"), 0xD6: capital("O", "diaeresis"),
+    0xD7: [0x00, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x00],   // multiplication
+    0xD8: [0x01, 0x0E, 0x13, 0x15, 0x19, 0x0E, 0x10],   // O stroke
+    0xD9: capital("U", "grave"), 0xDA: capital("U", "acute"), 0xDB: capital("U", "circumflex"), 0xDC: capital("U", "diaeresis"),
+    0xDD: capital("Y", "acute"),
+    0xDE: [0x10, 0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10],   // Thorn
+    0xDF: [0x0C, 0x12, 0x12, 0x14, 0x12, 0x11, 0x16],   // sharp s
+    0xE0: small("a", "grave"), 0xE1: small("a", "acute"), 0xE2: small("a", "circumflex"),
+    0xE3: small("a", "tilde"), 0xE4: small("a", "diaeresis"),
+    0xE5: [0x04, 0x0A, 0x0E, 0x01, 0x0F, 0x11, 0x0F],   // a ring
+    0xE6: [0x00, 0x00, 0x1A, 0x05, 0x1F, 0x14, 0x0B],   // ae
+    0xE7: [0x00, 0x0E, 0x10, 0x10, 0x11, 0x0E, 0x0C],   // c cedilla
+    0xE8: small("e", "grave"), 0xE9: small("e", "acute"), 0xEA: small("e", "circumflex"), 0xEB: small("e", "diaeresis"),
+    0xEC: small("i", "grave"), 0xED: small("i", "acute"), 0xEE: small("i", "circumflex"), 0xEF: small("i", "diaeresis"),
+    0xF0: [0x0A, 0x04, 0x0A, 0x01, 0x0F, 0x11, 0x0E],   // eth
+    0xF1: small("n", "tilde"),
+    0xF2: small("o", "grave"), 0xF3: small("o", "acute"), 0xF4: small("o", "circumflex"),
+    0xF5: small("o", "tilde"), 0xF6: small("o", "diaeresis"),
+    0xF7: [0x00, 0x04, 0x00, 0x1F, 0x00, 0x04, 0x00],   // division
+    0xF8: [0x00, 0x01, 0x0E, 0x13, 0x15, 0x19, 0x0E],   // o stroke
+    0xF9: small("u", "grave"), 0xFA: small("u", "acute"), 0xFB: small("u", "circumflex"), 0xFC: small("u", "diaeresis"),
+    0xFD: [0x02].concat(rows["y"].slice(1)),               // y acute: y reaches row 1, so one row of accent
+    0xFE: [0x10, 0x10, 0x1E, 0x11, 0x11, 0x1E, 0x10],   // thorn
+    0xFF: [0x0A].concat(rows["y"].slice(1)),               // y diaeresis
+};
+
 // bit 4 (leftmost dot of the pattern) becomes bit 0
 function flip5(v) {
     let r = 0;
@@ -114,22 +204,57 @@ function flip5(v) {
     return r;
 }
 
+// The seven rows of a character, or null for one with no glyph (the controls, 0x00-0x1F and 0x80-0x9F).
+function pattern(code) {
+    if (code >= 0xA0) return latin1[code];
+    if (code >= 32 && code < 127) return rows[String.fromCharCode(code)];
+    return null;
+}
+
 const glyphs = [];
-for (let code = 0; code < 128; code++) {
-    const ch = String.fromCharCode(code);
-    let bytes;
-    if (code === 127) bytes = [0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x7E, 0x00];     // DEL: an empty box
-    else if (rows[ch]) bytes = rows[ch].map(flip5).concat([0]);
-    else bytes = [0, 0, 0, 0, 0, 0, 0, 0];                                        // control characters are blank
-    glyphs.push(bytes);
+for (let code = 0; code < 256; code++) {
+    const p = pattern(code);
+    if (code === 127) glyphs.push([0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x7E, 0x00]);   // DEL: an empty box
+    else if (p) glyphs.push(p.map(flip5).concat([0]));
+    else glyphs.push([0, 0, 0, 0, 0, 0, 0, 0]);                                         // control characters are blank
+}
+
+function hex(v) { return "0x" + v.toString(16).toUpperCase().padStart(2, "0"); }
+function label(code) {
+    if (code >= 32 && code < 127) return JSON.stringify(String.fromCharCode(code));
+    if (code >= 0xA0) return "U+00" + code.toString(16).toUpperCase() + " " + String.fromCharCode(code);
+    return "";
 }
 
 const body = glyphs.map((b, i) => {
-    const printable = i >= 32 && i < 127 ? "  // " + JSON.stringify(String.fromCharCode(i)) : "";
-    return "    { " + b.map((v) => "0x" + v.toString(16).toUpperCase().padStart(2, "0")).join(", ") + " }" + (i < 127 ? "," : "") + printable;
+    const name = label(i);
+    return "    { " + b.map(hex).join(", ") + " }" + (i < 255 ? "," : "") + (name ? "  // " + name : "");
 }).join("\n");
 
 fs.writeFileSync(path.join(__dirname, "..", "src", "ceres", "font_data.inc"),
     "// Generated by tools/gen_font.js. Do not edit. One row per byte, top to bottom; bit 0 is the leftmost pixel.\n" +
-    "const unsigned char font8x8[128][8] = {\n" + body + "\n};\n");
+    "// Codes 0xA0-0xFF are Latin-1 (the code points U+00A0-U+00FF); the file is UTF-8.\n" +
+    "const unsigned char font8x8[256][8] = {\n" + body + "\n};\n");
 console.log("wrote font_data.inc (" + glyphs.length + " glyphs)");
+
+// The CeresASM text framebuffer draws its window with the same shapes:
+//   node tools/gen_font.js <CeresASM>/Ceres/libs/devices/include/ceres/devices/text_font.h
+if (process.argv[2]) {
+    const vm = glyphs.map((b, i) => {
+        const name = label(i);
+        return "\t\t{ " + b.slice(0, 7).map(hex).join(", ") + " }" + (i < 255 ? "," : "") + (name ? " // " + name : "");
+    }).join("\n");
+    fs.writeFileSync(process.argv[2],
+        "#pragma once\n\n" +
+        "// The glyphs the text framebuffer is drawn with in a window, indexed by the cell's byte: printable ASCII (32 to\n" +
+        "// 126) and Latin-1 (0xA0 to 0xFF, the code points U+00A0-U+00FF), as the classic 5x7 dot-matrix shapes; the\n" +
+        "// controls are blank. Seven rows of a byte per glyph, top to bottom, bit 0 the LEFTMOST of five dots. They are\n" +
+        "// the same shapes as the standard library's pixel font (ceres/font.h), so text in the window and text a program\n" +
+        "// draws itself look alike. text_renderer.h stretches them to a cell.\n" +
+        "//\n" +
+        "// Generated by the standard library's tools/gen_font.js; regenerate rather than edit. The file is UTF-8.\n\n" +
+        "#include <ceres/core/base/types.h>\n\n" +
+        "namespace ceres::devices\n{\n" +
+        "\tinline constexpr u8 TextFontGlyphs[256][7] = {\n" + vm + "\n\t};\n}\n");
+    console.log("wrote " + process.argv[2]);
+}

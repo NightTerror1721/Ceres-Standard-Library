@@ -15,7 +15,8 @@ char* setlocale(int category, const char* locale)
 {
     if (category < LC_ALL || category > LC_TIME)
         return 0;
-    if (locale == 0 || locale[0] == 0 || strcmp(locale, "C") == 0 || strcmp(locale, "POSIX") == 0)
+    if (locale == 0 || locale[0] == 0 || strcmp(locale, "C") == 0 || strcmp(locale, "POSIX") == 0 ||
+        strcmp(locale, "C.UTF-8") == 0 || strcmp(locale, "C.utf8") == 0)
         return c_name;                                   // a query, or a request for what there is
     return 0;
 }

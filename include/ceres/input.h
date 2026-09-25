@@ -3,6 +3,7 @@
 #include "keys.h"
 #include "mouse.h"
 #include "gamepad.h"
+#include "utf8.h"                     // utf8_encode(), for a typed character
 
 // Input for a frame loop: the state of the keyboard, the mouse and the gamepad as of the last
 // input_update(), with "went down this frame" and "went up this frame" worked out for each.
@@ -49,7 +50,6 @@ int key_to_ascii(int scancode, int shift);   // US layout; 0 for a key with no c
 // Without a window (plain `ceres run`) nothing ever arrives.
 int  input_text_ready(void);             // nonzero when a typed character is waiting
 unsigned int input_text(void);           // the next one, as a code point; 0 when there is none
-int  utf8_encode(unsigned int code_point, char* out);   // writes 1 to 4 bytes (no NUL) and returns how many; 0 for an invalid code point
 
 // ---- mouse ----
 int mouse_pos_x(void);

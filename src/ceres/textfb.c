@@ -1,4 +1,5 @@
 #include "ceres/textfb.h"
+#include "ceres/utf8.h"
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
@@ -134,20 +135,48 @@ char fb_get(int x, int y)
     return ' ';
 }
 
+void fb_put_char(int x, int y, unsigned int cp)
+{
+    fb_put(x, y, cp <= 0xFFu ? (char)cp : '?');       // a cell is Latin-1
+}
+
 void fb_text(int x, int y, const char* s)
 {
     int cx = x;
-    for (int i = 0; s[i] != 0; i++)
+    unsigned int cp;
+    while ((cp = utf8_next(&s)) != 0)
     {
-        if (s[i] == '\n')
+        if (cp == '\n')
         {
             cx = x;
             y++;
             continue;
         }
-        fb_put(cx, y, s[i]);
+        fb_put_char(cx, y, cp);
         cx++;
     }
+}
+
+int fb_text_n(int x, int y, const char* s, int max)
+{
+    int n = 0;
+    unsigned int cp;
+    while (n < max && (cp = utf8_next(&s)) != 0 && cp != '\n')
+        fb_put_char(x + n++, y, cp);
+    return n;
+}
+
+int fb_text_width(const char* s)
+{
+    int widest = 0, line = 0;
+    unsigned int cp;
+    while ((cp = utf8_next(&s)) != 0)
+    {
+        line = cp == '\n' ? 0 : line + 1;
+        if (line > widest)
+            widest = line;
+    }
+    return widest;
 }
 
 void fb_printf(int x, int y, const char* fmt, ...)

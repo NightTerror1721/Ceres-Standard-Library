@@ -6,7 +6,11 @@
 #include "ctype.h"
 #include "stdint.h"
 #include "stdarg.h"
+#include "errno.h"
+#include "wchar.h"
 #include "file_priv.h"
+
+int __utf8_feed(mbstate_t* st, unsigned char b, unsigned int* out);   // src/ceres/utf8.c
 
 struct scan
 {
@@ -305,6 +309,89 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
         {
             if (!suppress)
                 *va_arg(ap, int*) = s->count;
+            continue;
+        }
+        if (conv == 'c' && narrow == 'l')
+        {
+            // Wide characters: the input is UTF-8, and the width counts characters, not bytes.
+            int n = width > 0 ? width : 1;
+            wchar_t* out = suppress ? 0 : va_arg(ap, wchar_t*);
+            mbstate_t st = { 0 };
+            int got = 0;
+            while (got < n)
+            {
+                int c = next_char(s);
+                if (c < 0)
+                    break;
+                unsigned int wc;
+                int r = __utf8_feed(&st, (unsigned char)c, &wc);
+                if (r < 0)
+                {
+                    errno = EILSEQ;
+                    return assigned;
+                }
+                if (r == 0)
+                    continue;
+                if (out != 0)
+                    out[got] = (wchar_t)wc;
+                got++;
+            }
+            if (got < n)
+                return (assigned == 0 && got == 0 && st.__need == 0) ? -1 : assigned;
+            if (!suppress)
+                assigned++;
+            continue;
+        }
+        if ((conv == 's' || conv == '[') && narrow == 'l')
+        {
+            // Into a wide string: each byte is tested as for %s or %[ (so a scan set is of ASCII characters; the
+            // bytes of any other character are not in it), and the width counts characters.
+            unsigned char set[256];
+            if (conv == '[')
+                i = parse_scanset(fmt, i, set);
+            wchar_t* out = suppress ? 0 : va_arg(ap, wchar_t*);
+            int limit = width > 0 ? width : 0x7FFFFFFF;
+            if (conv == 's')
+                skip_space(s);
+            mbstate_t st = { 0 };
+            int got = 0;
+            int broken = 0;
+            while (got < limit)
+            {
+                int c = next_char(s);
+                if (c < 0)
+                    break;
+                int ok = (conv == 's') ? !isspace(c) : set[c];
+                if (!ok && st.__need == 0)
+                {
+                    give_back(s, c);
+                    break;
+                }
+                unsigned int wc;
+                int r = __utf8_feed(&st, (unsigned char)c, &wc);
+                if (r < 0)
+                {
+                    broken = 1;
+                    break;
+                }
+                if (r == 0)
+                    continue;
+                if (out != 0)
+                    out[got] = (wchar_t)wc;
+                got++;
+            }
+            if (broken || st.__need != 0)
+            {
+                errno = EILSEQ;
+                return assigned;
+            }
+            if (got == 0)
+                return (assigned == 0 && s->hit_eof) ? -1 : assigned;
+            if (out != 0)
+            {
+                out[got] = 0;
+                assigned++;
+            }
             continue;
         }
         if (conv == 'c')

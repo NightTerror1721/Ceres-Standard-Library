@@ -8,7 +8,7 @@
 #define EXIT_SUCCESS  0
 #define EXIT_FAILURE  1
 #define RAND_MAX      32767
-#define MB_CUR_MAX    1
+#define MB_CUR_MAX    4               // the multibyte strings are UTF-8 (ceres/utf8.h)
 
 struct __div_s { int quot; int rem; };
 typedef struct __div_s div_t;
@@ -41,6 +41,15 @@ int          strfromf(char* restrict s, size_t n, const char* restrict format, f
 int          ftoa_shortest(char* buf, size_t size, float x);   // the fewest digits that read back as x ("0.1", "1e+30"); its length
 float        strtod(const char* s, char** end);    // == strtof
 #define strtold   strtof
+
+// ---- multibyte (UTF-8) and wide characters (src/wchar.c; more in wchar.h and uchar.h) ----
+// wchar_t holds a code point. mblen/mbtowc return the bytes of the character at s (0 for the NUL, -1 with EILSEQ
+// when the n bytes are not one whole character); with a NULL s they return 0, as UTF-8 has no shift states.
+int    mblen(const char* s, size_t n);
+int    mbtowc(wchar_t* pwc, const char* s, size_t n);
+int    wctomb(char* s, wchar_t wc);                          // at most MB_CUR_MAX bytes; -1 for a non-character
+size_t mbstowcs(wchar_t* dst, const char* src, size_t n);   // as mbsrtowcs (wchar.h); (size_t)-1 when src is not UTF-8
+size_t wcstombs(char* dst, const wchar_t* src, size_t n);
 
 // ---- pseudo-random numbers: a 32-bit linear congruential generator ----
 // The same seed always gives the same sequence. rand() returns 0..RAND_MAX; the low bits of an LCG are

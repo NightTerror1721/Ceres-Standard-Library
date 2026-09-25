@@ -6,8 +6,11 @@
 // and not a scrolling stream: a board redrawn whole, which is what a text game wants.
 // See CeresASM docs/07-IO-Devices-and-Ports.md.
 //
-// The device holds up to 200 x 100 cells of one printable ASCII byte each (anything else shows as a
-// space) and an attribute byte for its colours; the default is 40 x 20.
+// The device holds up to 200 x 100 cells of one Latin-1 byte each - printable ASCII, and 0xA0..0xFF for the
+// code points U+00A0..U+00FF, the accented letters, ¿ ¡ ° £ and so on; a control shows as a space - and an
+// attribute byte for its colours; the default is 40 x 20. The text functions take UTF-8 (ceres/utf8.h), so
+// fb_text(0, 0, "¿Qué año?") fills nine cells; a character above U+00FF is '?'. fb_put() stores one byte as it is,
+// which is its Latin-1 character, and fb_put_char() a code point.
 //
 // WHERE A FRAME GOES. A machine has a screen, so a frame is shown in the host's WINDOW: the grid drawn in a bitmap
 // font, in its colours, in a window that opens when the first frame is shown (a program that never shows one opens
@@ -82,7 +85,10 @@ unsigned char fb_get_attr(int x, int y);   // 0 outside the grid
 void fb_put(int x, int y, char c);
 char fb_get(int x, int y);                 // ' ' outside the grid
 
-void fb_text(int x, int y, const char* s);            // a '\n' moves to the next row, back at column x
+void fb_text(int x, int y, const char* s);            // UTF-8; a '\n' moves to the next row, back at column x
+int  fb_text_n(int x, int y, const char* s, int max);  // at most max characters of one row (to a '\n'): those drawn
+int  fb_text_width(const char* s);                     // the cells of its longest line: characters, not bytes
+void fb_put_char(int x, int y, unsigned int cp);       // a code point: up to U+00FF itself, else '?'
 void fb_printf(int x, int y, const char* fmt, ...) __attribute__((__format__(__printf__, 3, 4)));   // formatted text, at most 255 characters
 void fb_hline(int x, int y, int len, char c);
 void fb_vline(int x, int y, int len, char c);

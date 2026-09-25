@@ -12,6 +12,7 @@ int main(void)
     CHECK_STR(setlocale(LC_CTYPE, "POSIX"), "C");
     CHECK_STR(setlocale(LC_NUMERIC, 0), "C");
     CHECK_STR(setlocale(LC_TIME, "C"), "C");
+    CHECK_STR(setlocale(LC_CTYPE, "C.UTF-8"), "C");       // the one there is, by the name of its encoding
     CHECK(setlocale(LC_ALL, "es_ES.UTF-8") == 0);         // there is no other
     CHECK(setlocale(LC_ALL, "en_US") == 0);
     CHECK(setlocale(-1, "C") == 0);                       // not a category

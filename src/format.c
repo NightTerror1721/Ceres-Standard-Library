@@ -18,6 +18,7 @@
 #include "stdint.h"
 #include "math.h"
 #include "ceres/terminal.h"
+#include "ceres/utf8.h"
 #include "fconv_priv.h"
 
 #define TERM_CHUNK 64
@@ -416,10 +417,53 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
         c = fmt[i];
         if (c == 0) break;
         if (c == '%') { s->put(s, '%'); }
+        else if (c == 'c' && lenmod == 'l')
+        {
+            // A wide character (wint_t) as UTF-8; one that is not a character is U+FFFD.
+            char bytes[UTF8_MAX];
+            int n = utf8_encode(va_arg(ap, unsigned int), bytes);
+            if (n == 0)
+                n = utf8_encode(UTF8_REPLACEMENT, bytes);
+            put_field(s, "", bytes, n, 0, width, flags & ~F_ZERO, 0);
+        }
         else if (c == 'c')
         {
             char ch[2]; ch[0] = (char)va_arg(ap, int); ch[1] = 0;
             put_field(s, "", ch, 1, 0, width, flags & ~F_ZERO, 0);
+        }
+        else if (c == 's' && lenmod == 'l')
+        {
+            // A wide string as UTF-8. The precision counts bytes, and a character that would not fit whole is
+            // left out; the width counts bytes too, as it does for %s.
+            const wchar_t* w = va_arg(ap, const wchar_t*);
+            if (w == 0)
+            {
+                put_field(s, "", "(null)", prec >= 0 && prec < 6 ? prec : 6, 0, width, flags & ~F_ZERO, 0);
+            }
+            else
+            {
+                int bytes = 0, count = 0;
+                for (; w[count] != 0; count++)
+                {
+                    int n = w[count] < 0 ? 0 : utf8_width((unsigned int)w[count]);
+                    if (n == 0)
+                        n = 3;                                   // U+FFFD
+                    if (prec >= 0 && bytes + n > prec)
+                        break;
+                    bytes += n;
+                }
+                int fill = width > bytes ? width - bytes : 0;
+                if ((flags & F_LEFT) == 0) pad(s, fill, ' ');
+                for (int k = 0; k < count; k++)
+                {
+                    char unit[UTF8_MAX];
+                    int n = w[k] < 0 ? 0 : utf8_encode((unsigned int)w[k], unit);
+                    if (n == 0)
+                        n = utf8_encode(UTF8_REPLACEMENT, unit);
+                    puts_n(s, unit, n);
+                }
+                if (flags & F_LEFT) pad(s, fill, ' ');
+            }
         }
         else if (c == 's')
         {

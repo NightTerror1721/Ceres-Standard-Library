@@ -1,0 +1,12 @@
+-- decoding and encoding
+-- walking a string
+-- to and from Latin-1
+-- uchar.h
+-- wchar.h and stdlib.h
+-- printf and scanf
+printed: ¿Qué año? ¡Sí!
+-- the text framebuffer
+¿Qué año?   
+?uroé      ß
+-- the pixel font
+ALL PASSED 131/131

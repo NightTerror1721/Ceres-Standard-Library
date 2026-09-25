@@ -1,8 +1,8 @@
 #pragma once
 
-// Locales. There is one, "C": setlocale() accepts it (and "" and "POSIX", which mean the same here) and
-// refuses every other, and localeconv() describes it. Text is bytes and ctype.h is ASCII, so there is nothing
-// for a locale to change.
+// Locales. There is one, "C": setlocale() accepts it (and "", "POSIX" and "C.UTF-8", which mean the same here) and
+// refuses every other, and localeconv() describes it. Its multibyte encoding is UTF-8 (MB_CUR_MAX is 4; see
+// ceres/utf8.h), and ctype.h is ASCII, so there is nothing for a locale to change.
 #include "stddef.h"
 
 #define LC_ALL       0

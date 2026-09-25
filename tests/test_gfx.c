@@ -725,7 +725,7 @@ static void text(void)
     gfx_clear(BG);
     font_char(s, 0, 0, ' ', FG, 1);
     CHECK_EQ(count(s, FG), 0);
-    font_char(s, 0, 0, (char)200, FG, 1);               // outside the table: blank
+    font_char(s, 0, 0, (char)0x85, FG, 1);              // a control (C1): blank; 0xA0 and up are Latin-1
     font_char(s, 0, 0, (char)0, FG, 1);
     font_char(s, 0, 0, 'A', FG, 0);                     // not a scale
     font_char(s, 0, 0, 'A', FG, -2);

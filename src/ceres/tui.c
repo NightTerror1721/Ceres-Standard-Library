@@ -48,15 +48,14 @@ void tui_window(int x, int y, int w, int h, const char* title)
     if (title != 0 && title[0] != 0)
     {
         int room = w - 6;                                 // "+ title +" needs the corners and a space each side
-        int length = (int)strlen(title);
+        int length = fb_text_width(title);
         if (length > room)
             length = room;
         if (length > 0)
         {
             fb_put(x + 1, y, ' ');
             fb_set_attr(TUI_TITLE);
-            for (int i = 0; i < length; i++)
-                fb_put(x + 2 + i, y, title[i]);
+            fb_text_n(x + 2, y, title, length);
             fb_set_attr(TUI_FRAME);
             fb_put(x + 2 + length, y, ' ');
         }
@@ -73,11 +72,10 @@ void tui_label(int x, int y, const char* text)
 
 void tui_label_center(int x, int y, int w, const char* text)
 {
-    int length = (int)strlen(text);
+    int length = fb_text_width(text);
     int start = length >= w ? 0 : (w - length) / 2;
     unsigned char before = use(TUI_NORMAL);
-    for (int i = 0; i < w && i < length; i++)
-        fb_put(x + start + i, y, text[i]);
+    fb_text_n(x + start, y, text, w);
     fb_set_attr(before);
 }
 
@@ -86,9 +84,7 @@ void tui_button(int x, int y, const char* text, int focused)
     unsigned char before = use(focused ? TUI_SELECTED : TUI_NORMAL);
     fb_put(x, y, '[');
     fb_put(x + 1, y, ' ');
-    int length = (int)strlen(text);
-    for (int i = 0; i < length; i++)
-        fb_put(x + 2 + i, y, text[i]);
+    int length = fb_text_n(x + 2, y, text, 0x7FFFFFFF);
     fb_put(x + 2 + length, y, ' ');
     fb_put(x + 3 + length, y, ']');
     fb_set_attr(before);
@@ -125,8 +121,7 @@ void tui_status(const char* text)
         return;
     unsigned char before = use(TUI_STATUS);
     fb_hline(0, row, cols, ' ');
-    for (int i = 0; i < cols && text[i] != 0; i++)
-        fb_put(i, row, text[i]);
+    fb_text_n(0, row, text, cols);
     fb_set_attr(before);
 }
 
@@ -147,8 +142,7 @@ int tui_list(int x, int y, int w, int rows, const char* const* items, int count,
         fb_set_attr(index == selected ? TUI_SELECTED : TUI_NORMAL);
         fb_hline(x, y + r, w, ' ');
         if (index < count)
-            for (int i = 0; i < w && items[index][i] != 0; i++)
-                fb_put(x + i, y + r, items[index][i]);
+            fb_text_n(x, y + r, items[index], w);
     }
     fb_set_attr(before);
     return top;
@@ -158,10 +152,10 @@ int tui_menu(int x, int y, const char* title, const char* const* items, int coun
 {
     if (count < 1)
         return -1;
-    int widest = title != 0 ? (int)strlen(title) + 2 : 0;    // the title sits in the top edge with a space each side
+    int widest = title != 0 ? fb_text_width(title) + 2 : 0;  // the title sits in the top edge with a space each side
     for (int i = 0; i < count; i++)
     {
-        int length = (int)strlen(items[i]);
+        int length = fb_text_width(items[i]);
         if (length > widest)
             widest = length;
     }
