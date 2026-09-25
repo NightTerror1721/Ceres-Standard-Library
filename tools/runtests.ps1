@@ -41,6 +41,7 @@
     tools\runtests.ps1 -Headers             # only "each header compiles on its own"
     tools\runtests.ps1 -Update              # write tests/expected from the -O0 output (review it!)
     tools\runtests.ps1 -FromSources         # compile the whole library into every test, as it once was
+    tools\runtests.ps1 -GcSections          # link every program leaving out the functions nothing reaches
 #>
 [CmdletBinding()]
 param(
@@ -49,6 +50,7 @@ param(
     [switch]$Headers,
     [switch]$Update,
     [switch]$FromSources,
+    [switch]$GcSections,                # link every program with --gc-sections (the functions nothing reaches left out)
     [int]$TimeoutSeconds = 180
 )
 
@@ -56,6 +58,7 @@ param(
 $Test = @($Test | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $LevelList = @(($Levels -join ',') -split '[,; ]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 
+$LinkFlags = if ($GcSections) { "--gc-sections" } else { "" }
 . "$PSScriptRoot/common.ps1"    # $Root, $Ceresc, $CeresDir, the source lists, Invoke-Tool, Same, ...
 
 # A machine has a screen: without this, a program that shows a frame of the text framebuffer would open a window
@@ -158,7 +161,7 @@ function Test-Examples {
         if (Test-Path $expectedPath) {
             # ceresc builds, links and runs in one go; the program reads its stdin from the .stdin file
             $body = if ($FromSources) { "$sources $flags" } else { "examples/$name.c $(Get-LibraryArgs 2 $use) $flags" }   # a define only the example reads goes with either
-            $cmd = "$body -I include -O2 -Werror -o build/examples/$name.cres --run --clean --ceres-path `"$CeresDir`""
+            $cmd = "$body -I include -O2 -Werror -o build/examples/$name.cres $LinkFlags --run --clean --ceres-path `"$CeresDir`""
             $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err" $stdin
         } else {
             $cmd = "$sources -I include -O2 -Werror -S -o build/examples/$name.casm"   # only prove it compiles
@@ -226,7 +229,7 @@ foreach ($name in $tests) {
         $out = "build/$name.O$level.out"
         $err = "build/$name.O$level.err"
         $body = if ($fromSource) { "$sources $testFlags" } else { "$src $(Get-LibraryArgs $level $use)" }
-        $cmdLine = "$body -I include -O$level -Werror -o build/$name.O$level.cres --run --clean --ceres-path `"$CeresDir`""
+        $cmdLine = "$body -I include -O$level -Werror -o build/$name.O$level.cres $LinkFlags --run --clean --ceres-path `"$CeresDir`""
         # tests/expected/<name>.ports: media to plug in, one `--port 0=file` or `--cart 1=file` per line. The files a
         # test writes to are new for every level, so each run starts from the same empty stick.
         $portsFile = "tests/expected/$name.ports"
