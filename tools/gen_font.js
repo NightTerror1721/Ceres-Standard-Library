@@ -124,7 +124,9 @@ function capital(letter, accent) {
 }
 
 function small(letter, accent) {
-    const body = rows[letter].slice(2);                  // the top two rows are the accent's (the i's dot goes too)
+    let body = rows[letter].slice(2);                    // the top two rows are the accent's (the i's dot goes too)
+    // A capital squeezed to five rows is an o: the small o's with an accent keep to four, below a gap.
+    if (letter === "o") body = [0x00, 0x0E, 0x11, 0x11, 0x0E];
     return accents[accent].concat(body);
 }
 
@@ -180,7 +182,7 @@ const latin1 = {
     0xDF: [0x0C, 0x12, 0x12, 0x14, 0x12, 0x11, 0x16],   // sharp s
     0xE0: small("a", "grave"), 0xE1: small("a", "acute"), 0xE2: small("a", "circumflex"),
     0xE3: small("a", "tilde"), 0xE4: small("a", "diaeresis"),
-    0xE5: [0x04, 0x0A, 0x0E, 0x01, 0x0F, 0x11, 0x0F],   // a ring
+    0xE5: [0x04, 0x0A, 0x04, 0x0F, 0x11, 0x11, 0x0F],   // a ring: the ring whole, over a four-row a
     0xE6: [0x00, 0x00, 0x1A, 0x05, 0x1F, 0x14, 0x0B],   // ae
     0xE7: [0x00, 0x0E, 0x10, 0x10, 0x11, 0x0E, 0x0C],   // c cedilla
     0xE8: small("e", "grave"), 0xE9: small("e", "acute"), 0xEA: small("e", "circumflex"), 0xEB: small("e", "diaeresis"),
@@ -245,7 +247,8 @@ console.log("wrote font_data.inc (" + glyphs.length + " glyphs)");
 if (process.argv[2]) {
     const vm = glyphs.map((b, i) => {
         const name = label(i);
-        return "\t\t{ " + b.slice(0, 7).map(hex).join(", ") + " }" + (i < 255 ? "," : "") + (name ? " // " + name : "");
+        const shape = i === 127 ? [0, 0, 0, 0, 0, 0, 0] : b.slice(0, 7);   // DEL is a control in a cell: blank
+        return "\t\t{ " + shape.map(hex).join(", ") + " }" + (i < 255 ? "," : "") + (i === 127 ? " // DEL (a control)" : name ? " // " + name : "");
     }).join("\n");
     fs.writeFileSync(process.argv[2],
         "#pragma once\n\n" +
