@@ -1,0 +1,6 @@
+-- there is one
+-- the same pixels, by the blitter and in software
+-- what software does a pixel at a time
+-- indexed pixels through a palette
+-- the display's indexed mode and scroll
+ALL PASSED 14/14

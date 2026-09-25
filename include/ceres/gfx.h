@@ -16,6 +16,9 @@
 //
 // Memory: a surface takes width * height * 4 bytes - 250 KiB at 320x200, 900 KiB at 640x360, 3.5 MiB at
 // 1280x720.
+//
+// On a machine with the blitter (ceres/blitter.h) clearing, filling rectangles and the three blits are done by it,
+// at no cost in instructions; the result is the same pixel for pixel as the software path, which the rest takes.
 
 struct gfx_surface
 {
@@ -31,6 +34,7 @@ struct gfx_surface* gfx_screen(void);        // NULL before gfx_init
 int  gfx_width(void);                        // of the current target
 int  gfx_height(void);
 void gfx_present(void);                      // sends the screen surface to the display and presents it
+void gfx_use_blitter(int on);                // 1 (the default): the blitter when there is one; 0: always in software
 
 // ---- targets and clipping ----
 void gfx_set_target(struct gfx_surface* s);  // NULL goes back to the screen; resets the clip to the whole target

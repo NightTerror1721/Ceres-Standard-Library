@@ -1,6 +1,7 @@
 // 2D drawing. See ceres/gfx.h.
 #include "ceres/gfx.h"
 #include "ceres/display.h"
+#include "ceres/blitter.h"
 #include "stdlib.h"
 #include "string.h"
 
@@ -8,6 +9,25 @@ static struct gfx_surface screen_surface;
 static int have_screen = 0;
 static struct gfx_surface* target;                       // NULL until the first use: then the screen
 static int clip_x0 = 0, clip_y0 = 0, clip_x1 = 0, clip_y1 = 0;      // [x0, x1) x [y0, y1)
+static int use_blitter = 1;                                           // and one is there (asked once)
+static int blitter_known = 0, blitter_here = 0;
+
+void gfx_use_blitter(int on)
+{
+    use_blitter = on;
+}
+
+static int blitter(void)
+{
+    if (!use_blitter)
+        return 0;
+    if (!blitter_known)
+    {
+        blitter_here = blitter_available();
+        blitter_known = 1;
+    }
+    return blitter_here;
+}
 
 static struct gfx_surface* current(void)
 {
@@ -127,8 +147,11 @@ void gfx_get_clip(int* x, int* y, int* w, int* h)
 void gfx_clear(unsigned int c)
 {
     struct gfx_surface* t = current();
-    if (t != NULL)
-        memset32(t->px, c, (size_t)t->w * (size_t)t->h);
+    if (t == NULL)
+        return;
+    if (blitter() && blitter_fill(t->px, t->w * 4, t->w, t->h, c) == 0)
+        return;
+    memset32(t->px, c, (size_t)t->w * (size_t)t->h);
 }
 
 void gfx_pixel(int x, int y, unsigned int c)
@@ -176,6 +199,12 @@ void gfx_rect_fill(int x, int y, int w, int h, unsigned int c)
         return;
     int y0 = y < clip_y0 ? clip_y0 : y;
     int y1 = y + h > clip_y1 ? clip_y1 : y + h;
+    int x0 = x < clip_x0 ? clip_x0 : x;
+    int x1 = x + w > clip_x1 ? clip_x1 : x + w;
+    struct gfx_surface* t = current();
+    if (t != NULL && x1 > x0 && y1 > y0 && blitter() &&
+        blitter_fill(t->px + y0 * t->w + x0, t->w * 4, x1 - x0, y1 - y0, c) == 0)
+        return;
     for (int yy = y0; yy < y1; yy++)
         gfx_hline(x, yy, w, c);
 }
@@ -381,6 +410,8 @@ void gfx_blit(const struct gfx_surface* src, int sx, int sy, int w, int h, int d
     struct gfx_surface* t = current();
     if (t == NULL || src == NULL || !clip_copy(src, &sx, &sy, &w, &h, &dx, &dy))
         return;
+    if (blitter() && blitter_copy(t->px + dy * t->w + dx, t->w * 4, src->px + sy * src->w + sx, src->w * 4, w, h) == 0)
+        return;                                          // it minds the overlap the same way
     // Copying a surface onto itself with the block moving DOWN would overwrite rows before they are read,
     // so that case runs bottom to top (memmove already takes care of overlap within a row).
     int backwards = src == t && dy > sy;
@@ -396,6 +427,8 @@ void gfx_blit_key(const struct gfx_surface* src, int sx, int sy, int w, int h, i
     struct gfx_surface* t = current();
     if (t == NULL || src == NULL || !clip_copy(src, &sx, &sy, &w, &h, &dx, &dy))
         return;
+    if (blitter() && blitter_copy_key(t->px + dy * t->w + dx, t->w * 4, src->px + sy * src->w + sx, src->w * 4, w, h, key) == 0)
+        return;
     for (int row = 0; row < h; row++)
     {
         const unsigned int* from = src->px + (sy + row) * src->w + sx;
@@ -409,6 +442,12 @@ void gfx_blit_key(const struct gfx_surface* src, int sx, int sy, int w, int h, i
 void gfx_blit_scaled(const struct gfx_surface* src, int dx, int dy, int scale)
 {
     if (src == NULL || scale < 1)
+        return;
+    struct gfx_surface* t = current();
+    // All of it inside the clip, at a scale the blitter has: one operation.
+    if (t != NULL && scale <= 8 && dx >= clip_x0 && dy >= clip_y0 && dx + src->w * scale <= clip_x1 &&
+        dy + src->h * scale <= clip_y1 && blitter() &&
+        blitter_copy_scaled(t->px + dy * t->w + dx, t->w * 4, src->px, src->w * 4, src->w, src->h, scale) == 0)
         return;
     for (int y = 0; y < src->h; y++)
     {
