@@ -32,16 +32,20 @@ const exe = process.platform === "win32" ? ".exe" : "";
 // ---- options ----
 const args = process.argv.slice(2);
 const opt = { tests: [], levels: [0, 1, 2], headers: false, update: false, fromSources: false, gc: false, buildOnly: false, timeout: 180 };
+const valueOf = (i) => {
+    if (i >= args.length) { console.error(`${args[i - 1]} needs a value`); process.exit(2); }
+    return args[i];
+};
 for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (a === "--test") opt.tests.push(...args[++i].split(",").filter(Boolean));
-    else if (a === "--levels") opt.levels = args[++i].split(/[,; ]+/).filter(Boolean).map(Number);
+    if (a === "--test") opt.tests.push(...valueOf(++i).split(",").filter(Boolean));
+    else if (a === "--levels") opt.levels = valueOf(++i).split(/[,; ]+/).filter(Boolean).map(Number);
     else if (a === "--headers") opt.headers = true;
     else if (a === "--update") opt.update = true;
     else if (a === "--from-sources") opt.fromSources = true;
     else if (a === "--gc-sections") opt.gc = true;
     else if (a === "--build-library") opt.buildOnly = true;
-    else if (a === "--timeout") opt.timeout = Number(args[++i]);
+    else if (a === "--timeout") opt.timeout = Number(valueOf(++i));
     else { console.error(`unknown option ${a}`); process.exit(2); }
 }
 
@@ -107,9 +111,20 @@ const flatName = (p) => p.replace(/\.[^./\\]+$/, "").replace(/[/\\.]/g, "_");
 // ---- running a tool ----
 // Its stdout and stderr into files, byte for byte; stdin from a file when there is one. The exit status, or -1 when
 // it ran out of time.
+//
+// ceresc starts the VM as a child of its own, and a VM left running keeps the output pipes open, so a timeout has to
+// end both. On Windows that is taskkill /T afterwards. Elsewhere spawnSync would wait on the pipes the orphaned VM
+// holds, so the tool runs under coreutils' timeout, which signals its whole process group; without it, only Node's
+// own timeout is left.
+const posixTimeout = process.platform !== "win32" && spawnSync("timeout", ["--version"]).status === 0;
 function run(tool, argv, outFile, errFile, stdinFile) {
     const options = { cwd: Root, timeout: opt.timeout * 1000, maxBuffer: 1 << 30, windowsHide: true };
     if (stdinFile) options.input = fs.readFileSync(stdinFile);
+    if (posixTimeout) {
+        options.timeout += 10000;                                   // coreutils' goes first
+        argv = ["-s", "KILL", String(opt.timeout), tool, ...argv];
+        tool = "timeout";
+    }
     const r = spawnSync(tool, argv, options);
     fs.writeFileSync(outFile, r.stdout || Buffer.alloc(0));
     fs.writeFileSync(errFile, r.stderr || Buffer.alloc(0));
@@ -118,6 +133,7 @@ function run(tool, argv, outFile, errFile, stdinFile) {
         return -1;
     }
     if (r.error) throw r.error;
+    if (posixTimeout && (r.status === 124 || r.status === 137 || r.signal === "SIGKILL")) return -1;
     return r.status === null ? -1 : r.status;
 }
 const readText = (p) => (fs.existsSync(p) ? fs.readFileSync(p).toString("latin1") : null);
@@ -202,8 +218,8 @@ function showDifference(expected, actual) {
     while (at < expected.length && at < actual.length && expected[at] === actual[at]) at++;
     const from = Math.max(0, at - 30);
     console.log(yellow(`      first difference at byte ${at} (expected ${expected.length} bytes, got ${actual.length})`));
-    console.log(yellow(`      expected: ${showBytes(expected.substr(from, 80))}`));
-    console.log(yellow(`      actual:   ${showBytes(actual.substr(from, 80))}`));
+    console.log(yellow(`      expected: ${showBytes(expected.slice(from, from + 80))}`));
+    console.log(yellow(`      actual:   ${showBytes(actual.slice(from, from + 80))}`));
 }
 
 const failures = [];
@@ -262,7 +278,7 @@ function testExamples() {
             continue;
         }
         if (!fs.existsSync(expectedPath)) continue;
-        const actual = programOutput(readText(`build/examples/${name}.out`));
+        const actual = programOutput(readText(`build/examples/${name}.out`) || "");
         if (opt.update) {
             fs.writeFileSync(expectedPath, Buffer.from(actual, "latin1"));
             console.log(yellow(`  wrote ${expectedPath} (${actual.length} bytes)`));
@@ -295,6 +311,7 @@ function testOne(name) {
     const expectedPath = `tests/expected/${name}.expected`;
     const fromSource = opt.fromSources || testFlags.length > 0;        // a library option means a library built with it
     let reference = null;
+    let referenceLevel = null;                          // the first level that ran: what the others must print
     for (const level of opt.levels) {
         const label = `${name.padEnd(22)} -O${level}`;
         const out = `build/${name}.O${level}.out`;
@@ -307,8 +324,9 @@ function testOne(name) {
             fs.mkdirSync("build/ports", { recursive: true });
             for (const f of fs.readdirSync("build/ports")) fs.rmSync(path.join("build/ports", f), { recursive: true, force: true });
             for (const spec of readText(portsFile).split(/\r?\n/).filter((l) => l.trim())) {
-                const [flag, value] = spec.trim().split(/\s+/, 2);
-                cmd.push("--run-arg", flag, "--run-arg", value);
+                const pair = spec.trim().match(/^(\S+)\s+(.+)$/);        // the flag, then the rest as its value
+                if (!pair) throw new Error(`${portsFile}: expected "<flag> <value>", got "${spec.trim()}"`);
+                cmd.push("--run-arg", pair[1], "--run-arg", pair[2]);
             }
         }
         const runFile = `tests/expected/${name}.run`;
@@ -333,10 +351,10 @@ function testOne(name) {
             fs.writeFileSync(expectedPath, Buffer.from(actual, "latin1"));
             console.log(yellow(`  wrote ${expectedPath} (${actual.length} bytes)`));
         }
-        if (reference === null) reference = actual;
+        if (reference === null) { reference = actual; referenceLevel = level; }
         else if (actual !== reference) {
-            failures.push(`${name} -O${level} (differs from -O${opt.levels[0]})`);
-            console.log(red(`  FAIL  ${label}  prints something different from -O${opt.levels[0]}`));
+            failures.push(`${name} -O${level} (differs from -O${referenceLevel})`);
+            console.log(red(`  FAIL  ${label}  prints something different from -O${referenceLevel}`));
             showDifference(reference, actual);
             continue;
         }
@@ -384,7 +402,7 @@ let tests = fs.readdirSync("tests").filter((f) => f.endsWith(".c")).map((f) => f
 if (opt.tests.length) tests = tests.filter((t) => opt.tests.includes(t));
 if (!tests.length) throw new Error("no tests match");
 fs.mkdirSync("tests/expected", { recursive: true });
-if (!opt.fromSources) ensureLibrary([...new Set([...opt.levels, 2])].sort());
+if (!opt.fromSources) ensureLibrary([...new Set([...opt.levels, 2])].sort((a, b) => a - b));
 for (const name of tests) testOne(name);
 testHeaders();
 testExamples();

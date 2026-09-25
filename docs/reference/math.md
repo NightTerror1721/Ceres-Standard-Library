@@ -122,9 +122,11 @@ int   ilogb(float x);                      // floor(log2|x|) as an int, subnorma
 float logb(float x);                       // ... as a float; -inf for 0 (ERANGE)
 float nextafter(float x, float y);         // the float next to x towards y; ERANGE when that overflows or is subnormal
 #define nexttoward(x, y) nextafter((x), (float)(y))   // long double is float too
+```
 
-// ---- the error and gamma functions (src/math_special.c): erf within 2 units in the last place, erfc and tgamma 4,
-// lgamma 3 - except next to the zeros it has between the poles for x < 0, where it keeps about 6e-7 absolute ----
+## The error and gamma functions (src/math_special.c): erf within 2 units in the last place, erfc and tgamma 4, lgamma 3 - except next to the zeros it has between the poles for x < 0, where it keeps about 6e-7 absolute
+
+```c
 float erf(float x);
 float erfc(float x);                       // 1 - erf(x) without the cancellation: right far into the tail
 float tgamma(float x);                     // EDOM at the negative integers and -inf, ERANGE at 0 and past 35.04

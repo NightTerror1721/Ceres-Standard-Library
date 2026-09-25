@@ -7,12 +7,10 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | Header | What it is |
 | --- | --- |
 | [`<assert.h>`](assert.md) | assert(expr) stops the program with "file:line: function: assertion 'expr' failed" when expr is 0. |
-| [`<ceres.h>`](ceres.md) | Ceres stdlib - low-level device access. |
 | [`<ctype.h>`](ctype.md) | Every one looks at its argument alone (the "C" locale), so each is `const`: a call whose result nothing reads may go. |
 | [`<errno.h>`](errno.md) | One variable for the whole program: the machine has a single thread of control. |
 | [`<float.h>`](float.md) | Ceres has one floating-point format: IEEE 754 binary32. |
-| [`<interrupts.h>`](interrupts.md) | Interrupt number space. |
-| [`<inttypes.h>`](inttypes.md) | printf/scanf conversion specifiers for the fixed-width types, e.g. |
+| [`<inttypes.h>`](inttypes.md) | printf/scanf conversion specifiers for the fixed-width types, e.g. printf("%" PRIu32 " bytes\n", n); `long` is 32 bits here, so the 32-bit specifiers carry... |
 | [`<iso646.h>`](iso646.md) | The alternative spellings of the operators (ISO C, Amendment 1). |
 | [`<limits.h>`](limits.md) | Ceres is a 32-bit machine: `long` is `int` (32 bits). |
 | [`<locale.h>`](locale.md) | Locales. |
@@ -24,7 +22,7 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<stdbit.h>`](stdbit.md) | C23 <stdbit.h>: counting and finding bits, on the machine's own clz, ctz and popcnt instructions (through the compiler's builtins, so a call is a few... |
 | [`<stdbool.h>`](stdbool.md) | bool, true and false are part of the language here (ceresc knows them as keywords), so this header adds nothing but the macro C99 says it defines, and _Bool... |
 | [`<stdckdint.h>`](stdckdint.md) | C23 <stdckdint.h>: checked integer arithmetic. |
-| [`<stddef.h>`](stddef.md) |  |
+| [`<stddef.h>`](stddef.md) | NULL, size_t, ptrdiff_t, wchar_t and offsetof. |
 | [`<stdint.h>`](stdint.md) | Fixed-width integers for a 32-bit machine. |
 | [`<stdio.h>`](stdio.md) | Console I/O over the terminal device (see ceres/terminal.h), formatted input and output, and streams (FILE) over the terminal, over memory, and over files... |
 | [`<stdlib.h>`](stdlib.md) | General utilities. |
@@ -53,11 +51,11 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/disk.h>`](ceres_disk.md) | Disk (0xFF020000): sectors of 512 bytes. |
 | [`<ceres/display.h>`](ceres_display.md) | Display device (0xFF070000): a pixel framebuffer of RGB32 pixels (0x00RRGGBB, top byte ignored). |
 | [`<ceres/dma.h>`](ceres_dma.md) | DMA controller (0xFF040000): copies memory to memory without the program moving it word by word. |
-| [`<ceres/ds/bitset.h>`](ceres_ds_bitset.md) | A set of small integers 0 .. |
+| [`<ceres/ds/bitset.h>`](ceres_ds_bitset.md) | A set of small integers 0 .. nbits-1 as one bit each, over words the caller provides: occupancy maps, tile flags, "which of these are used". |
 | [`<ceres/ds/bloom.h>`](ceres_ds_bloom.md) | A Bloom filter: approximate set membership in a fraction of a real set's memory, at the cost of occasional false positives (never false negatives) - "have I... |
 | [`<ceres/ds/cqueue.h>`](ceres_ds_cqueue.md) | A fixed-capacity circular queue of fixed-size elements, over a buffer the caller provides: the ringbuf.h idea generalized from bytes to a struct-sized item,... |
 | [`<ceres/ds/deque.h>`](ceres_ds_deque.md) | A double-ended queue of fixed-size elements that grows: push and pop at EITHER end in O(1) amortized, and dq_at is random access by logical index. |
-| [`<ceres/ds/dsu.h>`](ceres_ds_dsu.md) | A disjoint-set (union-find) over the integers 0 .. |
+| [`<ceres/ds/dsu.h>`](ceres_ds_dsu.md) | A disjoint-set (union-find) over the integers 0 .. n-1, on memory the caller provides - the textbook structure, no nodes and no allocation of its own, in... |
 | [`<ceres/ds/flatmap.h>`](ceres_ds_flatmap.md) | A map kept as a vector of (key, value) pairs, sorted by key: for a few dozen to a few hundred entries - configuration, a lookup table built once and read... |
 | [`<ceres/ds/flatset.h>`](ceres_ds_flatset.md) | A set kept as a sorted vector of keys, searched by bisection - ceres/ds/flatmap.h with no value, for the same reason ceres/ds/hset.h exists next to... |
 | [`<ceres/ds/generic.h>`](ceres_ds_generic.md) | _Generic sugar over ten of the eighteen collections (hset, gmap, multimap, lru, rbtree, skiplist, omap, flatmap/flatset, iheap) that all take a hash/eq or a... |
@@ -121,3 +119,5 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/tui.h>`](ceres_tui.md) | A small text user interface, drawn into the text framebuffer (textfb.h): windows with a title, labels, buttons, a progress bar, a scrolling list and a menu... |
 | [`<ceres/utf8.h>`](ceres_utf8.md) | UTF-8, the encoding of every string in this library: source files, the terminal, the files a program writes, and the multibyte strings of <stdlib.h>,... |
 | [`<ceres/vecmath.h>`](ceres_vecmath.md) | 2D and 3D vectors passed and returned by value, and the small numeric helpers games keep rewriting. |
+| [`<ceres.h>`](ceres.md) | Ceres stdlib - low-level device access. |
+| [`<interrupts.h>`](interrupts.md) | Interrupt number space. |

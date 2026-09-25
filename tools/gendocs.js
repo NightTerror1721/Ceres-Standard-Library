@@ -12,6 +12,10 @@ const path = require("path");
 
 const Root = path.resolve(__dirname, "..");
 const include = path.join(Root, "include");
+// "// ---- title ----": a section of a header's page. The same pattern ends the opening comment.
+const Heading = /^\s*\/\/ -{2,}\s(.*)$/;
+// The headers at the top of include/ that are the machine's, not C's.
+const MachineHeaders = new Set(["ceres.h", "interrupts.h"]);
 const outDir = path.join(Root, "docs", "reference");
 
 function headers(dir, prefix = "") {
@@ -31,7 +35,7 @@ function page(rel) {
     const skip = () => { while (i < lines.length && (/^\s*$/.test(lines[i]) || /^#pragma once/.test(lines[i]) || /^#include/.test(lines[i]))) i++; };
     skip();
     const intro = [];
-    while (i < lines.length && /^\s*\/\//.test(lines[i]) && !/^\s*\/\/ ----/.test(lines[i])) {
+    while (i < lines.length && /^\s*\/\//.test(lines[i]) && !Heading.test(lines[i])) {
         intro.push(lines[i].replace(/^\s*\/\/ ?/, ""));
         i++;
     }
@@ -40,10 +44,16 @@ function page(rel) {
     const sections = [];
     let current = { title: null, lines: [] };
     for (; i < lines.length; i++) {
-        const m = lines[i].match(/^\s*\/\/ -{2,}\s*(.*?)\s*-{2,}\s*$/);
+        const m = lines[i].match(Heading);
         if (m) {
+            // "// ---- title ----", which may go on over more comment lines before its closing dashes.
+            let title = m[1];
+            while (!/-{2,}\s*$/.test(title) && i + 1 < lines.length && /^\s*\/\//.test(lines[i + 1]))
+                title += " " + lines[++i].replace(/^\s*\/\/ ?/, "");
+            if (!/-{2,}\s*$/.test(title))
+                throw new Error(`${rel}: a "// ----" heading that never closes: ${m[0].trim()}`);
             if (current.lines.some((l) => l.trim())) sections.push(current);
-            current = { title: m[1], lines: [] };
+            current = { title: title.replace(/\s*-{2,}\s*$/, "").replace(/\s+/g, " ").trim(), lines: [] };
             continue;
         }
         current.lines.push(lines[i]);
@@ -70,7 +80,10 @@ function page(rel) {
         while (s.lines.length && !s.lines[s.lines.length - 1].trim()) s.lines.pop();
         md.push("```c", ...s.lines, "```", "");
     }
-    const first = (intro.join(" ").replace(/\s+/g, " ").trim().split(/(?<=\.)\s/)[0] || "");
+    // The first sentence: up to a period and a blank - not the ".." of a range, nor the one of "e.g." or "i.e.".
+    const first = (intro.join(" ").replace(/\s+/g, " ").trim().split(/(?<=(?<!\.|\be\.g|\bi\.e)\.)\s+/)[0] || "");
+    if (!first)
+        console.warn(`gendocs: ${rel} does not open with a comment that says what it is for`);
     return { md: md.join("\n"), summary: first.length > 160 ? first.slice(0, 157).replace(/\s+\S*$/, "") + "..." : first };
 }
 
@@ -79,7 +92,8 @@ fs.mkdirSync(outDir, { recursive: true });
 const all = headers(include);
 const index = ["# The Ceres standard library: reference", "",
     "Generated from the headers by `node tools/gendocs.js` - one page each, their own comments and declarations.", ""];
-for (const group of [["The C library", (h) => !h.includes("/")], ["Ceres: the machine and the extras", (h) => h.includes("/")]]) {
+const isMachine = (h) => h.includes("/") || MachineHeaders.has(h);
+for (const group of [["The C library", (h) => !isMachine(h)], ["Ceres: the machine and the extras", isMachine]]) {
     index.push(`## ${group[0]}`, "", "| Header | What it is |", "| --- | --- |");
     for (const rel of all.filter(group[1])) {
         const { md, summary } = page(rel);

@@ -1,5 +1,7 @@
 # `<stddef.h>`
 
+NULL, size_t, ptrdiff_t, wchar_t and offsetof. A pointer, size_t and ptrdiff_t are all 32 bits.
+
 ```c
 #define NULL ((void*)0)
 

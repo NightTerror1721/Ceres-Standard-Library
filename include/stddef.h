@@ -1,5 +1,7 @@
 #pragma once
 
+// NULL, size_t, ptrdiff_t, wchar_t and offsetof. A pointer, size_t and ptrdiff_t are all 32 bits.
+
 #define NULL ((void*)0)
 
 typedef unsigned int size_t;

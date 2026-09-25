@@ -40,10 +40,23 @@ if (-not $NoSoftDouble) {
     if (-not $?) { throw "tools/mklib.ps1 -SoftDouble failed" }
 }
 
+# The sysroot's include/ is replaced whole, so it must not be this checkout's own: a Prefix that is the checkout or
+# holds it would delete the headers being installed.
+$rootFull = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+$prefixFull = [System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $Prefix)).TrimEnd('\', '/')
+$separator = [System.IO.Path]::DirectorySeparatorChar
+if ($rootFull.Equals($prefixFull, [System.StringComparison]::OrdinalIgnoreCase) -or
+    $rootFull.StartsWith($prefixFull + $separator, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "-Prefix $Prefix is this checkout or holds it: installing would delete its own include/"
+}
+
 $includeOut = Join-Path $Prefix 'include'
 $libOut = Join-Path $Prefix 'lib'
 if (Test-Path $includeOut) { Remove-Item $includeOut -Recurse -Force }
 New-Item -ItemType Directory -Force $includeOut, $libOut | Out-Null
+# What an earlier install put in lib/: an optional module it had and this one has not would still link.
+Get-ChildItem $libOut -Filter 'libceres*' -File | Remove-Item -Force
+if (Test-Path (Join-Path $libOut 'soft-double')) { Remove-Item (Join-Path $libOut 'soft-double') -Recurse -Force }
 Copy-Item "$Root/include/*" $includeOut -Recurse -Force
 
 Copy-Item "$lib/libceres.car" (Join-Path $libOut 'libceres.car') -Force
