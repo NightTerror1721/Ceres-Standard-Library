@@ -1,0 +1,9 @@
+-- a byte at a time goes through the buffer
+-- positions count what the buffer holds
+-- large blocks go straight through
+-- a buffer of the program's own, and a line buffer
+a line b and more
+-- host files
+-- stdout to a file and back
+printing again
+ALL PASSED 50/50

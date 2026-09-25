@@ -9,7 +9,7 @@
 // otherwise fopen() fails with ENODEV.
 
 #define EOF          (-1)
-#define BUFSIZ       256
+#define BUFSIZ       512
 #define FILENAME_MAX 64
 #define FOPEN_MAX    8
 #define SEEK_SET     0
@@ -78,15 +78,19 @@ int  sscanf(const char* s, const char* fmt, ...) __attribute__((__format__(__sca
 int  vsscanf(const char* s, const char* fmt, va_list ap) __attribute__((__format__(__scanf__, 2, 0)));
 
 // ---- streams (src/file.c) ----
-// stdout and stderr are unbuffered, so nothing is lost when the program stops and printf/fprintf/putchar
-// always come out in order. stderr is the terminal's error stream: the host's stderr under `ceres run`, kept
-// apart from what the program prints. stdin waits for each byte and has one character of pushback.
+// stdout and stderr are unbuffered unless setvbuf says otherwise, so by default nothing is lost when the program
+// stops and printf/fprintf/putchar always come out in order. stderr is the terminal's error stream: the host's
+// stderr under `ceres run`, kept apart from what the program prints. stdin waits for each byte and has one
+// character of pushback. A file is fully buffered (BUFSIZ bytes): a byte at a time goes through the buffer, a large
+// fread/fwrite goes straight through, and what is held back is written by fflush, fclose, a seek, and exit().
 FILE* fopen(const char* path, const char* mode);          // "r" "w" "a", with "+" and/or "b"; NULL with errno set (ENOENT, ENODEV, ENOSPC, EMFILE, EBUSY...)
-FILE* freopen(const char* path, const char* mode, FILE* f);   // closes f and opens path in its place; only for disk streams (ENOSYS for the others)
+                                                           // "host:levels/1.txt" is a host file (ceres run --host-dir, ceres/hostfs.h)
+FILE* freopen(const char* path, const char* mode, FILE* f);   // closes f and opens path in its place - stdin, stdout, stderr too
+                                                           // ("host:log.txt"); "term:" puts a standard stream back on the terminal
 FILE* fmemopen(void* buf, size_t size, const char* mode);     // a stream over `buf`; it never grows
 int   fclose(FILE* f);
-int   fflush(FILE* f);                                     // a no-op: nothing is held back
-int   setvbuf(FILE* f, char* buf, int mode, size_t size);  // accepted and ignored
+int   fflush(FILE* f);                                     // writes out what f holds back; NULL: every stream, then the disk
+int   setvbuf(FILE* f, char* buf, int mode, size_t size);  // _IOFBF, _IOLBF or _IONBF; buf NULL: allocated (size, or BUFSIZ)
 void  setbuf(FILE* f, char* buf);
 FILE* tmpfile(void);                                       // a "w+" file that is removed when it is closed
 int   remove(const char* path);                            // deletes a disk file; -1 with errno set
@@ -103,7 +107,7 @@ char* fgets(char* buf, int n, FILE* f);                    // through the newlin
 int   fputs(const char* s, FILE* f);
 int   getline(char** line, size_t* cap, FILE* f);          // POSIX: a malloc'd, growing buffer; -1 at EOF
 
-int   fseek(FILE* f, int offset, int whence);              // memory streams only (ESPIPE on the terminal)
+int   fseek(FILE* f, int offset, int whence);              // files and memory streams (ESPIPE on the terminal)
 int   ftell(FILE* f);
 void  rewind(FILE* f);
 int   fgetpos(FILE* f, fpos_t* p);

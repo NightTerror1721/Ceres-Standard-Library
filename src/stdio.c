@@ -1,10 +1,26 @@
 // Console I/O: characters, strings and the small number printers. printf and friends are in format.c.
+//
+// Everything here, and printf, writes to stdout through __stdout_write: straight to the terminal, one block
+// transfer at a time, until setvbuf or freopen changes stdout - then file.c sets the hook, and the bytes go
+// through the stream, in order with fputc and fprintf(stdout). A program that never touches stdout's settings
+// does not link the FILE layer for it.
 #include "stdio.h"
 #include "ceres/terminal.h"
 
+void (*__stdout_write_hook)(const char* s, int n) = 0;
+
+void __stdout_write(const char* s, int n)
+{
+    if (__stdout_write_hook != 0)
+        __stdout_write_hook(s, n);
+    else
+        term_write(s, n);
+}
+
 int putchar(int c)
 {
-    term_write_char(c);
+    char byte = (char)c;
+    __stdout_write(&byte, 1);
     return c;
 }
 
@@ -13,7 +29,7 @@ int putstr(const char* s)
     int n = 0;
     while (s[n] != 0)
         n++;
-    term_write(s, n);   // one block transfer, not a byte loop
+    __stdout_write(s, n);   // one block transfer, not a byte loop
     return n;
 }
 
@@ -37,7 +53,7 @@ int putuint(unsigned int v)
     char text[10];
     for (int i = 0; i < n; i++)
         text[i] = digits[n - 1 - i];
-    term_write(text, n);
+    __stdout_write(text, n);
     return n;
 }
 
@@ -66,7 +82,7 @@ int puthex(unsigned int v)
         text[n] = (char)(nib < 10 ? '0' + nib : 'a' + (nib - 10));
         n++;
     }
-    term_write(text, n);
+    __stdout_write(text, n);
     return n;
 }
 
@@ -77,6 +93,6 @@ int putbin(unsigned int v, int bits)
     char text[32];
     for (int i = 0; i < bits; i++)
         text[i] = (v & (1u << (bits - 1 - i))) ? '1' : '0';
-    term_write(text, bits);
+    __stdout_write(text, bits);
     return bits;
 }

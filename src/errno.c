@@ -38,6 +38,7 @@ char* strerror(int e)
     case ENAMETOOLONG: return "File name too long";
     case ENOSYS:       return "Function not implemented";
     case ENOTEMPTY:    return "Directory not empty";
+    case EXDEV:        return "Invalid cross-device link";
     case EOVERFLOW:    return "Value too large for defined data type";
     case EILSEQ:       return "Illegal byte sequence";
     case ETIMEDOUT:    return "Timed out";

@@ -33,10 +33,12 @@ struct __sink
     char chunk[TERM_CHUNK];     // terminal sink: goes out as ONE block transfer instead of a store per byte
 };
 
+void __stdout_write(const char* s, int n);   // stdio.c: the terminal, or stdout once it is buffered or reopened
+
 static void term_flush_chunk(struct __sink* s)
 {
     if (s->used != 0)
-        term_write(s->chunk, (int)s->used);
+        __stdout_write(s->chunk, (int)s->used);
     s->used = 0;
 }
 

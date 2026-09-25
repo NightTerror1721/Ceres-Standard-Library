@@ -189,7 +189,7 @@ int main(void)
     CHECK_EQ(errno, ENODEV);                                      // nothing formatted or mounted
     errno = 0;
     CHECK(freopen("data.txt", "r", stdin) == 0);
-    CHECK_EQ(errno, ENOSYS);                                      // only a disk stream can be reopened
+    CHECK_EQ(errno, ENODEV);                                      // stdin can be reopened: the disk is what fails
     CHECK(tmpfile() == 0);
     errno = 0;
     CHECK_EQ(remove("data.txt"), -1);
