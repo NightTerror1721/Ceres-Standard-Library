@@ -1,13 +1,8 @@
-#pragma once
+# `<stdio.h>`
 
-#include "stddef.h"
-#include "stdarg.h"
+Console I/O over the terminal device (see ceres/terminal.h), formatted input and output, and streams (FILE) over the terminal, over memory, and over files on the disk (CeresFS, ceres/fs.h). A disk must carry a CeresFS before fopen() can work: call fs_format() once, or fs_mount() for a disk that has one; otherwise fopen() fails with ENODEV.
 
-// Console I/O over the terminal device (see ceres/terminal.h), formatted input and output, and streams
-// (FILE) over the terminal, over memory, and over files on the disk (CeresFS, ceres/fs.h). A disk must
-// carry a CeresFS before fopen() can work: call fs_format() once, or fs_mount() for a disk that has one;
-// otherwise fopen() fails with ENODEV.
-
+```c
 #define EOF          (-1)
 #define BUFSIZ       512
 #define FILENAME_MAX 64
@@ -27,8 +22,11 @@ typedef int fpos_t;
 extern FILE* stdin;
 extern FILE* stdout;
 extern FILE* stderr;
+```
 
-// ---- characters and strings on the console ----
+## Characters and strings on the console
+
+```c
 int  putchar(int c);                    // write one byte; returns it
 int  getchar(void);                     // WAITS for a byte and returns it; the same stream as fgetc(stdin)
 int  getchar_nb(void);                  // the byte if one is buffered, else -1: the loop-friendly form
@@ -41,15 +39,21 @@ int  puts(const char* s);               // putstr + newline
 // Declared here as well as in stdlib.h: a translation unit that declares exit() ends main by calling it, so
 // that returning n from main is exit(n) - the atexit handlers run and open files are flushed.
 void exit(int status) __attribute__((__noreturn__));
+```
 
-// ---- numbers, without the format engine (small and fast) ----
+## Numbers, without the format engine (small and fast)
+
+```c
 int  putint(int v);                     // decimal, with sign
 int  putuint(unsigned int v);           // decimal, unsigned
 int  puthex(unsigned int v);            // "0x" + minimal lowercase hex digits
 int  putbin(unsigned int v, int bits);  // `bits` binary digits, most significant first
 int  putfloat(float f, int decimals);   // like "%.*f": sign, integer, '.', `decimals` digits
+```
 
-// ---- formatted output (src/format.c) ----
+## Formatted output (src/format.c)
+
+```c
 // %d %i %u %o %x %X %b %c %s %p %n %f %F %e %E %g %G %%, with flags "- + space # 0", width and
 // precision (a number or *), and the length modifiers hh h l ll z t j q (ll, j and q take a 64-bit
 // argument; l, z and t are 32 bits here). Returns the number of characters that were (or, for
@@ -64,8 +68,11 @@ int  sprintf(char* buf, const char* fmt, ...) __attribute__((__format__(__printf
 int  vsprintf(char* buf, const char* fmt, va_list ap) __attribute__((__format__(__printf__, 2, 0)));
 int  snprintf(char* buf, size_t n, const char* fmt, ...) __attribute__((__format__(__printf__, 3, 4)));   // always NUL-terminates when n > 0
 int  vsnprintf(char* buf, size_t n, const char* fmt, va_list ap) __attribute__((__format__(__printf__, 3, 0)));
+```
 
-// ---- formatted input (src/scanf.c) ----
+## Formatted input (src/scanf.c)
+
+```c
 // %d %i %u %x %X %o %c %s %f %e %g %[set] %p %n %%, with a width, `*` to skip a conversion and the length
 // modifiers hh h l ll z t j q (%lf is a float: double IS float here, except under -fsoft-double, where it stores
 // a real double - and printf's %f then takes one, a float argument arriving promoted). Returns how many conversions stored a
@@ -77,8 +84,11 @@ int  fscanf(FILE* f, const char* fmt, ...) __attribute__((__format__(__scanf__, 
 int  vfscanf(FILE* f, const char* fmt, va_list ap) __attribute__((__format__(__scanf__, 2, 0)));
 int  sscanf(const char* s, const char* fmt, ...) __attribute__((__format__(__scanf__, 2, 3)));
 int  vsscanf(const char* s, const char* fmt, va_list ap) __attribute__((__format__(__scanf__, 2, 0)));
+```
 
-// ---- streams (src/file.c) ----
+## Streams (src/file.c)
+
+```c
 // stdout and stderr are unbuffered unless setvbuf says otherwise, so by default nothing is lost when the program
 // stops and printf/fprintf/putchar always come out in order. stderr is the terminal's error stream: the host's
 // stderr under `ceres run`, kept apart from what the program prints. stdin waits for each byte and has one
@@ -117,3 +127,4 @@ int   feof(FILE* f);
 int   ferror(FILE* f);
 void  clearerr(FILE* f);
 void  perror(const char* msg);                             // "msg: <strerror(errno)>" on stderr
+```

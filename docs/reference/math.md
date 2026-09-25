@@ -1,17 +1,10 @@
-#pragma once
+# `<math.h>`
 
-// The machine's floating point is binary32, and these functions are float: every one has ONE implementation and
-// the f-suffixed C99 names (sinf, powf, ...) are aliases. double is float too - unless the program is compiled
-// with -fsoft-double, where it is a real binary64 done in software (ceres/f64.h): a double passed to these is
-// converted to float, and their results have float's precision. The standard names for the constants are M_*;
-// the short internal ones (PI, LN2, ...) live in src/math_priv.h so they never collide with a user's own
-// identifiers.
-//
-// Domain and range errors set errno (EDOM / ERANGE) as C says and return NaN or +-infinity. Accuracy,
-// measured against double-precision references (tests/test_math.c): within about 2e-7 relative (one
-// to three units in the last place) everywhere, except pow with a large exponent, whose error grows
-// with |y*log(x)| (about 2e-6 at y = 100); sin, cos and tan stay within 1.5 units (tan 2.5) for every float.
+The machine's floating point is binary32, and these functions are float: every one has ONE implementation and the f-suffixed C99 names (sinf, powf, ...) are aliases. double is float too - unless the program is compiled with -fsoft-double, where it is a real binary64 done in software (ceres/f64.h): a double passed to these is converted to float, and their results have float's precision. The standard names for the constants are M_*; the short internal ones (PI, LN2, ...) live in src/math_priv.h so they never collide with a user's own identifiers.
 
+Domain and range errors set errno (EDOM / ERANGE) as C says and return NaN or +-infinity. Accuracy, measured against double-precision references (tests/test_math.c): within about 2e-7 relative (one to three units in the last place) everywhere, except pow with a large exponent, whose error grows with |y*log(x)| (about 2e-6 at y = 100); sin, cos and tan stay within 1.5 units (tan 2.5) for every float.
+
+```c
 #define M_E        2.71828183f
 #define M_LOG2E    1.44269504f
 #define M_LOG10E   0.434294482f
@@ -36,8 +29,11 @@
 // The reinterpretations behind the above, one instruction each (asm/math_ops.casm).
 unsigned int float_bits(float x);
 float float_from_bits(unsigned int b);
+```
 
-// ---- classification, on the `fclass` instruction (asm/math_ops.casm) ----
+## Classification, on the `fclass` instruction (asm/math_ops.casm)
+
+```c
 #define FP_INFINITE   1
 #define FP_NAN        2
 #define FP_NORMAL     3
@@ -49,8 +45,11 @@ int isinf(float x);
 int isfinite(float x);
 int isnormal(float x);
 int signbit(float x);
+```
 
-// ---- one instruction each (asm/math_ops.casm) ----
+## One instruction each (asm/math_ops.casm)
+
+```c
 extern float fabs(float x);
 float fmod(float x, float y);              // NaN with errno = EDOM when y == 0 or x is infinite (src/fmod.c)
 extern float sqrt(float x);                // sqrt of a negative number is NaN (errno is not set)
@@ -64,8 +63,11 @@ extern float copysign(float x, float y);
 extern float fma(float x, float y, float z);
 extern float rcp(float x);                 // Ceres extensions: a fast approximation of 1/x ...
 extern float rsqrt(float x);               // ... and of 1/sqrt(x)
+```
 
-// ---- in software (src/math.c) ----
+## In software (src/math.c)
+
+```c
 float sin(float x);                        // within 1.5 units in the last place for every float (tan: 2.5)
 float cos(float x);
 float tan(float x);
@@ -80,8 +82,11 @@ float log(float x);
 float log2(float x);
 float log10(float x);
 float pow(float x, float y);
+```
 
-// ---- in software (src/math_ext.c) ----
+## In software (src/math_ext.c)
+
+```c
 float sinh(float x);
 float cosh(float x);
 float tanh(float x);
@@ -104,8 +109,11 @@ int   lrint(float x);                      // to the nearest int, halves to even
 long long llround(float x);                // as lround, to the nearest 64-bit integer
 long long llrint(float x);                 // as lrint, to the nearest 64-bit integer
 float nan(const char* tag) __attribute__((__const__));   // a quiet NaN (the tag is ignored)
+```
 
-// ---- the exponent, and the next float (src/math_ext.c) ----
+## The exponent, and the next float (src/math_ext.c)
+
+```c
 typedef float float_t;                     // FLT_EVAL_METHOD is 0: float arithmetic is done in float
 typedef float double_t;                    // ... and double is float
 #define FP_ILOGB0    (-2147483647 - 1)
@@ -124,8 +132,11 @@ float lgamma(float x);                     // log|gamma(x)|; the sign of gamma(x
 extern int signgam;
 
 #define scalbn    ldexp
+```
 
-// ---- the one-instruction ones, inline ----
+## The one-instruction ones, inline
+
+```c
 // Every function above that is one machine instruction, except fma (below), is also a macro on the
 // compiler's builtin for it, so a call costs that instruction instead of a call, a return and the registers saved
 // around them. The argument is converted to float first, as the prototype would have done (a
@@ -164,8 +175,11 @@ static inline int __fpclassify_bits(int c)
     return FP_NORMAL;
 }
 #define fpclassify(x) __fpclassify_bits(__builtin_fclass((float)(x)))
+```
 
-// ---- the f-suffixed names ----
+## The f-suffixed names
+
+```c
 #define sinf sin
 #define cosf cos
 #define tanf tan
@@ -219,3 +233,4 @@ static inline int __fpclassify_bits(int c)
 #define erfcf erfc
 #define tgammaf tgamma
 #define lgammaf lgamma
+```

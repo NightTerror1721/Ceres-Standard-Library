@@ -1,9 +1,5 @@
 // <string.h> and <strings.h> except the memory primitives and strlen (asm/memory.casm) and strcpy,
 // strcmp, strchr and memchr (asm/string_fast.casm), which go a word at a time.
-//
-// The explicit (const void*) casts in front of memcpy are there for older ceresc builds, which lost
-// the const of a `const void*` and refused a `const char*` argument (fixed in Ceres-C a7cf62a).
-// (The C subset has a comma operator now; nothing here uses one.)
 #include "string.h"
 #include "strings.h"
 #include "ceres/heap.h"      // malloc, for strdup/strndup
@@ -27,7 +23,7 @@ void* memmem(const void* hay, size_t hl, const void* needle, size_t nl)
     const unsigned char* h = (const unsigned char*)hay;
     const unsigned char* nd = (const unsigned char*)needle;
     for (size_t i = 0; i + nl <= hl; i++)
-        if (h[i] == nd[0] && memcmp((const void*)(h + i), (const void*)nd, nl) == 0) return (void*)(h + i);
+        if (h[i] == nd[0] && memcmp(h + i, nd, nl) == 0) return (void*)(h + i);
     return 0;
 }
 
@@ -153,7 +149,7 @@ size_t strlcpy(char* dst, const char* src, size_t size)
     if (size != 0)
     {
         size_t n = len < size - 1 ? len : size - 1;
-        memcpy(dst, (const void*)src, n);      // the cast is needed: ceresc drops the const of `const void*`
+        memcpy(dst, src, n);
         dst[n] = 0;
     }
     return len;
@@ -170,7 +166,7 @@ char* strdup(const char* s)
 {
     size_t n = strlen(s) + 1;
     char* p = (char*)malloc(n);
-    if (p != 0) memcpy(p, (const void*)s, n);
+    if (p != 0) memcpy(p, s, n);
     return p;
 }
 
@@ -178,7 +174,7 @@ char* strndup(const char* s, size_t max)
 {
     size_t n = strnlen(s, max);
     char* p = (char*)malloc(n + 1);
-    if (p != 0) { memcpy(p, (const void*)s, n); p[n] = 0; }
+    if (p != 0) { memcpy(p, s, n); p[n] = 0; }
     return p;
 }
 
