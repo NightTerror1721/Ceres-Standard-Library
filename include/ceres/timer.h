@@ -37,19 +37,20 @@
 // does not keep real time while halted (timer_halt_clock() == 0, a debugger replaying) cannot wake a halt at an
 // instant, and there they spin. The task table (timer_after/every) is driven by timer_poll().
 
-#define TIMER_TICKS_REG  (TIMER_BASE + 0x00)   // R: the low word of the ticks: instructions executed, and halted-clock ticks; latches the high word
-#define TIMER_CLOCK_REG  (TIMER_BASE + 0x04)   // R: wall-clock seconds since 1970
-#define TIMER_CMD_REG    (TIMER_BASE + 0x08)   // W: N instructions until it fires; bit 31 = periodic; 0 disarms
-#define TIMER_MILLIS_REG (TIMER_BASE + 0x0C)   // R: milliseconds since the machine started (wraps at 49 days)
-#define TIMER_NANOS_LOW_REG  (TIMER_BASE + 0x10)   // R: the low word of the nanoseconds since the machine started; latches the high word
+// The registers (CeresASM plan/v2 SPEC 5.7). A tick is a CPU cycle.
+#define TIMER_TICKS_REG      (TIMER_BASE + 0x00)   // R: CyclesLow: CPU cycles since the start, low word; latches the high word
+#define TIMER_TICKS_HIGH_REG (TIMER_BASE + 0x04)   // R: CyclesHigh: the high word latched by the last low read
+#define TIMER_CMD_REG        (TIMER_BASE + 0x08)   // RW: Countdown: N cycles until it fires; 0 disarms; reads what is left
+#define TIMER_CONTROL_REG    (TIMER_BASE + 0x0C)   // RW: CountdownControl: TIMER_PERIODIC re-arms with the last countdown written
+#define TIMER_NANOS_LOW_REG  (TIMER_BASE + 0x10)   // R: the low word of the nanoseconds since the start; latches the high word
 #define TIMER_NANOS_HIGH_REG (TIMER_BASE + 0x14)   // R: the high word latched by the last read of the low one
-#define TIMER_NANOS_RES_REG  (TIMER_BASE + 0x18)   // R: the smallest step the nanosecond clock is seen to take, in nanoseconds
-#define TIMER_HALT_CLOCK_REG (TIMER_BASE + 0x1C)   // R: ticks per second while the CPU is halted; 0 when not in real time
+#define TIMER_MILLIS_REG     (TIMER_BASE + 0x18)   // R: milliseconds since the start (wraps at 49 days)
+#define TIMER_CLOCK_REG      (TIMER_BASE + 0x1C)   // R: Rtc: seconds since 1970, the start value plus the machine's time
 #define TIMER_ALARM_LOW_REG  (TIMER_BASE + 0x20)   // RW: the low word of the alarm instant (nanoseconds, NANOS' clock)
 #define TIMER_ALARM_HIGH_REG (TIMER_BASE + 0x24)   // RW: the high word; writing it arms the alarm (0:0 disarms)
-#define TIMER_TICKS_HIGH_REG (TIMER_BASE + 0x28)   // R: the high word of the ticks latched by the last low read
-#define TIMER_PERIODIC   0x80000000u
-#define TIMER_MAX_TICKS  0x7FFFFFFFu           // the longest period the command register can hold
+#define TIMER_HALT_CLOCK_REG (TIMER_BASE + 0x28)   // R: CpuClockHz: the CPU clock, cycles per second, running or halted
+#define TIMER_PERIODIC   0x1u                      // CountdownControl bit 0
+#define TIMER_MAX_TICKS  0xFFFFFFFFu               // the longest period the countdown register can hold
 
 unsigned int timer_ticks(void);                          // ticks so far: instructions, and halted time (wraps at 2^32, about 43 s)
 uint64_t     timer_ticks64(void);                        // the same, all 64 bits: the count of instructions a run can compare

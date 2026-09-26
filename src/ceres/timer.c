@@ -56,7 +56,8 @@ struct ns64 timer_nanos_elapsed(struct ns64 since)
 
 unsigned int timer_nanos_resolution(void)
 {
-    return mmio_r32(TIMER_NANOS_RES_REG);
+    unsigned int hz = mmio_r32(TIMER_HALT_CLOCK_REG);    // a CPU cycle, rounded up: the clock's step
+    return (1000000000u - 1u) / hz + 1u;
 }
 
 unsigned int timer_halt_clock(void)
@@ -128,9 +129,8 @@ void timer_arm(unsigned int ticks, int periodic)
 {
     if (ticks == 0)
         ticks = 1;                                  // 0 would disarm it
-    if (ticks > TIMER_MAX_TICKS)
-        ticks = TIMER_MAX_TICKS;
-    mmio_w32(TIMER_CMD_REG, ticks | (periodic ? TIMER_PERIODIC : 0u));
+    mmio_w32(TIMER_CONTROL_REG, periodic ? TIMER_PERIODIC : 0u);
+    mmio_w32(TIMER_CMD_REG, ticks);
 }
 
 void timer_disarm(void)

@@ -40,11 +40,13 @@ int main(void)
     CHECK_STR(irq_name(6), "AlignmentFault");
 
     TEST_SECTION("timer interrupts");
-    mmio_w32(TIMER_BASE + 0x08, 0x80000000u | 500u);   // periodic, every 500 instructions
+    mmio_w32(TIMER_BASE + 0x0C, 1u);                  // CountdownControl: periodic ...
+    mmio_w32(TIMER_BASE + 0x08, 500u);                // ... every 500 cycles
     irq_enable_all();
     while (ticks < 5)
         __builtin_halt();
     mmio_w32(TIMER_BASE + 0x08, 0);
+    mmio_w32(TIMER_BASE + 0x0C, 0);
     irq_disable();
     CHECK(ticks >= 5);
     int seen = ticks;
