@@ -202,8 +202,8 @@ int main(void)
     unsigned int t0 = timer_ticks();
     unsigned int t1 = timer_ticks();
     CHECK(t1 > t0);
-    uint64_t w0 = timer_ticks64();
-    uint64_t w1 = timer_ticks64();
+    uint64_t w0 = timer_cycles64();
+    uint64_t w1 = timer_cycles64();
     CHECK(w1 > w0);                                                  // all 64 bits, read as one moment
     CHECK((unsigned int)w1 - t1 < 100000u);                          // whose low word is timer_ticks()
     CHECK(timer_elapsed(t0) >= t1 - t0);

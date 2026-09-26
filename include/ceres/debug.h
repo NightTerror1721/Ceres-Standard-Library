@@ -35,8 +35,8 @@ void dbg_where(void);
 void dbg_stack_paint(unsigned int max_bytes);
 unsigned int dbg_stack_used(void);
 
-// Work, measured in instructions rather than time: the VM is deterministic, so the number is repeatable.
+// Work, measured in CPU cycles: the VM is deterministic, so the number is repeatable.
 struct dbg_span { unsigned int t0; const char* name; };
 void dbg_span_begin(struct dbg_span* s, const char* name);
-unsigned int dbg_span_elapsed(const struct dbg_span* s);   // instructions since dbg_span_begin, without printing
-unsigned int dbg_span_end(struct dbg_span* s);       // prints "name: N instructions" and returns N
+unsigned int dbg_span_elapsed(const struct dbg_span* s);   // cycles since dbg_span_begin, without printing
+unsigned int dbg_span_end(struct dbg_span* s);       // prints "name: N cycles" and returns N

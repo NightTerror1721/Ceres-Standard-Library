@@ -1,6 +1,6 @@
 // The assembly string routines against byte-at-a-time references written here (the C loops the library used
 // before they became the standard functions): the same answers for every alignment and length, and fewer
-// instructions on a long string (instruction counts are the timer's ticks, the same on every run).
+// cycles on a long string (the timer's ticks are CPU cycles, the same on every run).
 #include "ceres/test.h"
 #include "ceres/string_fast.h"
 #include "ceres/timer.h"
@@ -135,7 +135,7 @@ int main(void)
     CHECK(memchr_fast(a, 0xE9, 30) == a + 10);            // a byte with the high bit set
     CHECK(memchr_fast(a, -23, 30) == a + 10);             // ... asked for as a negative int
 
-    TEST_SECTION("fewer instructions on a long string");
+    TEST_SECTION("fewer cycles on a long string");
     make(src_base, 1000);
     unsigned int t = timer_ticks();
     ref_strcpy(ref_base, src_base);

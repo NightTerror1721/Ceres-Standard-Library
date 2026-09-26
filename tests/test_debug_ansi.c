@@ -65,7 +65,7 @@ static void stack(void)
     dbg_stack_paint(0);                                 // an empty window
     CHECK_EQ((int)dbg_stack_used(), 0);
 
-    TEST_SECTION("spans count instructions");
+    TEST_SECTION("spans count cycles");
     struct dbg_span s;
     dbg_span_begin(&s, "loop");
     volatile int sink = 0;

@@ -182,7 +182,7 @@ static unsigned int count(int which, int a_off, int b_off)
 
 static void check_speed(void)
 {
-    TEST_SECTION("instructions per byte on 4 KiB");
+    TEST_SECTION("cycles per byte on 4 KiB");
     unsigned char* a = (unsigned char*)big_a;
     unsigned char* b = (unsigned char*)big_b;
     CHECK(count(0, 0, 0) < 4096);             // memcpy aligned: under one per byte

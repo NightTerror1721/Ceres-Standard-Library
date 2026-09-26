@@ -115,6 +115,6 @@ unsigned int dbg_span_elapsed(const struct dbg_span* s)
 unsigned int dbg_span_end(struct dbg_span* s)
 {
     unsigned int used = dbg_span_elapsed(s);
-    printf("%s: %u instructions\n", s->name, used);
+    printf("%s: %u cycles\n", s->name, used);
     return used;
 }

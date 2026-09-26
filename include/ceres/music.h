@@ -5,7 +5,7 @@
 
 // Music and sound effects on the audio device's four channels (CeresASM 848fae2): each a waveform, a volume and
 // an ADSR envelope, mixed by the host. Nothing here blocks: a song moves on when music_update() is called - once
-// a frame, or from a task (ceres/task.h) - by the real time that has passed, and a sound effect ends by itself.
+// a frame, or from a task (ceres/task.h) - by the machine's time that has passed, and a sound effect ends by itself.
 //
 //   static const struct music_song tune = {
 //       .rows_per_minute = 480, .length = 8,
@@ -60,7 +60,7 @@ void music_play(const struct music_song* song, int loop);   // from its first ro
 void music_stop(void);                                   // every voice lets go
 int  music_playing(void);
 int  music_row(void);                                    // the row reached (-1 before the first)
-void music_update(void);                                 // moves on by the real time since the song started
+void music_update(void);                                 // moves on by the time since the song started
 void music_step(void);                                   // one row, now: for a program that counts its own time
 
 // ---- sound effects ----

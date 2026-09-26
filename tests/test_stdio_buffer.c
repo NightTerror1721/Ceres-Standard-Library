@@ -15,10 +15,10 @@ static int cost_of_putc(const char* name, int mode)
 {
     FILE* f = fopen(name, "w");
     setvbuf(f, 0, mode, 0);
-    uint64_t start = timer_ticks64();
+    uint64_t start = timer_cycles64();
     for (int i = 0; i < 2000; i++)
         fputc('a' + i % 26, f);
-    int cost = (int)(timer_ticks64() - start);
+    int cost = (int)(timer_cycles64() - start);
     fclose(f);
     return cost;
 }

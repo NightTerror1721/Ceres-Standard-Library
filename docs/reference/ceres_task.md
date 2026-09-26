@@ -17,7 +17,7 @@ typedef void (*task_fn)(void* arg);
 
 int  task_spawn(task_fn fn, void* arg, unsigned int stack_size);   // its id (> 0), or -1 (EAGAIN: no slot, ENOMEM)
 void task_yield(void);                     // let every other task that can run have a turn
-void task_sleep_ms(unsigned int ms);       // yield for at least ms milliseconds of real time
+void task_sleep_ms(unsigned int ms);       // yield for at least ms milliseconds of the machine's time
 void task_sleep_ns(unsigned long long ns);
 int  task_join(int id);                    // wait until task `id` has returned: 0, or -1 (ESRCH, EDEADLK)
 void task_exit(void) __attribute__((__noreturn__));   // end this task (not main) as if its function returned

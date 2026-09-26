@@ -11,10 +11,10 @@
 // Instructions for 64 malloc/free pairs of assorted sizes.
 static int pair_cost(void)
 {
-    uint64_t start = timer_ticks64();
+    uint64_t start = timer_cycles64();
     for (int i = 0; i < 64; i++)
         free(malloc((size_t)(16 + i * 8)));
-    return (int)(timer_ticks64() - start);
+    return (int)(timer_cycles64() - start);
 }
 
 static int errors_seen = 0;

@@ -13,7 +13,7 @@ static uint64_t us_since(uint64_t t0)
 int main(void)
 {
     TEST_SECTION("the waits take at least what they are asked for");
-    CHECK(timer_halt_clock() != 0u);                    // `ceres run` keeps real time while halted
+    CHECK(timer_cpu_hz() != 0u);                        // the clock the waits are counted on
     uint64_t t0 = timer_nanos64();
     timer_wait_ms(30);
     uint64_t took = us_since(t0);

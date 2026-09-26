@@ -1,5 +1,5 @@
 -- strcpy_fast: every alignment and length
 -- strcmp_fast: the same difference as strcmp, at every alignment
 -- strchr_fast and memchr_fast, at every alignment
--- fewer instructions on a long string
+-- fewer cycles on a long string
 ALL PASSED 24/24

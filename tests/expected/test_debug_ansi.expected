@@ -11,7 +11,7 @@
 00001020  e0 e7 ee f5 fc                                    |.....|
 fffffff0  48 69                                             |Hi|
 -- stack watermark
--- spans count instructions
+-- spans count cycles
 -- ansi
 [3;5H|goto
 [1;1H|goto clamps to 1;1

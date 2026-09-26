@@ -105,7 +105,7 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/pack.h>`](ceres_pack.md) | Resource packs: a program's assets - images, levels, text, music - in one file that is read a piece at a time, from a cartridge in a peripheral port, a... |
 | [`<ceres/periph.h>`](ceres_periph.md) | Peripheral ports (0xFF0A0000): media that a person plugs in while the program runs - a memory stick, a game cartridge. |
 | [`<ceres/pool.h>`](ceres_pool.md) | Fixed-size blocks with allocation and release in constant time: entities, bullets, particles. |
-| [`<ceres/rand.h>`](ceres_rand.md) | Pseudo-random generators with explicit, reproducible state: two runs with the same seed give the same sequence (the VM is deterministic apart from its wall... |
+| [`<ceres/rand.h>`](ceres_rand.md) | Pseudo-random generators with explicit, reproducible state: two runs with the same seed give the same sequence (the VM is deterministic apart from where its... |
 | [`<ceres/save.h>`](ceres_save.md) | Saved games that survive the machine stopping half way through a save. |
 | [`<ceres/sort.h>`](ceres_sort.md) | A stable sort: elements that compare equal keep the order they had, which qsort does not promise. |
 | [`<ceres/sprite.h>`](ceres_sprite.md) | Sprites (images with one transparent colour), frame animation, tile maps with a camera, and the rectangle tests that games need for collisions. |

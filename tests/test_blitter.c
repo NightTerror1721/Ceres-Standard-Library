@@ -64,15 +64,15 @@ int main(void)
 
     TEST_SECTION("what software does a pixel at a time");
     gfx_set_target(fast);
-    uint64_t t0 = timer_ticks64();
+    uint64_t t0 = timer_cycles64();
     gfx_blit_key(pattern, 0, 0, 24, 24, 10, 10, 0x00FF00FFu);
     gfx_blit_scaled(pattern, 0, 0, 2);
-    uint64_t t1 = timer_ticks64();
+    uint64_t t1 = timer_cycles64();
     gfx_use_blitter(0);
     gfx_set_target(slow);
     gfx_blit_key(pattern, 0, 0, 24, 24, 10, 10, 0x00FF00FFu);
     gfx_blit_scaled(pattern, 0, 0, 2);
-    uint64_t t2 = timer_ticks64();
+    uint64_t t2 = timer_cycles64();
     gfx_use_blitter(1);
     CHECK(memcmp(fast->px, slow->px, 80 * 60 * 4) == 0);
     CHECK((t1 - t0) * 10 < (t2 - t1));                   // 576 pixels keyed and 2304 scaled, one by one

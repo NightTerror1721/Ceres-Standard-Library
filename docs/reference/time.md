@@ -5,7 +5,7 @@ Calendar time. There are no time zones: localtime() is gmtime(). time_t is a SIG
 ```c
 typedef long long time_t;
 typedef long long clock_t;
-#define CLOCKS_PER_SEC 1000000     // clock() counts microseconds of real time (see below)
+#define CLOCKS_PER_SEC 1000000     // clock() counts microseconds of the machine's time (see below)
 
 struct tm
 {
@@ -21,13 +21,14 @@ struct tm
 };
 _Static_assert(sizeof(struct tm) == 36, "struct tm is nine words");
 
-// time() reads the wall clock (the timer device's clock register) - the ONE non-deterministic value in
-// the machine, so a test must not depend on what it returns.
+// time() reads the timer's real-time clock: where the machine's time started - the host's clock when the machine
+// started, or `ceres run --rtc` - plus the machine's time since. Without --rtc it is the one value that differs
+// from run to run, so a test must not depend on what it returns.
 time_t time(time_t* out);
 
-// clock() is the real time since the machine started, in microseconds - CLOCKS_PER_SEC a second, as C says.
-// The machine runs one program, so its time is the program's. (For the instructions executed, the count that
-// is the same on every run, use timer_ticks64() in ceres/timer.h.)
+// clock() is the machine's time since it started, in microseconds - CLOCKS_PER_SEC a second, as C says: the CPU
+// cycles at the CPU clock (ceres/timer.h), so it reads the same on every run. The machine runs one program, so its
+// time is the program's. (The cycles themselves are timer_cycles64().)
 clock_t clock(void);
 float   difftime(time_t end, time_t start);
 
@@ -52,9 +53,8 @@ char*  ctime(const time_t* t);
 size_t strftime(char* buf, size_t max, const char* fmt, const struct tm* tm);
 
 // The finer clock, in the C11 way. TIME_UTC is the calendar time: the machine's clock register counts whole
-// seconds, so tv_nsec is 0 and the resolution is one second. TIME_MONOTONIC (C23) is the time since the machine
-// started, to the nanosecond the host clock gives - timer_nanos_resolution() says how fine that is - and is
-// the one for measuring a span.
+// seconds, so tv_nsec is 0 and the resolution is one second. TIME_MONOTONIC (C23) is the machine's time since it
+// started, to one CPU cycle - timer_nanos_resolution() says how long that is - and is the one for measuring a span.
 struct timespec
 {
     time_t tv_sec;
@@ -69,11 +69,11 @@ _Static_assert(sizeof(struct timespec) == 16, "a timespec is a time_t and a long
 int timespec_get(struct timespec* ts, int base);      // `base` on success, 0 for a base that is not supported
 int timespec_getres(struct timespec* ts, int base);   // the same, for the clock's resolution
 
-// Waits `seconds` of real time, sleeping (timer_wait_ms: the machine halts with the timer's alarm armed, and
-// needs no handler). Returns 0.
+// Waits `seconds` of the machine's time, sleeping (timer_wait_ms: the machine halts with the timer's alarm armed,
+// and needs no handler). Returns 0.
 unsigned int sleep(unsigned int seconds);
 
-// POSIX nanosleep: sleeps for *req the same way, to the nanosecond the clock and the host's sleep allow. Nothing
+// POSIX nanosleep: sleeps for *req the same way, to the cycle the instant falls on. Nothing
 // interrupts it, so *rem (when not null) is set to 0. -1 with errno EINVAL for a null req, a negative time or
 // a tv_nsec outside 0..999999999.
 int nanosleep(const struct timespec* req, struct timespec* rem);

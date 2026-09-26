@@ -2,17 +2,17 @@
 
 unsigned int timer_ticks(void)
 {
-    return mmio_r32(TIMER_TICKS_REG);
+    return mmio_r32(TIMER_CYCLES_LOW_REG);
 }
 
 unsigned int timer_clock(void)
 {
-    return mmio_r32(TIMER_CLOCK_REG);
+    return mmio_r32(TIMER_RTC_REG);
 }
 
 unsigned int timer_elapsed(unsigned int since)
 {
-    return mmio_r32(TIMER_TICKS_REG) - since;      // unsigned subtraction is right across the wrap
+    return mmio_r32(TIMER_CYCLES_LOW_REG) - since;      // unsigned subtraction is right across the wrap
 }
 
 unsigned int timer_millis(void)
@@ -27,10 +27,10 @@ unsigned int timer_millis_elapsed(unsigned int since)
 
 // The 64-bit counts are read as pairs: the low word first takes the moment and latches the high half, so the
 // two reads are one instant however much the count moves in between (CeresASM e5fc11e for the ticks).
-uint64_t timer_ticks64(void)
+uint64_t timer_cycles64(void)
 {
-    unsigned int lo = mmio_r32(TIMER_TICKS_REG);
-    unsigned int hi = mmio_r32(TIMER_TICKS_HIGH_REG);
+    unsigned int lo = mmio_r32(TIMER_CYCLES_LOW_REG);
+    unsigned int hi = mmio_r32(TIMER_CYCLES_HIGH_REG);
     return ((uint64_t)hi << 32) | lo;
 }
 
@@ -41,28 +41,16 @@ uint64_t timer_nanos64(void)
     return ((uint64_t)hi << 32) | lo;
 }
 
-// The ns64 forms, kept for code written before the uint64_t ones.
-struct ns64 timer_nanos(void)
-{
-    uint64_t now = timer_nanos64();
-    return ns64_make((unsigned int)now, (unsigned int)(now >> 32));
-}
-
-struct ns64 timer_nanos_elapsed(struct ns64 since)
-{
-    uint64_t now = timer_nanos64();
-    return ns64_sub(ns64_make((unsigned int)now, (unsigned int)(now >> 32)), since);
-}
 
 unsigned int timer_nanos_resolution(void)
 {
-    unsigned int hz = mmio_r32(TIMER_HALT_CLOCK_REG);    // a CPU cycle, rounded up: the clock's step
+    unsigned int hz = mmio_r32(TIMER_CPU_HZ_REG);    // a CPU cycle, rounded up: the clock's step
     return (1000000000u - 1u) / hz + 1u;
 }
 
-unsigned int timer_halt_clock(void)
+unsigned int timer_cpu_hz(void)
 {
-    return mmio_r32(TIMER_HALT_CLOCK_REG);
+    return mmio_r32(TIMER_CPU_HZ_REG);
 }
 
 void timer_alarm_at(uint64_t at)
@@ -86,8 +74,6 @@ int timer_halt_until_ns(uint64_t deadline)
 {
     if (timer_nanos64() >= deadline)
         return 1;
-    if (timer_halt_clock() == 0u)
-        return 0;                                   // no real time while halted: nothing would wake it at the instant
     uint64_t saved = timer_alarm();
     int keep = saved != 0u && saved <= deadline;
     if (!keep)
@@ -103,11 +89,6 @@ void timer_wait_until_ns64(uint64_t deadline)
     while (!timer_halt_until_ns(deadline))
     {
     }
-}
-
-void timer_wait_until_ns(struct ns64 deadline)
-{
-    timer_wait_until_ns64(((uint64_t)deadline.hi << 32) | deadline.lo);
 }
 
 void timer_wait_ms(unsigned int ms)
@@ -130,18 +111,18 @@ void timer_arm(unsigned int ticks, int periodic)
     if (ticks == 0)
         ticks = 1;                                  // 0 would disarm it
     mmio_w32(TIMER_CONTROL_REG, periodic ? TIMER_PERIODIC : 0u);
-    mmio_w32(TIMER_CMD_REG, ticks);
+    mmio_w32(TIMER_COUNTDOWN_REG, ticks);
 }
 
 void timer_disarm(void)
 {
-    mmio_w32(TIMER_CMD_REG, 0u);
+    mmio_w32(TIMER_COUNTDOWN_REG, 0u);
 }
 
 void timer_wait(unsigned int ticks)
 {
-    unsigned int start = mmio_r32(TIMER_TICKS_REG);
-    while (mmio_r32(TIMER_TICKS_REG) - start < ticks)
+    unsigned int start = mmio_r32(TIMER_CYCLES_LOW_REG);
+    while (mmio_r32(TIMER_CYCLES_LOW_REG) - start < ticks)
     {
     }
 }
@@ -149,7 +130,7 @@ void timer_wait(unsigned int ticks)
 void timer_wait_until(unsigned int deadline)
 {
     // "reached" is a signed difference, so a deadline just past the wrap still counts as the future
-    while ((int)(mmio_r32(TIMER_TICKS_REG) - deadline) < 0)
+    while ((int)(mmio_r32(TIMER_CYCLES_LOW_REG) - deadline) < 0)
     {
     }
 }
@@ -176,7 +157,7 @@ static int add_task(unsigned int ticks, timer_cb cb, void* ctx, unsigned int per
         {
             tasks[i].cb = cb;
             tasks[i].ctx = ctx;
-            tasks[i].deadline = mmio_r32(TIMER_TICKS_REG) + ticks;
+            tasks[i].deadline = mmio_r32(TIMER_CYCLES_LOW_REG) + ticks;
             tasks[i].period = period;
             return i;
         }
@@ -213,7 +194,7 @@ int timer_pending(void)
 
 int timer_poll(void)
 {
-    unsigned int now = mmio_r32(TIMER_TICKS_REG);
+    unsigned int now = mmio_r32(TIMER_CYCLES_LOW_REG);
     int ran = 0;
     // Each poll runs the tasks that are due, the one that has waited longest first. A callback may
     // schedule or cancel tasks (including itself), so the table is looked at afresh every round.

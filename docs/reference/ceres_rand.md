@@ -1,12 +1,12 @@
 # `<ceres/rand.h>`
 
-Pseudo-random generators with explicit, reproducible state: two runs with the same seed give the same sequence (the VM is deterministic apart from its wall clock). The generator is xorshift128, seeded through splitmix32. Not cryptographic. stdlib's rand() is a separate, smaller generator.
+Pseudo-random generators with explicit, reproducible state: two runs with the same seed give the same sequence (the VM is deterministic apart from where its real-time clock starts). The generator is xorshift128, seeded through splitmix32. Not cryptographic. stdlib's rand() is a separate, smaller generator.
 
 ```c
 struct rng { unsigned int s0, s1, s2, s3; };
 
 void  rng_seed(struct rng* r, unsigned int seed);          // splitmix32 fills the state; any seed is fine, 0 included
-void  rng_seed_entropy(struct rng* r);                     // from the wall clock and the tick counter
+void  rng_seed_entropy(struct rng* r);                     // from the real-time clock and the cycle count
 unsigned int rng_u32(struct rng* r);                       // 0 .. 2^32-1
 int   rng_range(struct rng* r, int lo, int hi);            // lo..hi inclusive, without modulo bias; lo > hi swaps them
 float rng_float(struct rng* r);                            // [0, 1), 24 random bits

@@ -7,81 +7,72 @@
 
 // Timer device (0xFF010000). See CeresASM docs/07-IO-Devices-and-Ports.md.
 //
-// TIME HERE IS COUNTED IN INSTRUCTIONS. A tick is one instruction executed - or, while the CPU is halted,
-// one tick of the halted clock (below), an instruction's worth of time. A program that never halts ticks
-// the same number of times on every run, which is what makes tests reproducible; one that halts until an
-// outside event (a key, a real-time frame) ticks as long as it waited. An optimized build does more work
-// per tick and a game loop must measure WORK, not time. The wall clock (timer_clock, seconds since 1970) is the one value in the whole
-// machine that is not deterministic - and so is the millisecond register: real time, for the code that wants
-// to keep a rhythm on the wall clock.
+// TIME HERE IS THE MACHINE'S OWN. The CPU counts cycles - each instruction costs a fixed number of them (1 for
+// an addition, 2 for a load or a store, 16 for a division...) - and every clock the timer has is worked out
+// from that count at the CPU clock, timer_cpu_hz() (50 MHz by default): the nanoseconds, the milliseconds and
+// the real-time clock alike. So a program reads the same instants on every run and on every host, and how that
+// time keeps pace with the wall clock is the host's business (`ceres run --speed`), not the program's.
 //
-// The nanosecond clock is the exact one: 64 bits, from the host's steady clock, read with timer_nanos64() as a
-// uint64_t. (timer_nanos() and the rest of the struct ns64 forms are kept for code written before, and are
-// deprecated: a uint64_t does the same arithmetic with the ordinary operators.)
-// It is real time too, so it is as non-deterministic as the millisecond one, and a debugger replays it. What it
-// can tell apart is the host clock's step, timer_nanos_resolution(): often 100 ns, so two reads a few
-// instructions apart may return the same count.
+// A TICK IS A CPU CYCLE: timer_ticks(), timer_elapsed(), timer_arm() and the tick waits count cycles, so a frame
+// budget or a span measures work in the machine's own units - the same program costs more cycles at -O0 than
+// at -O2, and the same number on every run. timer_cycles64() is the whole 64-bit count.
 //
-// A program that HALTs with the timer armed does not stop the count: while the CPU is halted the clock runs
-// on at timer_halt_clock() ticks per second (100 000 000 by default, about what the machine executes), so a
-// tick is an instruction's worth of time either way. That is how a real-time wait becomes ticks for a halt:
-// 16 ms is timer_halt_clock() / 1000 * 16 of them. A host that does not run the halted clock in real time (a
-// debugger replaying) reports 0.
+// The real-time clock, timer_clock(), is seconds since 1970: where the machine's time started (the host's clock
+// when the machine started, or `ceres run --rtc`) plus the machine's time since.
+//
+// A program that HALTs does not stop the clock: the machine jumps straight to the next thing a device has
+// scheduled - the timer running out, the alarm, a transfer landing - and its time moves on by as much. With
+// nothing scheduled only the host can wake it (a key, input).
 //
 // Nothing here needs an interrupt handler, so this module never binds a vector. The tick waits (timer_wait,
-// timer_wait_until) spin on the tick register, exact to a few instructions. The real-time waits (timer_wait_ms,
-// _us, _ns, _until_ns, and sleep() and nanosleep() above them) SLEEP: they arm the timer's ALARM - an absolute
-// instant on the nanosecond clock, which raises interrupt 24 - and halt. A halt ends on any request a device
-// raises, taken or not, with interrupts masked or enabled (CeresASM 551cdbd), so the host is not kept busy and
-// no handler is needed; the wait looks at the clock each time and halts again until its instant. A host that
-// does not keep real time while halted (timer_halt_clock() == 0, a debugger replaying) cannot wake a halt at an
-// instant, and there they spin. The task table (timer_after/every) is driven by timer_poll().
+// timer_wait_until) spin on the cycle count. The time waits (timer_wait_ms, _us, _ns, _until_ns64, and sleep()
+// and nanosleep() above them) SLEEP: they arm the timer's ALARM - an absolute instant on the nanosecond clock,
+// which raises interrupt 24 - and halt. A halt ends on any request a device raises, taken or not, with
+// interrupts masked or enabled (CeresASM 551cdbd), so no handler is needed; the wait looks at the clock each
+// time and halts again until its instant. The task table (timer_after/every) is driven by timer_poll().
 
-// The registers (CeresASM plan/v2 SPEC 5.7). A tick is a CPU cycle.
-#define TIMER_TICKS_REG      (TIMER_BASE + 0x00)   // R: CyclesLow: CPU cycles since the start, low word; latches the high word
-#define TIMER_TICKS_HIGH_REG (TIMER_BASE + 0x04)   // R: CyclesHigh: the high word latched by the last low read
-#define TIMER_CMD_REG        (TIMER_BASE + 0x08)   // RW: Countdown: N cycles until it fires; 0 disarms; reads what is left
-#define TIMER_CONTROL_REG    (TIMER_BASE + 0x0C)   // RW: CountdownControl: TIMER_PERIODIC re-arms with the last countdown written
-#define TIMER_NANOS_LOW_REG  (TIMER_BASE + 0x10)   // R: the low word of the nanoseconds since the start; latches the high word
-#define TIMER_NANOS_HIGH_REG (TIMER_BASE + 0x14)   // R: the high word latched by the last read of the low one
-#define TIMER_MILLIS_REG     (TIMER_BASE + 0x18)   // R: milliseconds since the start (wraps at 49 days)
-#define TIMER_CLOCK_REG      (TIMER_BASE + 0x1C)   // R: Rtc: seconds since 1970, the start value plus the machine's time
-#define TIMER_ALARM_LOW_REG  (TIMER_BASE + 0x20)   // RW: the low word of the alarm instant (nanoseconds, NANOS' clock)
-#define TIMER_ALARM_HIGH_REG (TIMER_BASE + 0x24)   // RW: the high word; writing it arms the alarm (0:0 disarms)
-#define TIMER_HALT_CLOCK_REG (TIMER_BASE + 0x28)   // R: CpuClockHz: the CPU clock, cycles per second, running or halted
-#define TIMER_PERIODIC   0x1u                      // CountdownControl bit 0
+// The registers (CeresASM plan/v2 SPEC 5.7).
+#define TIMER_CYCLES_LOW_REG   (TIMER_BASE + 0x00)   // R: CPU cycles since the start, low word; latches the high word
+#define TIMER_CYCLES_HIGH_REG  (TIMER_BASE + 0x04)   // R: the high word latched by the last low read
+#define TIMER_COUNTDOWN_REG    (TIMER_BASE + 0x08)   // RW: N cycles until IRQ_TIMER; 0 disarms; reads what is left
+#define TIMER_CONTROL_REG      (TIMER_BASE + 0x0C)   // RW: TIMER_PERIODIC re-arms with the last countdown written
+#define TIMER_NANOS_LOW_REG    (TIMER_BASE + 0x10)   // R: nanoseconds since the start, low word; latches the high word
+#define TIMER_NANOS_HIGH_REG   (TIMER_BASE + 0x14)   // R: the high word latched by the last read of the low one
+#define TIMER_MILLIS_REG       (TIMER_BASE + 0x18)   // R: milliseconds since the start (wraps at 49 days)
+#define TIMER_RTC_REG          (TIMER_BASE + 0x1C)   // R: seconds since 1970, the start plus the machine's time
+#define TIMER_ALARM_LOW_REG    (TIMER_BASE + 0x20)   // RW: the alarm instant in nanoseconds, low word
+#define TIMER_ALARM_HIGH_REG   (TIMER_BASE + 0x24)   // RW: the high word; writing it arms the alarm (0:0 disarms)
+#define TIMER_CPU_HZ_REG       (TIMER_BASE + 0x28)   // R: the CPU clock, cycles per second
+#define TIMER_PERIODIC   0x1u                      // TIMER_CONTROL_REG bit 0
 #define TIMER_MAX_TICKS  0xFFFFFFFFu               // the longest period the countdown register can hold
 
-unsigned int timer_ticks(void);                          // ticks so far: instructions, and halted time (wraps at 2^32, about 43 s)
-uint64_t     timer_ticks64(void);                        // the same, all 64 bits: the count of instructions a run can compare
+unsigned int timer_ticks(void);                          // CPU cycles so far (wraps at 2^32: 86 s at 50 MHz)
+uint64_t     timer_cycles64(void);                       // the same, all 64 bits: what a run can compare with another
 uint64_t     timer_nanos64(void);                        // nanoseconds since the machine started (584 years before it wraps)
-unsigned int timer_clock(void);                          // wall-clock seconds since 1970
-unsigned int timer_elapsed(unsigned int since);          // ticks since `since`, correct across the wrap
-unsigned int timer_millis(void);                         // wall-clock milliseconds since the machine started
+unsigned int timer_clock(void);                          // the real-time clock: seconds since 1970
+unsigned int timer_elapsed(unsigned int since);          // cycles since `since`, correct across the wrap
+unsigned int timer_millis(void);                         // milliseconds since the machine started
 unsigned int timer_millis_elapsed(unsigned int since);   // milliseconds since `since`, correct across the wrap
-struct ns64  timer_nanos(void) __attribute__((__deprecated__));                       // timer_nanos64(), as an ns64
-struct ns64  timer_nanos_elapsed(struct ns64 since) __attribute__((__deprecated__));   // timer_nanos64() - since
-unsigned int timer_nanos_resolution(void);               // the clock's step in nanoseconds (never 0)
-unsigned int timer_halt_clock(void);                     // ticks per second while halted (0: the host does not keep real time)
+unsigned int timer_nanos_resolution(void);               // the clock's step: one CPU cycle, in nanoseconds (never 0)
+unsigned int timer_cpu_hz(void);                         // the CPU clock, cycles per second
 
 // The hardware timer raises interrupt 16 (IRQ_TIMER) when it expires; it is masked unless the
 // program has done sti and attached a handler (ceres/irq.h).
-void timer_arm(unsigned int ticks, int periodic);        // fire in `ticks` instructions (1..TIMER_MAX_TICKS)
+void timer_arm(unsigned int ticks, int periodic);        // fire in `ticks` cycles (1..TIMER_MAX_TICKS)
 void timer_disarm(void);
 
-// Waiting on ticks: a spin on the tick register, so it needs no interrupt and is exact to a few instructions.
-void timer_wait(unsigned int ticks);                     // return after `ticks` instructions have passed
+// Waiting on ticks: a spin on the cycle count, so it needs no interrupt and is exact to a few instructions.
+void timer_wait(unsigned int ticks);                     // return after `ticks` cycles have passed
 void timer_wait_until(unsigned int deadline);            // return once timer_ticks() has reached `deadline`
 
-// Waiting in real time: the machine sleeps (see above), and wakes at the instant or a little after - the host
-// sleeps in its own steps, often a millisecond. timer_halt_until_ns is one halt of such a wait, for a loop that
-// also waits for something else: it returns early when any device raises a request (a key, a transfer done).
-void timer_wait_ms(unsigned int ms);                     // return after `ms` real milliseconds
-void timer_wait_us(unsigned int us);                     // return after `us` real microseconds
-void timer_wait_ns(unsigned int ns);                     // return after `ns` real nanoseconds (at most 4.29 s)
+// Waiting in time: the machine sleeps (see above) and wakes on the cycle the instant falls on.
+// timer_halt_until_ns is one halt of such a wait, for a loop that also waits for something else: it returns
+// early when any device raises a request (a key, a transfer done).
+void timer_wait_ms(unsigned int ms);                     // return after `ms` milliseconds
+void timer_wait_us(unsigned int us);                     // return after `us` microseconds
+void timer_wait_ns(unsigned int ns);                     // return after `ns` nanoseconds (at most 4.29 s)
 void timer_wait_until_ns64(uint64_t deadline);           // return once timer_nanos64() has reached `deadline`
 int  timer_halt_until_ns(uint64_t deadline);             // one halt, until `deadline` or any request; nonzero once it has passed
-void timer_wait_until_ns(struct ns64 deadline) __attribute__((__deprecated__));       // timer_wait_until_ns64, from an ns64
 
 // The alarm itself. The waits above use it and put back whatever it was set to, so a program may keep one of
 // its own: one due before a wait's instant still fires on time.
