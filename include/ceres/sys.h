@@ -66,7 +66,9 @@ void sys_print_layout(void);                   // a readable table on the termin
 
 // ---- reporting faults (the optional "fault" module) ----
 // Without it, a fault (a misaligned load, a store to the null page, an illegal instruction, a stack that
-// grew past its limit) falls through to the BIOS's default stub, which prints a bare "E" and halts. A
+// grew past its limit) falls through to the BIOS's default handler, which shuts the machine down with status
+// 1; `ceres run` then names the fault, the instruction's address and, for a memory fault, the access on stderr
+// (CeresASM cdf151c; before it the stub printed a bare "E" and halted, and the run never ended). A
 // program that calls sys_install_fault_handlers() carries handlers for interrupts 1, 2, 3, 5, 6 and 7
 // instead; each reports the kind of fault, the address of the instruction and the flags, then stops the
 // machine (with --debug the address can be turned into file:line). For a memory fault (3, 6, 7) it also says
