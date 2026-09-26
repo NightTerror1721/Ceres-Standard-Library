@@ -72,7 +72,7 @@ static void stack(void)
     for (int i = 0; i < 1000; i++) sink += i;
     unsigned int used = dbg_span_elapsed(&s);
     CHECK(used > 3000);
-    CHECK(used < 60000);
+    CHECK(used < 200000);                               // CPU cycles: about 92 000 at -O0, 16 000 at -O2
     CHECK(dbg_span_elapsed(&s) >= used);
     dbg_span_begin(&s, "nothing");
     CHECK(dbg_span_elapsed(&s) < 200);

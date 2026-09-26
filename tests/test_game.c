@@ -1,8 +1,8 @@
-// The frame loop paced by an instruction budget: a frame takes at least its budget, the counters move as
-// documented, and game_run calls update and draw once per frame until game_quit. (The timer counts in
-// "ticks" that are not one per source line: an empty 50-turn loop is about 1800 of them at -O0 and 270 at
-// -O2, and input_update() is about 30000 and 5000. So the checks are about the WAIT, measured around
-// game_frame_end, and allow the work a frame does to vary with the optimization level.)
+// The frame loop paced by a tick budget: a frame takes at least its budget, the counters move as
+// documented, and game_run calls update and draw once per frame until game_quit. (The timer counts CPU
+// cycles, not source lines: a load or a store costs 2, so an empty frame is about 600 of them at -O0 and 150
+// at -O2. So the checks are about the WAIT, measured around game_frame_end, and allow the work a frame does
+// to vary with the optimization level.)
 #include "ceres/test.h"
 #include "ceres/game.h"
 #include "ceres/timer.h"
@@ -51,7 +51,7 @@ int main(void)
     CHECK_EQ((int)g.frame, 5);
     CHECK(at_least);
     CHECK(not_much_more);
-    CHECK(g.work_last < 400);                           // an empty frame does almost no work
+    CHECK(g.work_last < 1200);                          // an empty frame does almost no work
     CHECK_EQ(game_over_budget(&g), 0);
 
     TEST_SECTION("work is measured, and a heavy frame is over budget");
@@ -94,7 +94,7 @@ int main(void)
         game_frame_begin(&g);
         unsigned int t0 = timer_ticks();
         game_frame_end(&g);
-        if (timer_elapsed(t0) > 300u) quick = 0;
+        if (timer_elapsed(t0) > 1000u) quick = 0;
     }
     CHECK_EQ((int)g.frame, 20);
     CHECK(quick);
