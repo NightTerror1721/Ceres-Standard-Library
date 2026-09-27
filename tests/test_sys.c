@@ -40,13 +40,18 @@ int main(void)
     CHECK(l.sp > l.heap_start);                                // the stack lives above the image
     CHECK(sys_sp() > l.heap_start);
     CHECK(here > l.heap_start);                                // a local is on it
-    CHECK(here < CERES_DEFAULT_RAM);                           // ... inside a default 16 MiB machine
+    CHECK(here < CERES_DEFAULT_RAM);                           // ... inside a default 64 MiB machine
     CHECK(sys_stack_free() > 1024u * 1024u);                   // plenty of ground between heap and stack
     CHECK(sys_stack_free() < CERES_DEFAULT_RAM);
     void* m = malloc(64 * 1024);
     CHECK(m != 0);
     CHECK(sys_stack_free() < CERES_DEFAULT_RAM);
     free(m);
+
+    TEST_SECTION("the machine");
+    CHECK_EQ(sys_profile(), SYS_PROFILE_STANDARD);             // what ceres run gives when asked for nothing
+    CHECK_EQ(sys_memory_size(), CERES_DEFAULT_RAM);
+    CHECK_EQ(sys_vram_size(), 32u * 1024u * 1024u);
 
     TEST_SECTION("panic");
     int verdict = test_summary();

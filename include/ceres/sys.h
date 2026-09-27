@@ -15,6 +15,21 @@
 #define SYS_CTRL_ARGC         (SYS_CTRL_BASE + 0x18)   // read: argc, what main was started with
 #define SYS_CTRL_ARGV         (SYS_CTRL_BASE + 0x1C)   // read: the address of argv
 #define SYS_CTRL_ENVP         (SYS_CTRL_BASE + 0x20)   // read: the address of envp
+#define SYS_CTRL_CPU_CLOCK    (SYS_CTRL_BASE + 0x24)   // read: the CPU clock, in cycles per second
+#define SYS_CTRL_PROFILE      (SYS_CTRL_BASE + 0x28)   // read: the machine's profile, one of SYS_PROFILE_*
+#define SYS_CTRL_FAULT_REASON (SYS_CTRL_BASE + 0x2C)   // read: why the last fault happened (CeresASM plan/v2 SPEC 5.4)
+#define SYS_CTRL_VRAM_SIZE    (SYS_CTRL_BASE + 0x38)   // read: bytes of VRAM
+
+// The machines `ceres run --profile` gives (CeresASM docs/30-Machine-Clock-and-Profiles.md): from a 2 MHz micro
+// with 64 KiB of RAM to a workstation, and custom, which is any of them with an option changed.
+#define SYS_PROFILE_MICRO       0
+#define SYS_PROFILE_POCKET      1
+#define SYS_PROFILE_RETRO       2
+#define SYS_PROFILE_ARCADE      3
+#define SYS_PROFILE_POLYGON     4
+#define SYS_PROFILE_STANDARD    5
+#define SYS_PROFILE_WORKSTATION 6
+#define SYS_PROFILE_CUSTOM      7
 #define FAULT_READ   1u
 #define FAULT_WRITE  2u
 #define FAULT_FETCH  3u
@@ -27,6 +42,8 @@ void sys_exit(void) __attribute__((__noreturn__));                // shut the VM
 void sys_exit_status(int status) __attribute__((__noreturn__));   // shut it down; the low eight bits of `status` become the exit status of `ceres run`
 void sys_reset(void) __attribute__((__noreturn__));               // start the program again from its image (writes 2)
 unsigned int sys_memory_size(void);  // how many bytes of RAM the machine has
+unsigned int sys_vram_size(void);    // how many bytes of VRAM it has (at 0xA0000000)
+unsigned int sys_profile(void);      // which machine it is: SYS_PROFILE_*
 unsigned int sys_features(void);     // the features register (0 unless something switched a feature on)
 void sys_set_features(unsigned int features);
 void sys_panic(const char* msg) __attribute__((__noreturn__));   // print "panic: <msg>" on the terminal and shut down

@@ -53,6 +53,16 @@ unsigned int sys_memory_size(void)
     return mmio_r32(SYS_CTRL_MEM_SIZE);
 }
 
+unsigned int sys_vram_size(void)
+{
+    return mmio_r32(SYS_CTRL_VRAM_SIZE);
+}
+
+unsigned int sys_profile(void)
+{
+    return mmio_r32(SYS_CTRL_PROFILE);
+}
+
 unsigned int sys_features(void)
 {
     return mmio_r32(SYS_CTRL_FEATURES);

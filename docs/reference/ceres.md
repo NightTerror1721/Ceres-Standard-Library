@@ -31,7 +31,7 @@ Ceres reaches its devices through memory-mapped I/O at the top of the address sp
 #define CERES_BIOS          0x00000100
 #define CERES_TEXT_BASE     0x00000400   // where the program image starts
 #define CERES_SYSTEM_STACK  4096         // the last 4 KiB of RAM: interrupt handlers run here (CeresASM 331068a)
-#define CERES_DEFAULT_RAM   (16 * 1024 * 1024)
+#define CERES_DEFAULT_RAM   (64 * 1024 * 1024)   // the standard profile's, what `ceres run` gives when asked for nothing
 
 #define irq_enable()        __builtin_sti()
 #define irq_disable()       __builtin_cli()

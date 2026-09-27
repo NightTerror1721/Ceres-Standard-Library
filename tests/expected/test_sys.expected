@@ -1,6 +1,7 @@
 -- the image is laid out in order
 -- our own variables live in the right sections
 -- the stack
+-- the machine
 -- panic
-ALL PASSED 20/20
+ALL PASSED 23/23
 panic: boom
