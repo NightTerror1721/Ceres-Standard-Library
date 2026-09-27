@@ -45,11 +45,10 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/bits.h>`](ceres_bits.md) | The bit instructions, plus helpers built on them. |
 | [`<ceres/blitter.h>`](ceres_blitter.md) | The 2D blitter (0xFF460000, CeresASM 3b2db3b): rectangle operations on RGB32 surfaces in RAM done by the host, at no cost in instructions. |
 | [`<ceres/blockdev.h>`](ceres_blockdev.md) | Block devices: what CeresFS (ceres/fs.h) keeps its volumes on. |
-| [`<ceres/color.h>`](ceres_color.md) | Colours are 0x00RRGGBB in an unsigned int, the format of the pixel display. |
+| [`<ceres/color.h>`](ceres_color.md) | Colours are 0x00RRGGBB in an unsigned int, the format of the bitmap plane (ceres/fb.h). |
 | [`<ceres/config.h>`](ceres_config.md) | Compile-time configuration. |
 | [`<ceres/debug.h>`](ceres_debug.md) | Logging and inspection for programs under development. |
 | [`<ceres/disk.h>`](ceres_disk.md) | Disk (0xFF300000): sectors of 512 bytes. |
-| [`<ceres/display.h>`](ceres_display.md) | Display device (0xFF450000): a pixel framebuffer of RGB32 pixels (0x00RRGGBB, top byte ignored). |
 | [`<ceres/dma.h>`](ceres_dma.md) | DMA controller (0xFF020000): copies memory to memory without the program moving it word by word. |
 | [`<ceres/ds/bitset.h>`](ceres_ds_bitset.md) | A set of small integers 0 .. nbits-1 as one bit each, over words the caller provides: occupancy maps, tile flags, "which of these are used". |
 | [`<ceres/ds/bloom.h>`](ceres_ds_bloom.md) | A Bloom filter: approximate set membership in a fraction of a real set's memory, at the cost of occasional false positives (never false negatives) - "have I... |
@@ -79,12 +78,13 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/ds/trie.h>`](ceres_ds_trie.md) | A trie over ASCII strings: "every word starting with this prefix" is a query neither ceres/ds/hashmap.h nor ceres/ds/omap.h answers well - the tree would... |
 | [`<ceres/ds/vector.h>`](ceres_ds_vector.md) | A growable array of fixed-size elements. |
 | [`<ceres/f64.h>`](ceres_f64.md) | IEEE 754 binary64 - a real double - in software, on the bits of one in an unsigned long long. |
+| [`<ceres/fb.h>`](ceres_fb.md) | The GPU's bitmap plane (level V1, CeresASM plan/v2 SPEC 7): a picture in video memory, behind the text plane, that the screen shows at every vertical blank. |
 | [`<ceres/fixed.h>`](ceres_fixed.md) | 16.16 fixed-point arithmetic, for games that want exact, repeatable numbers without the float unit. |
 | [`<ceres/font.h>`](ceres_font.md) | An 8x8 bitmap font for the pixel surfaces: printable ASCII (32..126) and Latin-1 (0xA0..0xFF, the code points U+00A0..U+00FF: accented letters, the Spanish... |
 | [`<ceres/fs.h>`](ceres_fs.md) | CeresFS: a small file system on a block device (ceres/blockdev.h): the internal disk, a memory stick or a cartridge in a peripheral port. |
 | [`<ceres/game.h>`](ceres_game.md) | A fixed-step game loop: input -> logic -> drawing -> present -> wait for the next frame. |
 | [`<ceres/gamepad.h>`](ceres_gamepad.md) | Gamepad device (0xFF120000). |
-| [`<ceres/gfx.h>`](ceres_gfx.md) | 2D drawing on the pixel display. |
+| [`<ceres/gfx.h>`](ceres_gfx.md) | 2D drawing on the GPU's bitmap plane (ceres/fb.h). |
 | [`<ceres/hash.h>`](ceres_hash.md) | Hashes and checksums, all in 32-bit arithmetic. |
 | [`<ceres/heap.h>`](ceres_heap.md) | Dynamic memory. |
 | [`<ceres/hostfs.h>`](ceres_hostfs.md) | Files of the host: semihosting through the machine's host file device (CeresASM 1c51ade). |
@@ -112,12 +112,13 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/string_fast.h>`](ceres_string_fast.md) | The word-at-a-time strcpy, strcmp, strchr and memchr (asm/string_fast.casm) ARE the standard functions now: every program gets them through <string.h>. |
 | [`<ceres/sys.h>`](ceres_sys.md) | The machine as a program sees it: how to stop it, and where its memory is. |
 | [`<ceres/task.h>`](ceres_task.md) | Tasks: coroutines with a scheduler, cooperative. |
-| [`<ceres/terminal.h>`](ceres_terminal.md) | Terminal device (0xFF000000). |
+| [`<ceres/terminal.h>`](ceres_terminal.md) | The terminal (0xFF000000): the program's standard input, output and error. |
 | [`<ceres/test.h>`](ceres_test.md) | A minimal test framework. |
-| [`<ceres/textfb.h>`](ceres_textfb.md) | Text framebuffer (0xFF440000): a grid of characters a program draws into and then shows. |
+| [`<ceres/text.h>`](ceres_text.md) | The GPU's text plane (level V0, CeresASM plan/v2 SPEC 7): a grid of 8x16 cells in video memory, drawn in front of everything else. |
 | [`<ceres/timer.h>`](ceres_timer.md) | Timer device (0xFF010000). |
-| [`<ceres/tui.h>`](ceres_tui.md) | A small text user interface, drawn into the text framebuffer (textfb.h): windows with a title, labels, buttons, a progress bar, a scrolling list and a menu... |
+| [`<ceres/tui.h>`](ceres_tui.md) | A small text user interface, drawn into the GPU's text plane (text.h): windows with a title, labels, buttons, a progress bar, a scrolling list and a menu... |
 | [`<ceres/utf8.h>`](ceres_utf8.md) | UTF-8, the encoding of every string in this library: source files, the terminal, the files a program writes, and the multibyte strings of <stdlib.h>,... |
 | [`<ceres/vecmath.h>`](ceres_vecmath.md) | 2D and 3D vectors passed and returned by value, and the small numeric helpers games keep rewriting. |
+| [`<ceres/video.h>`](ceres_video.md) | The GPU (0xFF400000): the screen and what it shows, for every video level (CeresASM plan/v2 SPEC 7). |
 | [`<ceres.h>`](ceres.md) | Ceres stdlib - low-level device access. |
 | [`<interrupts.h>`](interrupts.md) | Interrupt number space. |

@@ -5,35 +5,35 @@
 
 int tui_init(int cols, int rows)
 {
-    if (fb_init(cols, rows) != 0)
+    if (text_init(cols, rows) != 0)
         return -1;
-    fb_set_attr(TUI_NORMAL);
-    fb_clear(' ');
+    text_set_attr(TUI_NORMAL);
+    text_clear(' ');
     return 0;
 }
 
 void tui_shutdown(void)
 {
-    fb_set_attr(TUI_NORMAL);
-    fb_shutdown();
+    text_set_attr(TUI_NORMAL);
+    text_shutdown();
 }
 
 void tui_clear(void)
 {
-    fb_set_attr(TUI_NORMAL);
-    fb_clear(' ');
+    text_set_attr(TUI_NORMAL);
+    text_clear(' ');
 }
 
 void tui_present(void)
 {
-    fb_present();
+    text_present();
 }
 
 // Sets the attribute for the drawing that follows and returns the one it replaced, to be put back.
 static unsigned char use(unsigned char attr)
 {
-    unsigned char before = fb_attr();
-    fb_set_attr(attr);
+    unsigned char before = text_attr();
+    text_set_attr(attr);
     return before;
 }
 
@@ -42,52 +42,52 @@ void tui_window(int x, int y, int w, int h, const char* title)
     if (w < 4 || h < 2)
         return;
     unsigned char before = use(TUI_NORMAL);
-    fb_fill(x, y, w, h, ' ');                             // the inside, and whatever was under the frame
-    fb_set_attr(TUI_FRAME);
-    fb_box(x, y, w, h);
+    text_fill(x, y, w, h, ' ');                             // the inside, and whatever was under the frame
+    text_set_attr(TUI_FRAME);
+    text_box(x, y, w, h);
     if (title != 0 && title[0] != 0)
     {
         int room = w - 6;                                 // "+ title +" needs the corners and a space each side
-        int length = fb_text_width(title);
+        int length = text_text_width(title);
         if (length > room)
             length = room;
         if (length > 0)
         {
-            fb_put(x + 1, y, ' ');
-            fb_set_attr(TUI_TITLE);
-            fb_text_n(x + 2, y, title, length);
-            fb_set_attr(TUI_FRAME);
-            fb_put(x + 2 + length, y, ' ');
+            text_put(x + 1, y, ' ');
+            text_set_attr(TUI_TITLE);
+            text_text_n(x + 2, y, title, length);
+            text_set_attr(TUI_FRAME);
+            text_put(x + 2 + length, y, ' ');
         }
     }
-    fb_set_attr(before);
+    text_set_attr(before);
 }
 
 void tui_label(int x, int y, const char* text)
 {
     unsigned char before = use(TUI_NORMAL);
-    fb_text(x, y, text);
-    fb_set_attr(before);
+    text_text(x, y, text);
+    text_set_attr(before);
 }
 
 void tui_label_center(int x, int y, int w, const char* text)
 {
-    int length = fb_text_width(text);
+    int length = text_text_width(text);
     int start = length >= w ? 0 : (w - length) / 2;
     unsigned char before = use(TUI_NORMAL);
-    fb_text_n(x + start, y, text, w);
-    fb_set_attr(before);
+    text_text_n(x + start, y, text, w);
+    text_set_attr(before);
 }
 
 void tui_button(int x, int y, const char* text, int focused)
 {
     unsigned char before = use(focused ? TUI_SELECTED : TUI_NORMAL);
-    fb_put(x, y, '[');
-    fb_put(x + 1, y, ' ');
-    int length = fb_text_n(x + 2, y, text, 0x7FFFFFFF);
-    fb_put(x + 2 + length, y, ' ');
-    fb_put(x + 3 + length, y, ']');
-    fb_set_attr(before);
+    text_put(x, y, '[');
+    text_put(x + 1, y, ' ');
+    int length = text_text_n(x + 2, y, text, 0x7FFFFFFF);
+    text_put(x + 2 + length, y, ' ');
+    text_put(x + 3 + length, y, ']');
+    text_set_attr(before);
 }
 
 void tui_progress(int x, int y, int w, int percent)
@@ -100,29 +100,29 @@ void tui_progress(int x, int y, int w, int percent)
         percent = 100;
     int bar = w - 5;                                      // " 100%" is five cells
     int done = bar * percent / 100;
-    unsigned char before = fb_attr();
+    unsigned char before = text_attr();
     for (int i = 0; i < bar; i++)
     {
-        fb_set_attr(i < done ? TUI_BAR_FULL : TUI_BAR_EMPTY);
-        fb_put(x + i, y, i < done ? '#' : '-');
+        text_set_attr(i < done ? TUI_BAR_FULL : TUI_BAR_EMPTY);
+        text_put(x + i, y, i < done ? '#' : '-');
     }
-    fb_set_attr(TUI_NORMAL);
+    text_set_attr(TUI_NORMAL);
     char text[8];
     snprintf(text, sizeof(text), "%4d%%", percent);
-    fb_text(x + bar, y, text);
-    fb_set_attr(before);
+    text_text(x + bar, y, text);
+    text_set_attr(before);
 }
 
 void tui_status(const char* text)
 {
-    int row = fb_rows() - 1;
-    int cols = fb_cols();
+    int row = text_rows() - 1;
+    int cols = text_cols();
     if (row < 0)
         return;
     unsigned char before = use(TUI_STATUS);
-    fb_hline(0, row, cols, ' ');
-    fb_text_n(0, row, text, cols);
-    fb_set_attr(before);
+    text_hline(0, row, cols, ' ');
+    text_text_n(0, row, text, cols);
+    text_set_attr(before);
 }
 
 int tui_list(int x, int y, int w, int rows, const char* const* items, int count, int selected, int top)
@@ -135,16 +135,16 @@ int tui_list(int x, int y, int w, int rows, const char* const* items, int count,
         top = selected - rows + 1;
     if (top < 0)
         top = 0;
-    unsigned char before = fb_attr();
+    unsigned char before = text_attr();
     for (int r = 0; r < rows; r++)
     {
         int index = top + r;
-        fb_set_attr(index == selected ? TUI_SELECTED : TUI_NORMAL);
-        fb_hline(x, y + r, w, ' ');
+        text_set_attr(index == selected ? TUI_SELECTED : TUI_NORMAL);
+        text_hline(x, y + r, w, ' ');
         if (index < count)
-            fb_text_n(x, y + r, items[index], w);
+            text_text_n(x, y + r, items[index], w);
     }
-    fb_set_attr(before);
+    text_set_attr(before);
     return top;
 }
 
@@ -152,18 +152,18 @@ int tui_menu(int x, int y, const char* title, const char* const* items, int coun
 {
     if (count < 1)
         return -1;
-    int widest = title != 0 ? fb_text_width(title) + 2 : 0;  // the title sits in the top edge with a space each side
+    int widest = title != 0 ? text_text_width(title) + 2 : 0;  // the title sits in the top edge with a space each side
     for (int i = 0; i < count; i++)
     {
-        int length = fb_text_width(items[i]);
+        int length = text_text_width(items[i]);
         if (length > widest)
             widest = length;
     }
     int w = widest + 4;                                       // a border and a space on each side
     int rows = count;
-    if (y + rows + 2 > fb_rows())
-        rows = fb_rows() - y - 2;
-    if (rows < 1 || x + w > fb_cols())
+    if (y + rows + 2 > text_rows())
+        rows = text_rows() - y - 2;
+    if (rows < 1 || x + w > text_cols())
         return -1;
 
     int selected = 0;

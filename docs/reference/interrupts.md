@@ -6,7 +6,7 @@ Interrupt number space. 0-15 are reserved and always deliverable; 16-63 are user
 #define IRQ_COUNT        64     // the size of the vector table
 #define IRQ_USER_FIRST   16     // 0-15 are exceptions, always deliverable; 16-63 are masked unless sti
 #define IRQ_USER_LAST    63
-#define IRQ_DEVICE_LAST  34     // the last number a device raises today (the blitter's)
+#define IRQ_DEVICE_LAST  35     // the last number a device raises today (the GPU's fault)
 
 enum IRQ
 {
@@ -29,7 +29,11 @@ enum IRQ
     IRQ_GAMEPAD     = 22,   // UserInterrupt6
     IRQ_PERIPH      = 26,   // UserInterrupt10: a medium was plugged in or pulled out
     IRQ_AUDIO       = 28,   // UserInterrupt12: a tone has finished
-    IRQ_BLITTER     = 34    // UserInterrupt18: an operation is done (ceres/blitter.h)
+    IRQ_VBLANK      = 32,   // UserInterrupt16: the GPU's vertical blank (ceres/video.h)
+    IRQ_LINE        = 33,   // UserInterrupt17: the GPU's scan has reached its LineCompare line
+    IRQ_BLITTER     = 34,   // UserInterrupt18: a blitter operation, or the GPU's copy engine, is done (ceres/blitter.h)
+    IRQ_GPU_COPY    = 34,   // the same number: the GPU's copy engine
+    IRQ_GPU_FAULT   = 35    // UserInterrupt19: the GPU was given an address outside the RAM and the VRAM
 };
 
 // A handler is declared with `__interrupt` and entered only through the vector

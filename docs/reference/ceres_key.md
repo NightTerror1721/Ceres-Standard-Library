@@ -11,9 +11,9 @@ Keystrokes: what a person types, one at a time, in the order they typed it - for
 
 A KEYSTROKE is an int. A typed character is its Unicode code point (an accented letter is one value, not two bytes), so it compares with a character constant: `key == 'q'`. A key that types no character is a KEYC_* constant, far above the code points so the two never meet.
 
-WHERE THE KEYS COME FROM. A console hands a program whole lines, and only once Enter is pressed, and its own line editor keeps the arrows; reading it with getchar() cannot drive a menu. key_start() asks the host (terminal.h, term_set_raw) to hand the keys over as they are pressed. If it does, they are read from the keyboard device's key register (keyboard.h): in a console, and in the window. If it cannot - the input is a pipe or a file - the keys are decoded from the terminal's bytes instead: a character is itself, Enter is \r or \n, Backspace is 8 or 127, and the arrows are the sequences a terminal sends (ESC [ A ... ESC [ D, or ESC O A ...), so a file can drive a menu the way a person would. Both give the same KEYC_* values.
+WHERE THE KEYS COME FROM. The terminal hands a program whole lines, and only once Enter is pressed, and its line editor keeps the arrows; reading it with getchar() cannot drive a menu. key_start() puts the terminal in raw mode (terminal.h, term_set_raw), where every key comes at once as the bytes a terminal sends, and the keys are decoded from them: a character is itself, Enter is \r or \n, Backspace is 8 or 127, and the arrows are the sequences ESC [ A ... ESC [ D (or ESC O A ...). That is the same in the window, with `ceres run --keys`, and with `--type`, so a file can drive a menu the way a person would.
 
-Nothing echoes: the program draws what it wants shown. While keys are raw the console does not edit lines, so use key_stop() before going back to scanf() or fgets(); the host also puts the console right when the program ends.
+Nothing echoes: the program draws what it wants shown. While keys are raw the terminal does not edit lines, so use key_stop() before going back to scanf() or fgets().
 
 ```c
 #define KEYC_BASE       0x200000                   // above every Unicode code point (at most 0x10FFFF)

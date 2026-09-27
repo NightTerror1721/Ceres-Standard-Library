@@ -2,6 +2,7 @@
 #include "ceres/game.h"
 #include "ceres/input.h"
 #include "ceres/timer.h"
+#include "ceres/video.h"
 
 void game_init(struct game* g, unsigned int ticks_per_frame)
 {
@@ -12,6 +13,7 @@ void game_init(struct game* g, unsigned int ticks_per_frame)
     g->work_last = 0;
     g->wait_ms = 0;
     g->frame_start_ns = timer_nanos64();
+    g->frame_start_vblank = video_frame();
     g->wait = 0;
     input_init();
 }
@@ -26,6 +28,7 @@ void game_frame_begin(struct game* g)
     input_update();
     g->frame_start = timer_ticks();
     g->frame_start_ns = timer_nanos64();
+    g->frame_start_vblank = video_frame();
 }
 
 void game_frame_end(struct game* g)
@@ -73,6 +76,21 @@ void game_pace_ms(struct game* g, unsigned int ms)
 {
     g->wait_ms = ms < 1u ? 1u : ms;
     g->wait = sleep_nanos;
+}
+
+// Spins on the GPU's frame counter until `wait_ms` blanks have passed since the frame began. A frame that took
+// longer than that ends at once: the next starts from now.
+static void wait_vblank(struct game* g)
+{
+    while (video_frame() - g->frame_start_vblank < g->wait_ms)
+    {
+    }
+}
+
+void game_pace_vblank(struct game* g, unsigned int frames)
+{
+    g->wait_ms = frames < 1u ? 1u : frames;
+    g->wait = wait_vblank;
 }
 
 int game_over_budget(const struct game* g)

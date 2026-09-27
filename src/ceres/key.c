@@ -2,7 +2,9 @@
 #include "ceres/terminal.h"
 #include "ceres/timer.h"
 
-// 1 once the host has agreed to deliver keys on the keyboard device; 0 while they are read from the terminal.
+// 1 when the keys are read from the keyboard device's key register; 0 while they are read from the terminal. The
+// terminal's raw mode hands every key over as it is pressed - in the window and from `ceres run --keys` alike - so
+// the keys are always read from there, as the bytes of CeresASM plan/v2 SPEC 8.3.
 static int from_keyboard = 0;
 
 // How many callers have asked for keys as they are pressed. The console is switched at the first and put back
@@ -19,7 +21,10 @@ static int held_byte = -1;
 int key_start(void)
 {
     if (users++ == 0)
-        from_keyboard = (term_set_raw(1) & TERM_MODE_KEYS) != 0;
+    {
+        term_set_raw(1);
+        from_keyboard = 0;
+    }
     return from_keyboard;
 }
 

@@ -3,7 +3,7 @@
 // the pixel font.
 #include "ceres/test.h"
 #include "ceres/utf8.h"
-#include "ceres/textfb.h"
+#include "ceres/text.h"
 #include "ceres/font.h"
 #include "ceres/gfx.h"
 #include "uchar.h"
@@ -188,19 +188,19 @@ int main(void)
     CHECK_EQ(sscanf("a\xC3", "%ls", got), 0);                        // cut short: not UTF-8
     printf("printed: \xC2\xBFQu\xC3\xA9 a\xC3\xB1o? %ls\n", L"\x00A1S\x00ED!");
 
-    TEST_SECTION("the text framebuffer");
-    CHECK_EQ(fb_init(12, 2), 0);
-    fb_text(0, 0, "\xC2\xBFQu\xC3\xA9 a\xC3\xB1o?");                 // nine characters, nine cells
-    CHECK_EQ((unsigned char)fb_get(0, 0), 0xBFu);
-    CHECK_EQ((unsigned char)fb_get(3, 0), 0xE9u);
-    CHECK_EQ(fb_get(8, 0), '?');
-    CHECK_EQ(fb_get(9, 0), ' ');
-    CHECK_EQ(fb_text_width("\xC3\xA9t\xC3\xA9\nab"), 3);
-    CHECK_EQ(fb_text_n(0, 1, "\xE2\x82\xAC" "uro\xC3\xA9xtra", 5), 5);   // € is past Latin-1: '?'
-    CHECK_EQ(fb_get(0, 1), '?');
-    fb_put_char(11, 1, 0xDF);                                        // ß
-    fb_present();                                                    // the terminal gets it in UTF-8
-    fb_shutdown();
+    TEST_SECTION("the text plane");
+    CHECK_EQ(text_init(12, 2), 0);
+    text_text(0, 0, "\xC2\xBFQu\xC3\xA9 a\xC3\xB1o?");                 // nine characters, nine cells
+    CHECK_EQ((unsigned char)text_get(0, 0), 0xBFu);
+    CHECK_EQ((unsigned char)text_get(3, 0), 0xE9u);
+    CHECK_EQ(text_get(8, 0), '?');
+    CHECK_EQ(text_get(9, 0), ' ');
+    CHECK_EQ(text_text_width("\xC3\xA9t\xC3\xA9\nab"), 3);
+    CHECK_EQ(text_text_n(0, 1, "\xE2\x82\xAC" "uro\xC3\xA9xtra", 5), 5);   // € is past Latin-1: '?'
+    CHECK_EQ(text_get(0, 1), '?');
+    text_put_char(11, 1, 0xDF);                                        // ß
+    text_present();                                                    // the screen log has it in UTF-8
+    text_shutdown();
 
     TEST_SECTION("the pixel font");
     CHECK(font8x8[0xE9][0] != 0);                                    // é has its accent on the top row

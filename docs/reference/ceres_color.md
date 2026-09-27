@@ -1,6 +1,6 @@
 # `<ceres/color.h>`
 
-Colours are 0x00RRGGBB in an unsigned int, the format of the pixel display. Channels are 0..255.
+Colours are 0x00RRGGBB in an unsigned int, the format of the bitmap plane (ceres/fb.h). Channels are 0..255.
 
 ```c
 #ifndef RGB

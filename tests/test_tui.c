@@ -1,5 +1,5 @@
-// The text user interface: the pieces are drawn and shown (the frames are in the expected output, escapes
-// and all), then tui_menu runs on the keys in test_tui.stdin.
+// The text user interface: the pieces are drawn and shown (the screens are in test_tui.screen), then tui_menu runs
+// on the keys in test_tui.stdin.
 #include "ceres/test.h"
 #include "ceres/tui.h"
 
@@ -8,16 +8,16 @@ int main(void)
     TEST_SECTION("init");
     CHECK_EQ(tui_init(0, 5), -1);
     CHECK_EQ(tui_init(30, 12), 0);
-    CHECK_EQ(fb_cols(), 30);
-    CHECK_EQ(fb_rows(), 12);
+    CHECK_EQ(text_cols(), 30);
+    CHECK_EQ(text_rows(), 12);
 
     TEST_SECTION("a window");
     tui_window(1, 1, 22, 5, "Settings");
-    CHECK_EQ(fb_get(1, 1), '+');
-    CHECK_EQ(fb_get(3, 1), 'S');                          // the title, set into the top edge
-    CHECK_EQ((int)fb_get_attr(3, 1), TUI_TITLE);
-    CHECK_EQ((int)fb_get_attr(1, 1), TUI_FRAME);
-    CHECK_EQ(fb_get(5, 3), ' ');                          // the inside is clear
+    CHECK_EQ((unsigned char)text_get(1, 1), 0x82u);       // the box's corner, from the font's box characters
+    CHECK_EQ(text_get(3, 1), 'S');                          // the title, set into the top edge
+    CHECK_EQ((int)text_get_attr(3, 1), TUI_TITLE);
+    CHECK_EQ((int)text_get_attr(1, 1), TUI_FRAME);
+    CHECK_EQ(text_get(5, 3), ' ');                          // the inside is clear
     tui_label(3, 2, "volume");
     tui_progress(3, 3, 18, 60);
     tui_label_center(2, 4, 20, "ok");
@@ -27,11 +27,11 @@ int main(void)
     tui_clear();
     tui_button(2, 2, "OK", 1);
     tui_button(10, 2, "Cancel", 0);
-    CHECK_EQ((int)fb_get_attr(2, 2), TUI_SELECTED);       // the focused one is highlighted
-    CHECK_EQ((int)fb_get_attr(10, 2), TUI_NORMAL);
+    CHECK_EQ((int)text_get_attr(2, 2), TUI_SELECTED);       // the focused one is highlighted
+    CHECK_EQ((int)text_get_attr(10, 2), TUI_NORMAL);
     tui_status("ready");
-    CHECK_EQ(fb_get(0, 11), 'r');
-    CHECK_EQ((int)fb_get_attr(29, 11), TUI_STATUS);       // the whole row
+    CHECK_EQ(text_get(0, 11), 'r');
+    CHECK_EQ((int)text_get_attr(29, 11), TUI_STATUS);       // the whole row
     tui_present();
 
     TEST_SECTION("progress");
@@ -42,7 +42,7 @@ int main(void)
     tui_progress(0, 3, 20, 250);                          // clamped
     tui_progress(0, 4, 20, -5);
     tui_progress(0, 5, 5, 50);                            // too narrow: nothing
-    CHECK_EQ(fb_get(0, 5), ' ');
+    CHECK_EQ(text_get(0, 5), ' ');
     tui_present();
 
     TEST_SECTION("a list scrolls to keep the selection on screen");
@@ -52,7 +52,7 @@ int main(void)
     CHECK_EQ(top, 0);
     top = tui_list(1, 1, 8, 3, items, 6, 4, top);         // 'five' is below the three rows: it scrolls
     CHECK_EQ(top, 2);
-    CHECK_EQ((int)fb_get_attr(1, 3), TUI_SELECTED);       // the last row shown
+    CHECK_EQ((int)text_get_attr(1, 3), TUI_SELECTED);       // the last row shown
     top = tui_list(1, 1, 8, 3, items, 6, 1, top);         // back up
     CHECK_EQ(top, 1);
     tui_present();

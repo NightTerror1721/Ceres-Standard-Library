@@ -3,7 +3,7 @@
 // Signals. Six are defined, and what makes each one happen is different:
 //
 //   SIGABRT   abort(), or raise(SIGABRT). A handler that returns lets abort() go on and stop the program.
-//   SIGINT    only raise(SIGINT): the machine has no interrupt key.
+//   SIGINT    Ctrl+C on the terminal, noticed when the program reads its input (ceres/terminal.h), or raise(SIGINT).
 //   SIGTERM   only raise(SIGTERM).
 //   SIGFPE    a division by zero, an integer or a float one. The machine ignores it unless asked: signal()
 //             asks (a division-fault switch in the system-control device), and when the handler returns the

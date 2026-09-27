@@ -4,9 +4,10 @@
 
 // UTF-8, the encoding of every string in this library: source files, the terminal, the files a program writes, and
 // the multibyte strings of <stdlib.h>, <wchar.h> and <uchar.h> (MB_CUR_MAX is 4). The keyboard hands over typed
-// characters as code points (kbd_read_text), and the text framebuffer and the pixel font show Latin-1 - U+0000 to
-// U+00FF, the letters of the western European languages - so fb_text() and font_text() take UTF-8 and draw every
-// character up to U+00FF; a character above that shows as '?' in a cell and as a box in the font.
+// characters as code points (kbd_read_text), and the text plane and the pixel font show Latin-1 - U+0000 to
+// U+00FF, the letters of the western European languages - so text_text() and font_text() take UTF-8 and draw every
+// character up to U+00FF (the text plane has the box characters too); another shows as '?' in a cell and as a box
+// in the font.
 //
 //   const char* p = "año";
 //   unsigned int c;

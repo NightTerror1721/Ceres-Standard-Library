@@ -15,7 +15,7 @@ static int irq_stubbed(int n)
     {
         case IRQ_TIMER: case IRQ_ALARM: case IRQ_DMA: case IRQ_TERMINAL:
         case IRQ_KEYBOARD: case IRQ_MOUSE: case IRQ_GAMEPAD:
-        case IRQ_PERIPH: case IRQ_AUDIO: case IRQ_BLITTER:
+        case IRQ_PERIPH: case IRQ_AUDIO: case IRQ_VBLANK: case IRQ_LINE: case IRQ_BLITTER: case IRQ_GPU_FAULT:
             return 1;
         default:
             return 0;
@@ -65,7 +65,10 @@ IRQ_STUB(21)   // mouse motion
 IRQ_STUB(22)   // gamepad state change
 IRQ_STUB(26)   // a medium was plugged in or pulled out
 IRQ_STUB(28)   // a tone has finished
-IRQ_STUB(34)   // a blitter operation is done
+IRQ_STUB(32)   // the GPU's vertical blank
+IRQ_STUB(33)   // the GPU's scan has reached its line
+IRQ_STUB(34)   // a blitter operation, or the GPU's copy, is done
+IRQ_STUB(35)   // the GPU faulted
 
 const char* irq_name(int n)
 {
@@ -89,7 +92,10 @@ const char* irq_name(int n)
         case 22: return "Gamepad";
         case 26: return "Periph";
         case 28: return "Audio";
+        case 32: return "VBlank";
+        case 33: return "Line";
         case 34: return "Blitter";
+        case 35: return "GpuFault";
         default: break;
     }
     if (n >= IRQ_USER_FIRST && n < IRQ_COUNT)

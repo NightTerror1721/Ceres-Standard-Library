@@ -1,6 +1,6 @@
 # `<ceres/gfx.h>`
 
-2D drawing on the pixel display. Everything is drawn into a surface in RAM and shown with gfx_present() in one block transfer, so a half-drawn frame is never seen. All of it is integer arithmetic (Bresenham lines, midpoint circles, scanline triangles).
+2D drawing on the GPU's bitmap plane (ceres/fb.h). The screen surface is the plane's buffer to draw into, in video memory, and gfx_present() shows it at the next vertical blank - and waits for it, so a game drawn this way runs at the screen's 60 frames a second - then goes on drawing from the frame shown. A half-drawn frame is never seen. All of it is integer arithmetic (Bresenham lines, midpoint circles, scanline triangles).
 
 ```c
 gfx_init(320, 200);
@@ -9,7 +9,7 @@ for (;;) { gfx_clear(COL_BLACK); gfx_circle_fill(160, 100, 20, COL_RED); gfx_pre
 
 Drawing goes to the current TARGET: the screen surface until gfx_set_target() names another. Every primitive is clipped to the target's clip rectangle before it touches memory, so drawing partly (or wholly) outside is safe and simply loses the part that falls outside.
 
-Memory: a surface takes width * height * 4 bytes - 250 KiB at 320x200, 900 KiB at 640x360, 3.5 MiB at 1280x720.
+Memory: a surface of gfx_surface_new() takes width * height * 4 bytes of RAM - 250 KiB at 320x200, 900 KiB at 640x360, 3.5 MiB at 1280x720. The screen's two buffers take as much again of VRAM each.
 
 On a machine with the blitter (ceres/blitter.h) clearing, filling rectangles and the three blits are done by it, at no cost in instructions; the result is the same pixel for pixel as the software path, which the rest takes.
 
@@ -25,12 +25,12 @@ struct gfx_surface
 ## The screen
 
 ```c
-int  gfx_init(int w, int h);                 // sets the display size and allocates the screen surface; 0 ok, -1 when refused or out of memory
-void gfx_shutdown(void);                     // frees the screen surface
+int  gfx_init(int w, int h);                 // the screen at w x h with its bitmap plane (fb_init); 0 ok, -1 when refused or out of VRAM
+void gfx_shutdown(void);                     // the bitmap plane off (fb_shutdown)
 struct gfx_surface* gfx_screen(void);        // NULL before gfx_init
 int  gfx_width(void);                        // of the current target
 int  gfx_height(void);
-void gfx_present(void);                      // sends the screen surface to the display and presents it
+void gfx_present(void);                      // shows the screen surface at the next vertical blank, and waits for it
 void gfx_use_blitter(int on);                // 1 (the default): the blitter when there is one; 0: always in software
 ```
 

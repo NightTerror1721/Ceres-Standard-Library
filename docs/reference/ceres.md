@@ -16,9 +16,9 @@ Ceres reaches its devices through memory-mapped I/O at the top of the address sp
 #define DISK_BASE           0xFF300000
 #define HOSTFS_BASE         0xFF310000   // the host's files under --host-dir (ceres/hostfs.h)
 #define PERIPH_BASE         0xFF320000   // plug-in media: sticks and cartridges
-#define FRAMEBUFFER_BASE    0xFF440000   // text grid (until the GPU replaces it)
-#define DISPLAY_BASE        0xFF450000   // RGB32 pixels (until the GPU replaces it)
-#define BLITTER_BASE        0xFF460000   // 2D rectangle operations (ceres/blitter.h; until the GPU replaces it)
+#define GPU_BASE            0xFF400000   // the GPU: the screen, its text and bitmap planes, the copy engine (ceres/video.h)
+#define BLITTER_BASE        0xFF460000   // 2D rectangle operations (ceres/blitter.h; until the GPU's 2D engine replaces it)
+#define VRAM_BASE           0xA0000000   // the video memory: up to 1 GiB, as much as the machine has (ceres/sys.h: sys_vram_size)
 #define SYS_CTRL_BASE       0xFFFF0000
 
 // A device register is 32 bits wide and takes 32-bit accesses only: a byte or halfword access to one

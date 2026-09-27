@@ -1,6 +1,6 @@
 #pragma once
 
-// Colours are 0x00RRGGBB in an unsigned int, the format of the pixel display. Channels are 0..255.
+// Colours are 0x00RRGGBB in an unsigned int, the format of the bitmap plane (ceres/fb.h). Channels are 0..255.
 
 #ifndef RGB
 #define RGB(r, g, b) (((unsigned int)(r) << 16) | ((unsigned int)(g) << 8) | (unsigned int)(b))

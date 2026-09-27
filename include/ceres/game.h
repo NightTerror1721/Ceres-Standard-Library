@@ -15,7 +15,12 @@
 // CYCLES and waiting is a spin on timer_ticks(): the same program does the same thing on every run, which is
 // what a test wants, and the same game has more room per frame at -O2 than at -O0.
 //
-// For a game that must run at a steady speed there are two ways, and in both a frame lasts `ms` milliseconds
+// A game on the screen keeps the screen's time: game_pace_vblank(&g, 1) ends each frame at the next vertical
+// blank (ceres/video.h), 60 a second - or every n blanks with n. It is the machine's own clock too, so the game
+// does the same on every run. (gfx_present() and fb_present() already wait for the blank: a game drawn with them
+// is paced by the screen with any setting here.)
+//
+// For a game that must run at a steady speed there are two more ways, and in both a frame lasts `ms` milliseconds
 // of the machine's time from its start - its own work counts, and a frame that runs late is not made up for.
 // The host keeps that time in step with the wall clock (`ceres run --speed realtime`, the default with a window):
 //   game_pace_ms(&g, 16)     sleeps: halts with the timer's alarm at the frame's end (timer_wait_until_ns64), so
@@ -33,7 +38,8 @@ struct game
     unsigned int ticks_per_frame;      // the cycle budget of a frame
     unsigned int frame_start;          // timer_ticks() when the frame began
     unsigned int work_last;            // cycles the last frame spent before waiting
-    unsigned int wait_ms;              // 0: pace by cycles; otherwise the frame period in milliseconds
+    unsigned int wait_ms;              // 0: pace by cycles; otherwise the frame period in milliseconds (or in blanks, by vblank)
+    unsigned int frame_start_vblank;   // video_frame() when the frame began
     uint64_t frame_start_ns;           // timer_nanos64() when the frame began
     void (*wait)(struct game* g);      // what game_frame_end runs to pass the rest of the frame; 0 spins on the budget
 };
@@ -49,3 +55,4 @@ void game_run(struct game* g, game_fn update, game_fn draw, void* ctx);   // unt
 
 void game_pace_real(struct game* g, unsigned int ms);   // time pacing by spinning on the nanosecond clock
 void game_pace_ms(struct game* g, unsigned int ms);     // time pacing by sleeping; ms is at least 1
+void game_pace_vblank(struct game* g, unsigned int frames);   // a frame ends at the `frames`th vertical blank from its start (at least 1)

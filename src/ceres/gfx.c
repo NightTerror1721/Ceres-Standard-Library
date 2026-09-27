@@ -1,6 +1,6 @@
 // 2D drawing. See ceres/gfx.h.
 #include "ceres/gfx.h"
-#include "ceres/display.h"
+#include "ceres/fb.h"
 #include "ceres/blitter.h"
 #include "stdlib.h"
 #include "string.h"
@@ -38,24 +38,14 @@ static struct gfx_surface* current(void)
 
 // ---- the screen ----
 
+// The screen surface is the bitmap plane's buffer to draw into, in VRAM (ceres/fb.h): no copy of it in RAM.
 int gfx_init(int w, int h)
 {
-    if (w <= 0 || h <= 0 || w > DISP_MAX_WIDTH || h > DISP_MAX_HEIGHT)
+    if (w <= 0 || h <= 0 || fb_init(w, h) != 0)
         return -1;
-    unsigned int* px = (unsigned int*)malloc((size_t)w * (size_t)h * 4u);
-    if (px == NULL)
-        return -1;
-    if (display_size(w, h) != 0)
-    {
-        free(px);
-        return -1;
-    }
-    if (have_screen)
-        free(screen_surface.px);
-    screen_surface.px = px;
+    screen_surface.px = (unsigned int*)fb_pixels();
     screen_surface.w = w;
     screen_surface.h = h;
-    memset32(px, 0, (size_t)w * (size_t)h);
     have_screen = 1;
     gfx_set_target(NULL);
     return 0;
@@ -67,7 +57,7 @@ void gfx_shutdown(void)
         return;
     if (target == &screen_surface)
         target = NULL;
-    free(screen_surface.px);
+    fb_shutdown();
     screen_surface.px = NULL;
     screen_surface.w = screen_surface.h = 0;
     have_screen = 0;
@@ -90,12 +80,15 @@ int gfx_height(void)
     return t == NULL ? 0 : t->h;
 }
 
+// The frame goes on the screen at the next vertical blank; drawing then goes on from it in the other buffer, so the
+// screen surface keeps what was drawn, as it would in RAM.
 void gfx_present(void)
 {
     if (!have_screen)
         return;
-    display_blit(screen_surface.px, screen_surface.w, screen_surface.h);
-    display_show();
+    fb_present();
+    fb_keep();
+    screen_surface.px = (unsigned int*)fb_pixels();
 }
 
 // ---- targets and clipping ----

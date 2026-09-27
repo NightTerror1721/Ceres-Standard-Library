@@ -1,15 +1,14 @@
 #pragma once
 
-#include "textfb.h"
+#include "text.h"
 
-// A small text user interface, drawn into the text framebuffer (textfb.h): windows with a title, labels,
+// A small text user interface, drawn into the GPU's text plane (text.h): windows with a title, labels,
 // buttons, a progress bar, a scrolling list and a menu that runs on the terminal's keys. Nothing here owns the
 // screen. tui_init() sets up the grid, the drawing calls change it, and tui_present() shows the frame, so a
-// program is free to mix these with fb_* calls.
+// program is free to mix these with text_* calls.
 //
-// COLOUR is the framebuffer's attribute (a byte, FB_ATTR(foreground, background)); the theme below is what
-// the pieces are drawn with, and a program can draw its own with fb_set_attr() first. A frame whose cells are
-// all plain is shown as plain text.
+// COLOUR is the text plane's attribute (a byte, TEXT_ATTR(ink, background)); the theme below is what the pieces
+// are drawn with, and a program can draw its own with text_set_attr() first.
 //
 // KEYS. tui_menu() reads keystrokes (ceres/key.h): w, k or the up arrow move up; s, j or the down arrow move
 // down; Home and End go to the first and the last; PageUp and PageDown move by a screenful; Enter or Space
@@ -17,15 +16,15 @@
 // for keys as they are pressed for as long as it runs, so on a console and in the window they act at once and
 // the arrows work; from a file the same keys are read as the bytes a terminal sends.
 
-#define TUI_NORMAL    0                                          // the terminal's own colours
-#define TUI_FRAME     FB_ATTR(FB_CYAN, FB_BLACK)                 // the border of a window
-#define TUI_TITLE     FB_ATTR(FB_BRIGHT + FB_YELLOW, FB_BLACK)   // its title
-#define TUI_SELECTED  FB_ATTR(FB_BLACK, FB_WHITE)                // the item or button that has the focus
-#define TUI_BAR_FULL  FB_ATTR(FB_BLACK, FB_GREEN)                // the done part of a progress bar
-#define TUI_BAR_EMPTY FB_ATTR(FB_WHITE, FB_BLUE)                 // the rest
-#define TUI_STATUS    FB_ATTR(FB_BLACK, FB_CYAN)                 // the status line
+#define TUI_NORMAL    TEXT_NORMAL                                // the terminal's own colours
+#define TUI_FRAME     TEXT_ATTR(TEXT_CYAN, TEXT_BLACK)                 // the border of a window
+#define TUI_TITLE     TEXT_ATTR(TEXT_BRIGHT + TEXT_YELLOW, TEXT_BLACK)   // its title
+#define TUI_SELECTED  TEXT_ATTR(TEXT_BLACK, TEXT_WHITE)                // the item or button that has the focus
+#define TUI_BAR_FULL  TEXT_ATTR(TEXT_BLACK, TEXT_GREEN)                // the done part of a progress bar
+#define TUI_BAR_EMPTY TEXT_ATTR(TEXT_WHITE, TEXT_BLUE)                 // the rest
+#define TUI_STATUS    TEXT_ATTR(TEXT_BLACK, TEXT_CYAN)                 // the status line
 
-int  tui_init(int cols, int rows);              // fb_init, cleared to blank; 0 ok, -1 if the grid does not fit
+int  tui_init(int cols, int rows);              // text_init, cleared to blank; 0 ok, -1 if the grid does not fit
 void tui_shutdown(void);
 void tui_clear(void);                           // every cell blank, in the plain attribute
 void tui_present(void);                         // shows the frame

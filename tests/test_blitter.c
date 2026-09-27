@@ -1,10 +1,10 @@
 // The blitter (ceres/blitter.h) and gfx on it: the same drawing done by the blitter and in software comes out the
 // same pixel for pixel, and what software does a pixel at a time (keyed and scaled blits) costs a fraction of the
-// instructions; and the display's indexed mode and scroll.
+// instructions; and the bitmap plane's indexed format and scroll.
 #include "ceres/test.h"
 #include "ceres/gfx.h"
 #include "ceres/blitter.h"
-#include "ceres/display.h"
+#include "ceres/fb.h"
 #include "ceres/timer.h"
 #include "string.h"
 
@@ -92,19 +92,18 @@ int main(void)
     CHECK_EQ((int)blitter_last_pixels(), 4);
     CHECK_EQ(blitter_fill((unsigned int*)0x7FFFFFF0u, 16, 4, 4, 0), -1);     // outside RAM
 
-    TEST_SECTION("the display's indexed mode and scroll");
-    CHECK_EQ(display_set_mode(DISP_MODE_INDEXED), 0);
-    display_load_palette(palette, 3);
+    TEST_SECTION("the bitmap's indexed format and scroll");
+    CHECK_EQ(fb_init_indexed(64, 48), 0);
+    fb_load_palette(palette, 3);
     static unsigned char frame8[64 * 48];
     for (int i = 0; i < 64 * 48; i++)
         frame8[i] = (unsigned char)(i % 3);
-    display_blit8(frame8, 64, 48);
-    display_scroll(-1, 50);                              // 63, 2
-    CHECK_EQ((int)mmio_r32(DISP_SCROLL_X), 63);
-    CHECK_EQ((int)mmio_r32(DISP_SCROLL_Y), 2);
-    display_show();
-    CHECK_EQ(display_set_mode(DISP_MODE_RGB32), 0);
-    display_scroll(0, 0);
+    fb_blit(frame8);
+    CHECK_EQ(((unsigned char*)fb_pixels())[4], 1);
+    fb_scroll(-1, 50);                                   // 63, 2
+    CHECK_EQ((int)mmio_r32(FB_SCROLL_X), 63);
+    CHECK_EQ((int)mmio_r32(FB_SCROLL_Y), 2);
+    fb_present();
     gfx_surface_free(pattern);
     gfx_surface_free(fast);
     gfx_surface_free(slow);
