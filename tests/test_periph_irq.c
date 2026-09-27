@@ -1,5 +1,5 @@
 // USE: irq
-// The peripheral ports' interrupt (IRQ_PERIPH, 23) through the irq module: a handler attached at run time is
+// The peripheral ports' interrupt (IRQ_PERIPH, 26) through the irq module: a handler attached at run time is
 // called when a medium is pulled out. The medium is plugged in by tests/expected/test_periph_irq.ports.
 #include "ceres/test.h"
 #include "ceres/irq.h"

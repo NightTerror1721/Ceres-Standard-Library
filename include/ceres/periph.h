@@ -2,7 +2,7 @@
 
 #include "../ceres.h"
 
-// Peripheral ports (0xFF0A0000): media that a person plugs in while the program runs - a memory stick, a game
+// Peripheral ports (0xFF320000): media that a person plugs in while the program runs - a memory stick, a game
 // cartridge. See CeresASM docs/07-IO-Devices-and-Ports.md. The disk (ceres/disk.h) is the machine's own internal
 // drive; this is what gets connected to it.
 //

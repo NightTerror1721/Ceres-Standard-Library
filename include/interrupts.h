@@ -7,7 +7,7 @@
 #define IRQ_COUNT        64     // the size of the vector table
 #define IRQ_USER_FIRST   16     // 0-15 are exceptions, always deliverable; 16-63 are masked unless sti
 #define IRQ_USER_LAST    63
-#define IRQ_DEVICE_LAST  24     // the last number a device raises today (the timer's alarm)
+#define IRQ_DEVICE_LAST  34     // the last number a device raises today (the blitter's)
 
 enum IRQ
 {
@@ -19,15 +19,18 @@ enum IRQ
     IRQ_ALIGN       = 6,
     IRQ_PAGEFAULT   = 7,
     IRQ_SYSCALL     = 15,
-    IRQ_TIMER       = 16,   // UserInterrupt0
-    IRQ_TERMINAL    = 17,   // UserInterrupt1
-    IRQ_DMA         = 18,   // UserInterrupt2
-    IRQ_KEYBOARD    = 19,   // UserInterrupt3
-    IRQ_MOUSE       = 20,   // UserInterrupt4
-    IRQ_GAMEPAD     = 21,   // UserInterrupt5
-    IRQ_AUDIO       = 22,   // UserInterrupt6: a tone has finished
-    IRQ_PERIPH      = 23,   // UserInterrupt7: a medium was plugged in or pulled out
-    IRQ_ALARM       = 24    // UserInterrupt8: the timer's alarm instant has come (ceres/timer.h)
+    // The devices', by group (CeresASM docs/08-Interrupts-and-Exceptions.md). The numbers between are
+    // reserved: 23, 24 and 25 for the disk and the host files, which raise nothing yet, 27, 29-33, 35-63.
+    IRQ_TIMER       = 16,   // UserInterrupt0: the timer's countdown has run out
+    IRQ_ALARM       = 17,   // UserInterrupt1: the timer's alarm instant has come (ceres/timer.h)
+    IRQ_DMA         = 18,   // UserInterrupt2: a transfer has landed
+    IRQ_TERMINAL    = 19,   // UserInterrupt3: input has arrived
+    IRQ_KEYBOARD    = 20,   // UserInterrupt4
+    IRQ_MOUSE       = 21,   // UserInterrupt5
+    IRQ_GAMEPAD     = 22,   // UserInterrupt6
+    IRQ_PERIPH      = 26,   // UserInterrupt10: a medium was plugged in or pulled out
+    IRQ_AUDIO       = 28,   // UserInterrupt12: a tone has finished
+    IRQ_BLITTER     = 34    // UserInterrupt18: an operation is done (ceres/blitter.h)
 };
 
 // A handler is declared with `__interrupt` and entered only through the vector

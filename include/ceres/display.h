@@ -1,4 +1,4 @@
-// Display device (0xFF070000): a pixel framebuffer of RGB32 pixels
+// Display device (0xFF450000): a pixel framebuffer of RGB32 pixels
 // (0x00RRGGBB, top byte ignored). Distinct from the text framebuffer.
 // A presented frame reaches the host through `ceres run --window` (SDL3) or a
 // registered frame sink; without one, presenting is a no-op, so a headless

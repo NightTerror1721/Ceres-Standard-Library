@@ -1,6 +1,6 @@
 # `<ceres/audio.h>`
 
-Audio device (0xFF090000): a tone generator with one voice - a note of a given frequency, duration, volume and waveform. A beeper with a choice of timbre, not a sample player. See CeresASM docs/07-IO-Devices-and-Ports.md.
+Audio device (0xFF200000): a tone generator with one voice - a note of a given frequency, duration, volume and waveform. A beeper with a choice of timbre, not a sample player. See CeresASM docs/07-IO-Devices-and-Ports.md.
 
 The device only holds what the program asked for; a host with speakers plays it (`ceres run --window` does). Anywhere else the machine is silent and a tone is never busy, so a program never waits for speakers that are not there. audio_available() says whether the machine has the device at all.
 
@@ -9,7 +9,7 @@ audio_play(440, 200, 128, AUDIO_SQUARE);     // starts a tone and returns at onc
 audio_wait();                                // until it has finished
 ```
 
-A tone that runs its whole duration raises interrupt 22 (IRQ_AUDIO) when it ends (ceres/irq.h). For music - four channels with envelopes, songs and sound effects that do not block - see ceres/music.h.
+A tone that runs its whole duration raises interrupt 28 (IRQ_AUDIO) when it ends (ceres/irq.h). For music - four channels with envelopes, songs and sound effects that do not block - see ceres/music.h.
 
 ```c
 #define AUDIO_STATUS    (AUDIO_BASE + 0x00)   // R: bit0 set while a tone is playing

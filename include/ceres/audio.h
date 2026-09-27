@@ -2,7 +2,7 @@
 
 #include "../ceres.h"
 
-// Audio device (0xFF090000): a tone generator with one voice - a note of a given frequency, duration, volume
+// Audio device (0xFF200000): a tone generator with one voice - a note of a given frequency, duration, volume
 // and waveform. A beeper with a choice of timbre, not a sample player. See CeresASM
 // docs/07-IO-Devices-and-Ports.md.
 //
@@ -13,7 +13,7 @@
 //   audio_play(440, 200, 128, AUDIO_SQUARE);     // starts a tone and returns at once
 //   audio_wait();                                // until it has finished
 //
-// A tone that runs its whole duration raises interrupt 22 (IRQ_AUDIO) when it ends (ceres/irq.h). For music - four
+// A tone that runs its whole duration raises interrupt 28 (IRQ_AUDIO) when it ends (ceres/irq.h). For music - four
 // channels with envelopes, songs and sound effects that do not block - see ceres/music.h.
 
 #define AUDIO_STATUS    (AUDIO_BASE + 0x00)   // R: bit0 set while a tone is playing

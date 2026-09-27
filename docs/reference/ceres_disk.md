@@ -1,6 +1,6 @@
 # `<ceres/disk.h>`
 
-Disk (0xFF020000): sectors of 512 bytes. See CeresASM docs/07-IO-Devices-and-Ports.md.
+Disk (0xFF300000): sectors of 512 bytes. See CeresASM docs/07-IO-Devices-and-Ports.md.
 
 One sector moves at a time. Without `--disk image.img` the disk still exists (64 sectors, 32 KiB) but lives only as long as the machine does; with it, a host file is behind it and writes are saved when the machine stops (disk_flush() saves them earlier). Selecting a sector past the end sets the ERROR bit, and every function below reports it as -1.
 

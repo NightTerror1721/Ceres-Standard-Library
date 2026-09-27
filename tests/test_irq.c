@@ -23,20 +23,20 @@ int main(void)
     CHECK_EQ(irq_attach(16, on_tick), 0);
     CHECK(irq_handler(16) == on_tick);
     CHECK_EQ(irq_attach(3, on_tick), -1);         // no stub is bound to a fault number
-    CHECK_EQ(irq_attach(25, on_tick), -1);         // one past the last device number, 24 (the timer's alarm)
-    CHECK_EQ(irq_attach(23, on_tick), 0);
-    CHECK_STR(irq_name(23), "Periph");
+    CHECK_EQ(irq_attach(23, on_tick), -1);         // reserved: no device raises it
+    CHECK_EQ(irq_attach(26, on_tick), 0);
+    CHECK_STR(irq_name(26), "Periph");
     CHECK_EQ(irq_attach(IRQ_ALARM, on_tick), 0);
     CHECK_STR(irq_name(IRQ_ALARM), "Alarm");
     irq_detach(IRQ_ALARM);
-    irq_detach(23);
-    CHECK_EQ(irq_attach(22, on_tick), 0);
-    CHECK_STR(irq_name(22), "Audio");
-    irq_detach(22);
-    CHECK_EQ(irq_attach(-1, on_tick), -1);
+    irq_detach(26);
+    CHECK_EQ(irq_attach(28, on_tick), 0);
+    CHECK_STR(irq_name(28), "Audio");
+    irq_detach(28);
+    CHECK_EQ(irq_attach(35, on_tick), -1);         // one past the last device number, 34 (the blitter's)
     CHECK(irq_handler(3) == 0);
     CHECK_STR(irq_name(16), "Timer");
-    CHECK_STR(irq_name(17), "Terminal");
+    CHECK_STR(irq_name(19), "Terminal");
     CHECK_STR(irq_name(6), "AlignmentFault");
 
     TEST_SECTION("timer interrupts");

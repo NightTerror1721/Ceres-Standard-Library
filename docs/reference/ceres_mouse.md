@@ -1,6 +1,6 @@
 # `<ceres/mouse.h>`
 
-Mouse device (0xFF060000). Reports deltas (consumed on read), absolute position, a button mask and the wheel. See CeresASM docs/07-IO-Devices-and-Ports.md.
+Mouse device (0xFF110000). Reports deltas (consumed on read), absolute position, a button mask and the wheel. See CeresASM docs/07-IO-Devices-and-Ports.md.
 
 The deltas and the wheel are CONSUMED by reading them: read each once per frame, ideally all at once with mouse_poll(). Without a window nothing ever arrives.
 

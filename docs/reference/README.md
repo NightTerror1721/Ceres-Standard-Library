@@ -40,17 +40,17 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/ansi.h>`](ceres_ansi.md) | ANSI escape sequences: cursor movement, colours, clearing. |
 | [`<ceres/arena.h>`](ceres_arena.md) | A linear allocator: allocation is a pointer bump, and everything is released at once (or back to a mark). |
 | [`<ceres/atomic.h>`](ceres_atomic.md) | Read-modify-write that an interrupt cannot cut in half. |
-| [`<ceres/audio.h>`](ceres_audio.md) | Audio device (0xFF090000): a tone generator with one voice - a note of a given frequency, duration, volume and waveform. |
+| [`<ceres/audio.h>`](ceres_audio.md) | Audio device (0xFF200000): a tone generator with one voice - a note of a given frequency, duration, volume and waveform. |
 | [`<ceres/backtrace.h>`](ceres_backtrace.md) | The call stack as it stands, and names for code addresses. |
 | [`<ceres/bits.h>`](ceres_bits.md) | The bit instructions, plus helpers built on them. |
-| [`<ceres/blitter.h>`](ceres_blitter.md) | The 2D blitter (0xFF0C0000, CeresASM 3b2db3b): rectangle operations on RGB32 surfaces in RAM done by the host, at no cost in instructions. |
+| [`<ceres/blitter.h>`](ceres_blitter.md) | The 2D blitter (0xFF460000, CeresASM 3b2db3b): rectangle operations on RGB32 surfaces in RAM done by the host, at no cost in instructions. |
 | [`<ceres/blockdev.h>`](ceres_blockdev.md) | Block devices: what CeresFS (ceres/fs.h) keeps its volumes on. |
 | [`<ceres/color.h>`](ceres_color.md) | Colours are 0x00RRGGBB in an unsigned int, the format of the pixel display. |
 | [`<ceres/config.h>`](ceres_config.md) | Compile-time configuration. |
 | [`<ceres/debug.h>`](ceres_debug.md) | Logging and inspection for programs under development. |
-| [`<ceres/disk.h>`](ceres_disk.md) | Disk (0xFF020000): sectors of 512 bytes. |
-| [`<ceres/display.h>`](ceres_display.md) | Display device (0xFF070000): a pixel framebuffer of RGB32 pixels (0x00RRGGBB, top byte ignored). |
-| [`<ceres/dma.h>`](ceres_dma.md) | DMA controller (0xFF040000): copies memory to memory without the program moving it word by word. |
+| [`<ceres/disk.h>`](ceres_disk.md) | Disk (0xFF300000): sectors of 512 bytes. |
+| [`<ceres/display.h>`](ceres_display.md) | Display device (0xFF450000): a pixel framebuffer of RGB32 pixels (0x00RRGGBB, top byte ignored). |
+| [`<ceres/dma.h>`](ceres_dma.md) | DMA controller (0xFF020000): copies memory to memory without the program moving it word by word. |
 | [`<ceres/ds/bitset.h>`](ceres_ds_bitset.md) | A set of small integers 0 .. nbits-1 as one bit each, over words the caller provides: occupancy maps, tile flags, "which of these are used". |
 | [`<ceres/ds/bloom.h>`](ceres_ds_bloom.md) | A Bloom filter: approximate set membership in a fraction of a real set's memory, at the cost of occasional false positives (never false negatives) - "have I... |
 | [`<ceres/ds/cqueue.h>`](ceres_ds_cqueue.md) | A fixed-capacity circular queue of fixed-size elements, over a buffer the caller provides: the ringbuf.h idea generalized from bytes to a struct-sized item,... |
@@ -83,7 +83,7 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/font.h>`](ceres_font.md) | An 8x8 bitmap font for the pixel surfaces: printable ASCII (32..126) and Latin-1 (0xA0..0xFF, the code points U+00A0..U+00FF: accented letters, the Spanish... |
 | [`<ceres/fs.h>`](ceres_fs.md) | CeresFS: a small file system on a block device (ceres/blockdev.h): the internal disk, a memory stick or a cartridge in a peripheral port. |
 | [`<ceres/game.h>`](ceres_game.md) | A fixed-step game loop: input -> logic -> drawing -> present -> wait for the next frame. |
-| [`<ceres/gamepad.h>`](ceres_gamepad.md) | Gamepad device (0xFF080000). |
+| [`<ceres/gamepad.h>`](ceres_gamepad.md) | Gamepad device (0xFF120000). |
 | [`<ceres/gfx.h>`](ceres_gfx.md) | 2D drawing on the pixel display. |
 | [`<ceres/hash.h>`](ceres_hash.md) | Hashes and checksums, all in 32-bit arithmetic. |
 | [`<ceres/heap.h>`](ceres_heap.md) | Dynamic memory. |
@@ -94,16 +94,16 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/irq.h>`](ceres_irq.md) | Interrupt handlers attached at RUN time. |
 | [`<ceres/json.h>`](ceres_json.md) | JSON, read and written without the heap. |
 | [`<ceres/key.h>`](ceres_key.md) | Keystrokes: what a person types, one at a time, in the order they typed it - for a menu, a text field, a game's title screen. |
-| [`<ceres/keyboard.h>`](ceres_keyboard.md) | Keyboard device (0xFF050000). |
+| [`<ceres/keyboard.h>`](ceres_keyboard.md) | Keyboard device (0xFF100000). |
 | [`<ceres/keys.h>`](ceres_keys.md) | Key codes. |
 | [`<ceres/line.h>`](ceres_line.md) | Text input for terminal programs: a whole line, a number, a yes/no, a numbered choice. |
 | [`<ceres/lz.h>`](ceres_lz.md) | LZ4: compression that is fast to undo, for assets on a cartridge, saves and anything else worth keeping small. |
 | [`<ceres/mmu.h>`](ceres_mmu.md) | The MMU (CeresASM docs/27-Virtual-Memory-and-Paging.md): two-level page tables over 4 KiB pages, off until a program turns it on. |
-| [`<ceres/mouse.h>`](ceres_mouse.md) | Mouse device (0xFF060000). |
+| [`<ceres/mouse.h>`](ceres_mouse.md) | Mouse device (0xFF110000). |
 | [`<ceres/music.h>`](ceres_music.md) | Music and sound effects on the audio device's four channels (CeresASM 848fae2): each a waveform, a volume and an ADSR envelope, mixed by the host. |
 | [`<ceres/ns64.h>`](ceres_ns64.md) | A 64-bit unsigned count, in two words: the machine is 32-bit, but `long long` is a real 8-byte type and the arithmetic below runs on it. |
 | [`<ceres/pack.h>`](ceres_pack.md) | Resource packs: a program's assets - images, levels, text, music - in one file that is read a piece at a time, from a cartridge in a peripheral port, a... |
-| [`<ceres/periph.h>`](ceres_periph.md) | Peripheral ports (0xFF0A0000): media that a person plugs in while the program runs - a memory stick, a game cartridge. |
+| [`<ceres/periph.h>`](ceres_periph.md) | Peripheral ports (0xFF320000): media that a person plugs in while the program runs - a memory stick, a game cartridge. |
 | [`<ceres/pool.h>`](ceres_pool.md) | Fixed-size blocks with allocation and release in constant time: entities, bullets, particles. |
 | [`<ceres/rand.h>`](ceres_rand.md) | Pseudo-random generators with explicit, reproducible state: two runs with the same seed give the same sequence (the VM is deterministic apart from where its... |
 | [`<ceres/save.h>`](ceres_save.md) | Saved games that survive the machine stopping half way through a save. |
@@ -114,7 +114,7 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/task.h>`](ceres_task.md) | Tasks: coroutines with a scheduler, cooperative. |
 | [`<ceres/terminal.h>`](ceres_terminal.md) | Terminal device (0xFF000000). |
 | [`<ceres/test.h>`](ceres_test.md) | A minimal test framework. |
-| [`<ceres/textfb.h>`](ceres_textfb.md) | Text framebuffer (0xFF030000): a grid of characters a program draws into and then shows. |
+| [`<ceres/textfb.h>`](ceres_textfb.md) | Text framebuffer (0xFF440000): a grid of characters a program draws into and then shows. |
 | [`<ceres/timer.h>`](ceres_timer.md) | Timer device (0xFF010000). |
 | [`<ceres/tui.h>`](ceres_tui.md) | A small text user interface, drawn into the text framebuffer (textfb.h): windows with a title, labels, buttons, a progress bar, a scrolling list and a menu... |
 | [`<ceres/utf8.h>`](ceres_utf8.md) | UTF-8, the encoding of every string in this library: source files, the terminal, the files a program writes, and the multibyte strings of <stdlib.h>,... |

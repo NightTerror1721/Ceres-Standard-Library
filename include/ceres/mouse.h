@@ -1,4 +1,4 @@
-// Mouse device (0xFF060000). Reports deltas (consumed on read), absolute
+// Mouse device (0xFF110000). Reports deltas (consumed on read), absolute
 // position, a button mask and the wheel.
 // See CeresASM docs/07-IO-Devices-and-Ports.md.
 //

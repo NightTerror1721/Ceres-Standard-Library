@@ -1,6 +1,6 @@
 # `<ceres/gamepad.h>`
 
-Gamepad device (0xFF080000). Polled rather than event-driven: read the button mask and axes every frame. See CeresASM docs/07-IO-Devices-and-Ports.md. Without a window nothing ever arrives.
+Gamepad device (0xFF120000). Polled rather than event-driven: read the button mask and axes every frame. See CeresASM docs/07-IO-Devices-and-Ports.md. Without a window nothing ever arrives.
 
 ```c
 #define GP_STATUS     (GAMEPAD_BASE + 0x00)  // read: bit0 = state changed since last status read (clears on read)

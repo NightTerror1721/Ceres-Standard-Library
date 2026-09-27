@@ -8,9 +8,23 @@
 
 static irq_handler_t irq_table[IRQ_COUNT];
 
+// Whether a stub below is bound to `n`: the numbers a device raises, which have gaps between them.
+static int irq_stubbed(int n)
+{
+    switch (n)
+    {
+        case IRQ_TIMER: case IRQ_ALARM: case IRQ_DMA: case IRQ_TERMINAL:
+        case IRQ_KEYBOARD: case IRQ_MOUSE: case IRQ_GAMEPAD:
+        case IRQ_PERIPH: case IRQ_AUDIO: case IRQ_BLITTER:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
 int irq_attach(int n, irq_handler_t handler)
 {
-    if (n < IRQ_USER_FIRST || n > IRQ_DEVICE_LAST)
+    if (!irq_stubbed(n))
         return -1;                 // no stub is bound to this number, so it would never be called
     irq_table[n] = handler;
     return 0;
@@ -18,7 +32,7 @@ int irq_attach(int n, irq_handler_t handler)
 
 void irq_detach(int n)
 {
-    if (n >= IRQ_USER_FIRST && n <= IRQ_DEVICE_LAST)
+    if (irq_stubbed(n))
         irq_table[n] = 0;
 }
 
@@ -42,15 +56,16 @@ static void irq_dispatch(int n)
     __interrupt void __irq_stub_##N(void) { irq_dispatch(N); } \
     __interrupt_vector(N, __irq_stub_##N);
 
-IRQ_STUB(16)   // timer
-IRQ_STUB(17)   // terminal input
+IRQ_STUB(16)   // the timer's countdown
+IRQ_STUB(17)   // the timer's alarm
 IRQ_STUB(18)   // DMA transfer complete
-IRQ_STUB(19)   // keyboard event
-IRQ_STUB(20)   // mouse motion
-IRQ_STUB(21)   // gamepad state change
-IRQ_STUB(22)   // a tone has finished
-IRQ_STUB(23)   // a medium was plugged in or pulled out
-IRQ_STUB(24)   // the timer's alarm
+IRQ_STUB(19)   // terminal input
+IRQ_STUB(20)   // keyboard event
+IRQ_STUB(21)   // mouse motion
+IRQ_STUB(22)   // gamepad state change
+IRQ_STUB(26)   // a medium was plugged in or pulled out
+IRQ_STUB(28)   // a tone has finished
+IRQ_STUB(34)   // a blitter operation is done
 
 const char* irq_name(int n)
 {
@@ -66,14 +81,15 @@ const char* irq_name(int n)
         case 7:  return "PageFault";
         case 15: return "Syscall";
         case 16: return "Timer";
-        case 17: return "Terminal";
+        case 17: return "Alarm";
         case 18: return "Dma";
-        case 19: return "Keyboard";
-        case 20: return "Mouse";
-        case 21: return "Gamepad";
-        case 22: return "Audio";
-        case 23: return "Periph";
-        case 24: return "Alarm";
+        case 19: return "Terminal";
+        case 20: return "Keyboard";
+        case 21: return "Mouse";
+        case 22: return "Gamepad";
+        case 26: return "Periph";
+        case 28: return "Audio";
+        case 34: return "Blitter";
         default: break;
     }
     if (n >= IRQ_USER_FIRST && n < IRQ_COUNT)

@@ -18,7 +18,7 @@ int term_eof(void)
 // Between looks the machine halts: the terminal raises its request for a byte and for the end of input, and a
 // halt ends on any request, taken or not; one that comes between the look and the halt keeps the halt from
 // sleeping (CeresASM 551cdbd). Waiting by interrupt masks them while it looks and sleeps with `sti; halt`, so
-// the handler on vector 17 runs for each byte.
+// the handler on vector 19 runs for each byte.
 static int wait_for_input(enum term_read_mode_t mode)
 {
     unsigned int was = mode == TERM_READ_UNTIL_ISR ? irq_save() : 0;

@@ -2,7 +2,7 @@
 
 #include "../ceres.h"
 
-// DMA controller (0xFF040000): copies memory to memory without the program moving it word by word.
+// DMA controller (0xFF020000): copies memory to memory without the program moving it word by word.
 // See CeresASM docs/07-IO-Devices-and-Ports.md.
 //
 // Source and destination are PHYSICAL addresses (translate them first if paging is on), and the two

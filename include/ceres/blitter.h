@@ -2,7 +2,7 @@
 
 #include "../ceres.h"
 
-// The 2D blitter (0xFF0C0000, CeresASM 3b2db3b): rectangle operations on RGB32 surfaces in RAM done by the host,
+// The 2D blitter (0xFF460000, CeresASM 3b2db3b): rectangle operations on RGB32 surfaces in RAM done by the host,
 // at no cost in instructions. A surface is the address of a rectangle's first pixel and its stride (BYTES from
 // one row to the next). ceres/gfx.h uses it on its own when it is there; these are for a program that draws
 // into memory of its own. Every call returns 0, or -1 when there is no blitter or a row ran outside RAM.
@@ -17,7 +17,7 @@
 #define BLIT_COLOR     (BLITTER_BASE + 0x1C)
 #define BLIT_SCALE     (BLITTER_BASE + 0x20)
 #define BLIT_PALETTE   (BLITTER_BASE + 0x24)
-#define BLIT_CONTROL   (BLITTER_BASE + 0x28)   // bit 0: interrupt 25 when an operation is done
+#define BLIT_CONTROL   (BLITTER_BASE + 0x28)   // bit 0: interrupt 34 (IRQ_BLITTER) when an operation is done
 #define BLIT_STATUS    (BLITTER_BASE + 0x2C)   // bit 0: the last one failed
 #define BLIT_PIXELS    (BLITTER_BASE + 0x30)   // pixels the last one wrote
 

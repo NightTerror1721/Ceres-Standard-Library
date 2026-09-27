@@ -2,7 +2,7 @@
 
 #include "../ceres.h"
 
-// Text framebuffer (0xFF030000): a grid of characters a program draws into and then shows. Not pixels
+// Text framebuffer (0xFF440000): a grid of characters a program draws into and then shows. Not pixels
 // and not a scrolling stream: a board redrawn whole, which is what a text game wants.
 // See CeresASM docs/07-IO-Devices-and-Ports.md.
 //

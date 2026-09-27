@@ -1,24 +1,25 @@
 // Ceres stdlib - low-level device access.
 //
 // Ceres reaches its devices through memory-mapped I/O at the top of the address
-// space (see CeresASM docs/07-IO-Devices-and-Ports.md). These are the addresses
-// the terminal and the system-control device live at.
+// space (see CeresASM docs/07-IO-Devices-and-Ports.md): 256 slots of 64 KiB from
+// 0xFF000000, by group - 0x00 system, 0x10 input, 0x20 audio, 0x30 storage,
+// 0x40 video, 0xFF control. These are the addresses each device lives at.
 
 #pragma once
 
 #define TERMINAL_BASE       0xFF000000
 #define TIMER_BASE          0xFF010000
-#define DISK_BASE           0xFF020000
-#define FRAMEBUFFER_BASE    0xFF030000   // text grid
-#define DMA_BASE            0xFF040000
-#define KEYBOARD_BASE       0xFF050000
-#define MOUSE_BASE          0xFF060000
-#define DISPLAY_BASE        0xFF070000   // RGB32 pixels
-#define GAMEPAD_BASE        0xFF080000
-#define AUDIO_BASE          0xFF090000
-#define PERIPH_BASE         0xFF0A0000   // plug-in media: sticks and cartridges
-#define HOSTFS_BASE         0xFF0B0000   // the host's files under --host-dir (ceres/hostfs.h)
-#define BLITTER_BASE        0xFF0C0000   // 2D rectangle operations (ceres/blitter.h)
+#define DMA_BASE            0xFF020000
+#define KEYBOARD_BASE       0xFF100000
+#define MOUSE_BASE          0xFF110000
+#define GAMEPAD_BASE        0xFF120000
+#define AUDIO_BASE          0xFF200000
+#define DISK_BASE           0xFF300000
+#define HOSTFS_BASE         0xFF310000   // the host's files under --host-dir (ceres/hostfs.h)
+#define PERIPH_BASE         0xFF320000   // plug-in media: sticks and cartridges
+#define FRAMEBUFFER_BASE    0xFF440000   // text grid (until the GPU replaces it)
+#define DISPLAY_BASE        0xFF450000   // RGB32 pixels (until the GPU replaces it)
+#define BLITTER_BASE        0xFF460000   // 2D rectangle operations (ceres/blitter.h; until the GPU replaces it)
 #define SYS_CTRL_BASE       0xFFFF0000
 
 // A device register is 32 bits wide and takes 32-bit accesses only: a byte or halfword access to one

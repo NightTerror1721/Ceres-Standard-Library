@@ -1,6 +1,6 @@
 # `<ceres/dma.h>`
 
-DMA controller (0xFF040000): copies memory to memory without the program moving it word by word. See CeresASM docs/07-IO-Devices-and-Ports.md.
+DMA controller (0xFF020000): copies memory to memory without the program moving it word by word. See CeresASM docs/07-IO-Devices-and-Ports.md.
 
 Source and destination are PHYSICAL addresses (translate them first if paging is on), and the two ranges must not overlap. A range that runs past the end of RAM is clamped: the copy moves what fits and dma_transferred() says how much. Arming a transfer clears DONE and sets BUSY; the copy lands on the controller's next tick (one instruction later) and raises interrupt 18 (IRQ_DMA), which a program may attach a handler to (ceres/irq.h) instead of polling.
 

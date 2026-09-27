@@ -1,6 +1,6 @@
 # `<ceres/periph.h>`
 
-Peripheral ports (0xFF0A0000): media that a person plugs in while the program runs - a memory stick, a game cartridge. See CeresASM docs/07-IO-Devices-and-Ports.md. The disk (ceres/disk.h) is the machine's own internal drive; this is what gets connected to it.
+Peripheral ports (0xFF320000): media that a person plugs in while the program runs - a memory stick, a game cartridge. See CeresASM docs/07-IO-Devices-and-Ports.md. The disk (ceres/disk.h) is the machine's own internal drive; this is what gets connected to it.
 
 There are PERIPH_PORTS ports. Each is empty, holds a STORAGE medium (512-byte sectors, read and write) or a CARTRIDGE (the same, read only). The host plugs files in before the program starts (`ceres run --port 0=stick.img --cart 1=game.cart`) or while it runs (a file dropped on the window; the debugger's `attach`). Every connection or disconnection is an EVENT: read them with periph_next_event, or wait for one with periph_wait. Media plugged in before the program started have their events waiting for it.
 

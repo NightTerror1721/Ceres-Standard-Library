@@ -27,7 +27,7 @@
 // Nothing here needs an interrupt handler, so this module never binds a vector. The tick waits (timer_wait,
 // timer_wait_until) spin on the cycle count. The time waits (timer_wait_ms, _us, _ns, _until_ns64, and sleep()
 // and nanosleep() above them) SLEEP: they arm the timer's ALARM - an absolute instant on the nanosecond clock,
-// which raises interrupt 24 - and halt. A halt ends on any request a device raises, taken or not, with
+// which raises interrupt 17 - and halt. A halt ends on any request a device raises, taken or not, with
 // interrupts masked or enabled (CeresASM 551cdbd), so no handler is needed; the wait looks at the clock each
 // time and halts again until its instant. The task table (timer_after/every) is driven by timer_poll().
 

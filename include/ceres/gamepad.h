@@ -1,4 +1,4 @@
-// Gamepad device (0xFF080000). Polled rather than event-driven: read the button
+// Gamepad device (0xFF120000). Polled rather than event-driven: read the button
 // mask and axes every frame.
 // See CeresASM docs/07-IO-Devices-and-Ports.md. Without a window nothing ever arrives.
 

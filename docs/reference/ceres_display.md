@@ -1,6 +1,6 @@
 # `<ceres/display.h>`
 
-Display device (0xFF070000): a pixel framebuffer of RGB32 pixels (0x00RRGGBB, top byte ignored). Distinct from the text framebuffer. A presented frame reaches the host through `ceres run --window` (SDL3) or a registered frame sink; without one, presenting is a no-op, so a headless program keeps working (and can be tested). See CeresASM docs/07-IO-Devices-and-Ports.md.
+Display device (0xFF450000): a pixel framebuffer of RGB32 pixels (0x00RRGGBB, top byte ignored). Distinct from the text framebuffer. A presented frame reaches the host through `ceres run --window` (SDL3) or a registered frame sink; without one, presenting is a no-op, so a headless program keeps working (and can be tested). See CeresASM docs/07-IO-Devices-and-Ports.md.
 
 The device has no vertical sync: with a window the host runs the machine in slices of instructions and shows the frame between slices, so the pace of a game is set by how many instructions it spends per frame. Pixels are written sequentially from a cursor that only clear or a size change rewinds, which is why display_blit() always clears first and takes a whole frame.
 

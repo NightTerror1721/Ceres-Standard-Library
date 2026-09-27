@@ -10,7 +10,7 @@ The real-time clock, timer_clock(), is seconds since 1970: where the machine's t
 
 A program that HALTs does not stop the clock: the machine jumps straight to the next thing a device has scheduled - the timer running out, the alarm, a transfer landing - and its time moves on by as much. With nothing scheduled only the host can wake it (a key, input).
 
-Nothing here needs an interrupt handler, so this module never binds a vector. The tick waits (timer_wait, timer_wait_until) spin on the cycle count. The time waits (timer_wait_ms, _us, _ns, _until_ns64, and sleep() and nanosleep() above them) SLEEP: they arm the timer's ALARM - an absolute instant on the nanosecond clock, which raises interrupt 24 - and halt. A halt ends on any request a device raises, taken or not, with interrupts masked or enabled (CeresASM 551cdbd), so no handler is needed; the wait looks at the clock each time and halts again until its instant. The task table (timer_after/every) is driven by timer_poll().
+Nothing here needs an interrupt handler, so this module never binds a vector. The tick waits (timer_wait, timer_wait_until) spin on the cycle count. The time waits (timer_wait_ms, _us, _ns, _until_ns64, and sleep() and nanosleep() above them) SLEEP: they arm the timer's ALARM - an absolute instant on the nanosecond clock, which raises interrupt 17 - and halt. A halt ends on any request a device raises, taken or not, with interrupts masked or enabled (CeresASM 551cdbd), so no handler is needed; the wait looks at the clock each time and halts again until its instant. The task table (timer_after/every) is driven by timer_poll().
 
 ```c
 // The registers (CeresASM plan/v2 SPEC 5.7).

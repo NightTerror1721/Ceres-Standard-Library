@@ -1,8 +1,8 @@
 # `<ceres/keyboard.h>`
 
-Keyboard device (0xFF050000). Reports key *events* - a code plus a pressed/released flag - unlike the terminal's character stream. See CeresASM docs/07-IO-Devices-and-Ports.md. Codes are in ceres/keys.h.
+Keyboard device (0xFF100000). Reports key *events* - a code plus a pressed/released flag - unlike the terminal's character stream. See CeresASM docs/07-IO-Devices-and-Ports.md. Codes are in ceres/keys.h.
 
-The device holds 64 events; a full queue DROPS new ones, so drain it every frame. Each event also raises interrupt 19 (IRQ_KEYBOARD), which a program may attach a handler to (ceres/irq.h). Nothing arrives from a plain `ceres run` on a pipe or a file. On a console the keys arrive once the program asks for them as they are pressed (term_set_raw(), or key_start() in ceres/key.h, which is what to read for a menu or a text field); in the window they always do.
+The device holds 64 events; a full queue DROPS new ones, so drain it every frame. Each event also raises interrupt 20 (IRQ_KEYBOARD), which a program may attach a handler to (ceres/irq.h). Nothing arrives from a plain `ceres run` on a pipe or a file. On a console the keys arrive once the program asks for them as they are pressed (term_set_raw(), or key_start() in ceres/key.h, which is what to read for a menu or a text field); in the window they always do.
 
 ```c
 #define KBD_STATUS         (KEYBOARD_BASE + 0x00)  // read: bit0 set when an event is queued

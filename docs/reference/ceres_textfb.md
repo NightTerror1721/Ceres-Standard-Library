@@ -1,6 +1,6 @@
 # `<ceres/textfb.h>`
 
-Text framebuffer (0xFF030000): a grid of characters a program draws into and then shows. Not pixels and not a scrolling stream: a board redrawn whole, which is what a text game wants. See CeresASM docs/07-IO-Devices-and-Ports.md.
+Text framebuffer (0xFF440000): a grid of characters a program draws into and then shows. Not pixels and not a scrolling stream: a board redrawn whole, which is what a text game wants. See CeresASM docs/07-IO-Devices-and-Ports.md.
 
 The device holds up to 200 x 100 cells of one Latin-1 byte each - printable ASCII, and 0xA0..0xFF for the code points U+00A0..U+00FF, the accented letters, ¿ ¡ ° £ and so on; a control shows as a space - and an attribute byte for its colours; the default is 40 x 20. The text functions take UTF-8 (ceres/utf8.h), so fb_text(0, 0, "¿Qué año?") fills nine cells; a character above U+00FF is '?'. fb_put() stores one byte as it is, which is its Latin-1 character, and fb_put_char() a code point.
 
