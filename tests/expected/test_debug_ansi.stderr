@@ -1,0 +1,10 @@
+[ceres:error] error 1
+[ceres:warn] warning two
+[ceres:info] info xy
+[ceres:debug] debug now 3
+[ceres:error] only errors
+[ceres:info] back to info:  3.14
+[ceres:info] 00001000  41 42 43 00 45 46 47 48  49 4a 4b 4c 4d 4e 4f 50  |ABC.EFGHIJKLMNOP|
+[ceres:info] 00001010  70 77 7e 85 7f 93 9a a1  a8 af b6 bd c4 cb d2 d9  |pw~.............|
+[ceres:info] 00001020  e0 e7 ee f5 fc                                    |.....|
+[ceres:info] fffffff0  48 69                                             |Hi|

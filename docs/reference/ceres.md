@@ -8,6 +8,7 @@ Ceres reaches its devices through memory-mapped I/O at the top of the address sp
 #define TERMINAL_BASE       0xFF000000
 #define TIMER_BASE          0xFF010000
 #define DMA_BASE            0xFF020000
+#define DEBUGLOG_BASE       0xFF030000   // the debug log: lines for the host's log, not the terminal (ceres/debug.h)
 #define KEYBOARD_BASE       0xFF100000
 #define MOUSE_BASE          0xFF110000
 #define GAMEPAD_BASE        0xFF120000

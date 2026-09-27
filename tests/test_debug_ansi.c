@@ -1,5 +1,6 @@
 // Logging, the hex dump, the stack watermark and the ANSI sequences. The ANSI test prints each
-// sequence on its own line, so the expected file shows exactly which bytes were sent.
+// sequence on its own line, so the expected file shows exactly which bytes were sent. The log and the hex
+// dump go to the machine's debug log, which `ceres run` writes to stderr: tests/expected/test_debug_ansi.stderr.
 #include "ceres/test.h"
 #include "ceres/debug.h"
 #include "ceres/ansi.h"
@@ -23,6 +24,8 @@ static void logging(void)
     LOGE("hidden too");
     log_set_level(LOG_INFO);
     LOGI("back to info: %5.2f", 3.14159f);
+    CHECK_EQ(dbg_log_enabled(), 1);                     // ceres run collects it
+    dbg_break();                                        // and does nothing with a break: only the debugger stops
 }
 
 static void hexdump(void)

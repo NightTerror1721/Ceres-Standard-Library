@@ -2,8 +2,10 @@
 
 #include "../stddef.h"
 
-// Logging and inspection for programs under development. Everything goes to the terminal through
-// printf, so it interleaves correctly with the program's own output.
+// Logging and inspection for programs under development. Everything here goes to the machine's debug log
+// (DEBUGLOG_BASE), not to the terminal: the host writes each line to its own log - stderr, or the file of
+// `ceres run --log` - as "[ceres:<level>] <line>", so it never mixes with what the program prints for its user.
+// Under `ceres debug` the lines show up in the debugger, and dbg_break() stops there.
 
 #define LOG_ERROR 0
 #define LOG_WARN  1
@@ -12,20 +14,26 @@
 
 void log_set_level(int level);                       // messages above this level are dropped; the default is LOG_INFO
 int  log_level(void);
-void log_msg(int level, const char* fmt, ...) __attribute__((__format__(__printf__, 2, 3)));   // "[warn] text\n"
+void log_msg(int level, const char* fmt, ...) __attribute__((__format__(__printf__, 2, 3)));   // one line at that level
 
 #define LOGE(...) log_msg(LOG_ERROR, __VA_ARGS__)
 #define LOGW(...) log_msg(LOG_WARN,  __VA_ARGS__)
 #define LOGI(...) log_msg(LOG_INFO,  __VA_ARGS__)
 #define LOGD(...) log_msg(LOG_DEBUG, __VA_ARGS__)
 
-// Sixteen bytes a line: the address, the bytes in hex, and the printable ones as text.
+// Sixteen bytes a line, at the info level: the address, the bytes in hex, and the printable ones as text.
 //   00000400  48 65 6c 6c 6f 00 01 02  03 04 05 06 07 08 09 0a  |Hello...........|
 void dbg_hexdump(const void* p, size_t n);
 void dbg_hexdump_base(const void* p, size_t n, unsigned int shown_base);   // the same, labelling the first byte with shown_base
 
 // One line saying where the program stands: stack pointer, top of the heap and the room between them.
 void dbg_where(void);
+
+// Stops the program here under `ceres debug`, as a breakpoint would; does nothing under `ceres run`.
+void dbg_break(void);
+
+// Nonzero when the host collects the debug log, so a program can skip building lines that go nowhere.
+int dbg_log_enabled(void);
 
 // How much stack a piece of code really uses. dbg_stack_paint() fills up to `max_bytes` of the unused
 // stack below the caller with a known pattern (leaving 64 bytes untouched under the caller's frame);
@@ -39,4 +47,4 @@ unsigned int dbg_stack_used(void);
 struct dbg_span { unsigned int t0; const char* name; };
 void dbg_span_begin(struct dbg_span* s, const char* name);
 unsigned int dbg_span_elapsed(const struct dbg_span* s);   // cycles since dbg_span_begin, without printing
-unsigned int dbg_span_end(struct dbg_span* s);       // prints "name: N cycles" and returns N
+unsigned int dbg_span_end(struct dbg_span* s);       // logs "name: N cycles" and returns N
