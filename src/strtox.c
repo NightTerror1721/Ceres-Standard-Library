@@ -428,3 +428,7 @@ double strtod(const char* s, char** end)
 }
 
 double atof(const char* s) { return strtod(s, 0); }
+
+// atof for a program compiled with -fshort-double, whose <stdlib.h> names it: there `double` is a float.
+float __atoff(const char* s);
+float __atoff(const char* s) { return strtof(s, 0); }

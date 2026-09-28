@@ -19,6 +19,7 @@ struct scan
     void* ctx;
     int count;                 // characters consumed so far (what %n reports)
     int hit_eof;               // a read found the end of the input
+    int short_double;          // the caller was compiled with -fshort-double: %lf and %Lf store a float
 };
 
 static int next_char(struct scan* s)
@@ -503,7 +504,7 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
             if (suppress)
                 continue;
             char* end;
-            if (narrow == 'l' || long_double)
+            if ((narrow == 'l' || long_double) && !s->short_double)
             {
                 double d = strtod(field, &end);          // %lf and %Lf: a double
                 if (end == field)
@@ -559,7 +560,7 @@ static void stream_unget(void* ctx, int c)
     ungetc(c, (FILE*)ctx);
 }
 
-int vsscanf(const char* text, const char* fmt, va_list ap)
+static int scan_string(const char* text, const char* fmt, va_list ap, int short_double)
 {
     struct string_source src;
     src.text = text;
@@ -570,10 +571,11 @@ int vsscanf(const char* text, const char* fmt, va_list ap)
     s.ctx = &src;
     s.count = 0;
     s.hit_eof = 0;
+    s.short_double = short_double;
     return scan_core(&s, fmt, ap);
 }
 
-int vfscanf(FILE* f, const char* fmt, va_list ap)
+static int scan_stream(FILE* f, const char* fmt, va_list ap, int short_double)
 {
     struct scan s;
     s.get = stream_get;
@@ -581,13 +583,13 @@ int vfscanf(FILE* f, const char* fmt, va_list ap)
     s.ctx = f;
     s.count = 0;
     s.hit_eof = 0;
+    s.short_double = short_double;
     return scan_core(&s, fmt, ap);
 }
 
-int vscanf(const char* fmt, va_list ap)
-{
-    return vfscanf(stdin, fmt, ap);
-}
+int vsscanf(const char* text, const char* fmt, va_list ap) { return scan_string(text, fmt, ap, 0); }
+int vfscanf(FILE* f, const char* fmt, va_list ap) { return scan_stream(f, fmt, ap, 0); }
+int vscanf(const char* fmt, va_list ap) { return scan_stream(stdin, fmt, ap, 0); }
 
 int sscanf(const char* text, const char* fmt, ...)
 {
@@ -612,6 +614,45 @@ int scanf(const char* fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     int r = vscanf(fmt, ap);
+    va_end(ap);
+    return r;
+}
+
+// The same for a program compiled with -fshort-double, which <stdio.h> sends here: %lf and %Lf store a float.
+int __vsscanf_sd(const char* text, const char* fmt, va_list ap);
+int __vfscanf_sd(FILE* f, const char* fmt, va_list ap);
+int __vscanf_sd(const char* fmt, va_list ap);
+int __sscanf_sd(const char* text, const char* fmt, ...);
+int __fscanf_sd(FILE* f, const char* fmt, ...);
+int __scanf_sd(const char* fmt, ...);
+
+int __vsscanf_sd(const char* text, const char* fmt, va_list ap) { return scan_string(text, fmt, ap, 1); }
+int __vfscanf_sd(FILE* f, const char* fmt, va_list ap) { return scan_stream(f, fmt, ap, 1); }
+int __vscanf_sd(const char* fmt, va_list ap) { return scan_stream(stdin, fmt, ap, 1); }
+
+int __sscanf_sd(const char* text, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int r = scan_string(text, fmt, ap, 1);
+    va_end(ap);
+    return r;
+}
+
+int __fscanf_sd(FILE* f, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int r = scan_stream(f, fmt, ap, 1);
+    va_end(ap);
+    return r;
+}
+
+int __scanf_sd(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int r = scan_stream(stdin, fmt, ap, 1);
     va_end(ap);
     return r;
 }

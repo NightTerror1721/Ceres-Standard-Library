@@ -70,7 +70,17 @@ int  vsnprintf(char* buf, size_t n, const char* fmt, va_list ap) __attribute__((
 // modifiers hh h l ll z t j q L (%f stores a float, %lf and %Lf a double; printf's %f takes a double, a float
 // argument arriving promoted). Returns how many conversions stored a value, or EOF when the input ended before
 // the first one. Whitespace in the format matches any run of whitespace; any other character must match exactly,
-// and the first mismatch stops the scan.
+// and the first mismatch stops the scan. Under -fshort-double, where `double` is a float, %lf and %Lf store a
+// float: these names are then the variants that know it. (printf needs none: a float passed through `...`
+// travels as a binary64 either way.)
+#ifdef __CERES_SHORT_DOUBLE__
+#define scanf   __scanf_sd
+#define vscanf  __vscanf_sd
+#define fscanf  __fscanf_sd
+#define vfscanf __vfscanf_sd
+#define sscanf  __sscanf_sd
+#define vsscanf __vsscanf_sd
+#endif
 int  scanf(const char* fmt, ...) __attribute__((__format__(__scanf__, 1, 2)));
 int  vscanf(const char* fmt, va_list ap) __attribute__((__format__(__scanf__, 1, 0)));
 int  fscanf(FILE* f, const char* fmt, ...) __attribute__((__format__(__scanf__, 2, 3)));

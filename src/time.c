@@ -67,6 +67,13 @@ double difftime(time_t end, time_t start)
     return (double)(end - start);                  // exact up to 2^53 seconds
 }
 
+// difftime for a program compiled with -fshort-double, whose <time.h> names it: there `double` is a float.
+float __difftimef(time_t end, time_t start);
+float __difftimef(time_t end, time_t start)
+{
+    return (float)(end - start);
+}
+
 unsigned int sleep(unsigned int seconds)
 {
     if (seconds > 4294967u)

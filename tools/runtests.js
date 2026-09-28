@@ -25,6 +25,7 @@
 //   <name>.screen    the text plane at every Present and at the end (`--screen-log`): for a test that includes
 //                    ceres/text.h or ceres/tui.h
 //   <name>.flags     compiler flags for it - and then the library is compiled with them, from its sources
+//   <name>.cflags    compiler flags for the test program alone, linked against the archive (-fshort-double)
 //   <name>.run       more words for `ceres run` (--env, --host-dir build/host, -- arguments)
 //   <name>.ports     media to plug in: `--port 0=file` or `--cart 1=file`, one a line
 // and a `// USE: irq` line near the top of a test links an optional module (irq, fault, mmu).
@@ -354,6 +355,12 @@ function recreateHostDirectory() {
     if (fs.existsSync("tests/data/host")) fs.cpSync("tests/data/host", "build/host", { recursive: true });
 }
 
+// tests/expected/<name>.cflags: flags for compiling the test program only.
+function programFlagsOf(name) {
+    const file = `tests/expected/${name}.cflags`;
+    return fs.existsSync(file) ? splitWords(readText(file)) : [];
+}
+
 function testOne(name) {
     const src = `tests/${name}.c`;
     const use = modulesOf(src);
@@ -361,15 +368,18 @@ function testOne(name) {
     const sources = [...CoreC, ...extra, ...Asm, src];
     const flagsFile = `tests/expected/${name}.flags`;
     const testFlags = fs.existsSync(flagsFile) ? splitWords(readText(flagsFile)) : [];
+    const programFlags = programFlagsOf(name);
+    if (testFlags.length && programFlags.length) throw new Error(`${name} has both a .flags and a .cflags file`);
     const expectedPath = `tests/expected/${name}.expected`;
-    const fromSource = opt.fromSources || testFlags.length > 0;        // a library option means a library built with it
+    // A library option means a library built with it; a program-only option means the archive, always.
+    const fromSource = (opt.fromSources || testFlags.length > 0) && !programFlags.length;
     let reference = null;
     let referenceLevel = null;                          // the first level that ran: what the others must print
     for (const level of opt.levels) {
         const label = `${name.padEnd(22)} -O${level}`;
         const out = `build/${name}.O${level}.out`;
         const err = `build/${name}.O${level}.err`;
-        const body = fromSource ? [...sources, ...testFlags] : [src, ...libraryArgs(level, use)];
+        const body = fromSource ? [...sources, ...testFlags] : [src, ...libraryArgs(level, use), ...programFlags];
         const transcript = `build/${name}.O${level}.transcript`;
         const screenLog = usesTextPlane(src) ? `build/${name}.O${level}.screen` : null;
         const stdin = fs.existsSync(`tests/expected/${name}.stdin`) ? `tests/expected/${name}.stdin` : null;
@@ -484,7 +494,9 @@ let tests = fs.readdirSync("tests").filter((f) => f.endsWith(".c")).map((f) => f
 if (opt.tests.length) tests = tests.filter((t) => opt.tests.includes(t));
 if (!tests.length) throw new Error("no tests match");
 fs.mkdirSync("tests/expected", { recursive: true });
-if (!opt.fromSources && !opt.library) ensureLibrary([...new Set([...opt.levels, "2"])].sort(byLevel));
+// The archive, unless every test compiles the library from its sources - a test with a .cflags file never does.
+if (!opt.library && (!opt.fromSources || tests.some((t) => programFlagsOf(t).length)))
+    ensureLibrary([...new Set([...opt.levels, "2"])].sort(byLevel));
 for (const name of tests) testOne(name);
 testHeaders();
 testExamples();

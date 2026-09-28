@@ -30,6 +30,9 @@ time_t time(time_t* out);
 // cycles at the CPU clock (ceres/timer.h), so it reads the same on every run. The machine runs one program, so its
 // time is the program's. (The cycles themselves are timer_cycles64().)
 clock_t clock(void);
+#ifdef __CERES_SHORT_DOUBLE__
+#define difftime __difftimef                       // -fshort-double: the float one, since double is float there
+#endif
 double  difftime(time_t end, time_t start);
 
 // gmtime and localtime return NULL (errno EOVERFLOW) for a time whose year an int cannot hold.

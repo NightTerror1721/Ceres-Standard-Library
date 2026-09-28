@@ -229,8 +229,9 @@ A few things this library is that a desktop libc is not:
   type) IEEE binary64, each computed by the machine's own instructions - the doubles on register pairs. `<math.h>`
   has both families: `sin`, `pow`, `erf`... take and give a `double`, within about an ulp for most of them (the
   header lists how close each one is), and `sinf`, `powf`... are the faster `float` ones. A program compiled with
-  `-fshort-double` makes `double` a `float` and gets the `float` family under the standard names, from the same
-  library.
+  `-fshort-double` makes `double` a `float` and links the same library: its headers give it the `float` family
+  under the standard names, and `strtod`, `atof`, `difftime` and `scanf`'s `%lf` in `float`; `printf` needs
+  nothing, since a `float` passed through `...` travels as a binary64 either way.
 - **Exact conversions.** `printf`, `scanf`, `strtof`/`strtod` convert between binary and decimal exactly, correctly
   rounded, whatever the number of digits (`src/fconv.c`, `src/fconv64.c`).
 - **UTF-8.** Strings, the multibyte functions (`MB_CUR_MAX` is 4), `%lc`/`%ls`, the terminal, the text plane and the

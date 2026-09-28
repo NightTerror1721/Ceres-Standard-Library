@@ -42,6 +42,11 @@ unsigned long long strtoull(const char* s, char** end, int base);
 float        strtof(const char* s, char** end);    // correctly rounded; decimal, 0x hex floats ("0x1.8p3"), inf/infinity and nan
 int          strfromf(char* restrict s, size_t n, const char* restrict format, float fp);   // C23: format is "%[.p]{aAeEfFgG}"
 int          ftoa_shortest(char* buf, size_t size, float x);   // the fewest digits that read back as x ("0.1", "1e+30"); its length
+#ifdef __CERES_SHORT_DOUBLE__
+// -fshort-double: `double` is a float, so these are the float ones - the library's own return a binary64.
+#define strtod    strtof
+#define atof      __atoff
+#endif
 double       strtod(const char* s, char** end);    // read the way strtof reads a float, rounded once to binary64
 double       atof(const char* s);
 #define strtold   strtod                           // long double is double

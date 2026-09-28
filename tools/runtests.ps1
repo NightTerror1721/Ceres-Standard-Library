@@ -38,7 +38,8 @@
 
     A test with a tests/expected/<name>.flags file sets a compile-time option of the LIBRARY (-DCERES_...), so
     the library is compiled again with it, together with the test, as before. -FromSources does that for every
-    test: the slow path, and the one that proves the archive changes nothing.
+    test: the slow path, and the one that proves the archive changes nothing. A tests/expected/<name>.cflags file
+    holds flags for the test program alone (-fshort-double), which is then always linked against the archive.
 
     The tools are found next to this checkout (../../Ceres-C, ../../CeresASM) or through the
     CERESC and CERES_DIR environment variables.
@@ -261,7 +262,17 @@ New-Item -ItemType Directory -Force tests/expected | Out-Null
 Write-Host "ceresc  $Ceresc" -ForegroundColor DarkGray
 Write-Host "ceres   $CeresDir" -ForegroundColor DarkGray
 
-if (-not $FromSources) { Ensure-Library @($LevelList + 2 | Sort-Object -Unique) }   # -O2 also serves the examples
+# tests/expected/<name>.cflags: flags for compiling the test program only.
+function Get-ProgramFlags([string]$name) {
+    $file = "tests/expected/$name.cflags"
+    if (Test-Path $file) { return (Get-Content $file -Raw).Trim() }
+    return ''
+}
+
+# The archive, unless every test compiles the library from its sources - a test with a .cflags file never does.
+if (-not $FromSources -or @($tests | Where-Object { (Get-ProgramFlags $_) -ne '' }).Count -gt 0) {
+    Ensure-Library @($LevelList + 2 | Sort-Object -Unique)   # -O2 also serves the examples
+}
 
 foreach ($name in $tests) {
     $src = "tests/$name.c"
@@ -278,15 +289,18 @@ foreach ($name in $tests) {
     # extra compiler flags for this test (tests/expected/<name>.flags): a build that sets a compile-time option
     $flagsFile = "tests/expected/$name.flags"
     $testFlags = if (Test-Path $flagsFile) { (Get-Content $flagsFile -Raw).Trim() } else { '' }
+    $programFlags = Get-ProgramFlags $name
+    if ($testFlags -ne '' -and $programFlags -ne '') { throw "$name has both a .flags and a .cflags file" }
     $expectedPath = "tests/expected/$name.expected"
     $reference = $null
-    $fromSource = $FromSources -or ($testFlags -ne '')     # a library option means a library built with it
+    # A library option means a library built with it; a program-only option means the archive, always.
+    $fromSource = ($FromSources -or ($testFlags -ne '')) -and ($programFlags -eq '')
 
     foreach ($level in $LevelList) {
         $label = "{0,-22} -O{1}" -f $name, $level
         $out = "build/$name.O$level.out"
         $err = "build/$name.O$level.err"
-        $body = if ($fromSource) { "$sources $testFlags" } else { "$src $(Get-LibraryArgs $level $use)" }
+        $body = if ($fromSource) { "$sources $testFlags" } else { "$src $(Get-LibraryArgs $level $use) $programFlags" }
         $transcript = "build/$name.O$level.transcript"
         $screenLog = if (Test-UsesTextPlane $src) { "build/$name.O$level.screen" } else { '' }
         $stdin = "tests/expected/$name.stdin"        # what is typed on the program's terminal, if anything
