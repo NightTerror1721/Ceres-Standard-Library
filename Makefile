@@ -32,7 +32,8 @@ CTEST ?= ctest
 NODE ?= node
 CERESC ?=
 CERES ?=
-# The test runner finds the tools through the environment: CERESC, and CERES_PATH for ceres.
+# Without them, the tools are found the way ceresc finds ceres: the CERESC and CERES_PATH environment variables, then
+# PATH. The test runner finds them through the environment, so the ones given here go there too.
 ifneq ($(strip $(CERESC)),)
 export CERESC
 endif
@@ -80,8 +81,8 @@ bool = $(if $(call yes,$(1)),ON,OFF)
 # command line says, whatever an earlier one said.
 CMAKE_ARGS = \
 	$(if $(GENERATOR),-G "$(GENERATOR)") \
-	$(if $(CERESC),"-DCERESC=$(CERESC)") \
-	$(if $(CERES),"-DCERES=$(CERES)") \
+	"-DCERESC=$(CERESC)" \
+	"-DCERES=$(CERES)" \
 	-DCERES_OPT_LEVEL=$(OPT) \
 	-DCERES_WERROR=$(call bool,$(WERROR)) \
 	"-DCERES_OPT_FLAGS=$(call list,$(FLAGS))" \
@@ -188,7 +189,7 @@ What to build
 Where, and with what
   BUILD_DIR=$(BUILD_ROOT)/O<level>[-sd]   BUILD_ROOT=build/cmake   PREFIX=   (install)
   GENERATOR=$(if $(GENERATOR),$(GENERATOR),)   (Ninja when found; any CMake generator)   JOBS=   (parallel jobs)
-  CERESC=  CERES=  (else CERESC and CERES_PATH in the environment, the sibling checkouts, then PATH)
+  CERESC=  CERES=  (else CERESC and CERES_PATH in the environment, then PATH)
   CMAKE=cmake  CTEST=ctest  NODE=node
 
 Tests

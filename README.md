@@ -40,9 +40,11 @@ cache variables are the settings: `CERES_OPT_LEVEL`, `CERES_WERROR`, `CERES_OPT_
 `include/ceres/config.h` (read from the header, so a new one there is one here). `<build>/libceres.flags` records
 the flags a build was compiled with.
 
-`ceresc` and `ceres` are found next to this checkout (`../../Ceres-C`, `../../CeresASM`), through the `CERESC`
-and `CERES_PATH` environment variables, or on `PATH`; `make CERESC=... CERES=...` (or `-DCERESC=`, `-DCERES=`)
-names them outright.
+`ceresc` and `ceres` are found the way `ceresc` finds `ceres`: the `CERESC` and `CERES_PATH` environment variables
+(the executable, or the directory that holds it), then `PATH`; `make CERESC=... CERES=...` (or `-DCERESC=`,
+`-DCERES=`) names them outright. A variable that is set decides - one that names no such tool is an error, not a
+reason to look elsewhere - and nothing is looked for next to this checkout. The scripts and the test runners find
+them the same way.
 
 The PowerShell scripts of before still work on Windows: `tools/mklib.ps1` (build/lib/O<n>) and
 `tools/install.ps1 -Prefix <dir>`.
@@ -109,7 +111,7 @@ Where, and with what:
 | `GENERATOR` | `Ninja`, when it is there | Any CMake generator (`"Unix Makefiles"`, `"MinGW Makefiles"`...). To change it in a directory that exists, `make clean` first. |
 | `JOBS` | | Parallel jobs for `cmake --build` and `ctest` (Ninja is parallel already). |
 | `PREFIX` | | Where `install` and `sysroot` put the library. **Required** by those two. |
-| `CERESC`, `CERES` | found | The tools. Without them: the `CERESC` and `CERES_PATH` environment variables, the sibling checkouts, then `PATH`. **Once given, a build directory remembers them**: give the other one, or `make clean`, to go back. |
+| `CERESC`, `CERES` | found | The tools. Without them: the `CERESC` and `CERES_PATH` environment variables, then `PATH`, looked up again on every configure. |
 | `CMAKE`, `CTEST`, `NODE` | `cmake`, `ctest`, `node` | For tools that are not on `PATH`. |
 | `CONFIG_FILE` | `config.mk` | Another configuration file. |
 

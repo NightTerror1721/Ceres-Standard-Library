@@ -8,35 +8,25 @@ $Latin1 = [System.Text.Encoding]::GetEncoding(28591)   # one char per byte: NULs
 if (-not $TimeoutSeconds) { $TimeoutSeconds = 180 }
 
 # ---- the tools ----------------------------------------------------------------------------------
-# Found next to this checkout (../../Ceres-C, ../../CeresASM), or through CERESC and CERES_PATH.
-# CERES_PATH is the standard way to say where ceres is (the directory that holds it, or the executable itself);
-# CERES_DIR, its older name here, still works.
+# Found the way ceresc finds ceres (--ceres-path, CERES_PATH, then PATH): the environment variable - CERES_PATH for
+# ceres, CERESC for ceresc: the executable, or the directory that holds it - else PATH. A variable that is set decides:
+# naming no such tool is an error, not a reason to look elsewhere. Nothing is looked for next to this checkout.
 
-function Find-Tool([string]$fromEnv, [string[]]$candidates, [string]$onPath) {
-    if ($fromEnv -and (Test-Path $fromEnv)) { return (Resolve-Path $fromEnv).Path }
-    foreach ($c in $candidates) { if (Test-Path $c) { return (Resolve-Path $c).Path } }
-    $cmd = Get-Command $onPath -ErrorAction SilentlyContinue
+function Find-Tool([string]$name, [string]$variable) {
+    $given = [Environment]::GetEnvironmentVariable($variable)
+    if ($given) {
+        $candidate = if (Test-Path -LiteralPath $given -PathType Container) { Join-Path $given "$name.exe" } else { $given }
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return (Resolve-Path -LiteralPath $candidate).Path }
+        throw "$variable names '$given', which is neither the $name executable nor a directory that holds it (unset it to look on PATH)"
+    }
+    $cmd = Get-Command "$name.exe" -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($cmd) { return $cmd.Source }
-    throw "cannot find ${onPath} - set the environment variable or build it next to this checkout"
+    throw "cannot find $name - set $variable to it or to its directory, or put its directory on PATH"
 }
 
-$Ceresc = Find-Tool $env:CERESC @(
-    "$Root\..\..\Ceres-C\build\gcc\bin\Release\ceresc.exe",
-    "$Root\..\..\Ceres-C\build\ninja\bin\Release\ceresc.exe",
-    "$Root\..\..\Ceres-C\build\msvc\bin\Release\ceresc.exe") 'ceresc'
-
-function Resolve-CeresLocation([string]$where) {
-    if (-not $where -or -not (Test-Path $where)) { return $null }
-    $item = Get-Item $where
-    if ($item.PSIsContainer) { return $item.FullName }
-    return $item.DirectoryName
-}
-$fromEnv = Resolve-CeresLocation $env:CERES_PATH
-if (-not $fromEnv) { $fromEnv = Resolve-CeresLocation $env:CERES_DIR }
-if ($fromEnv) { $CeresDir = $fromEnv }
-elseif (Test-Path "$Root\..\..\CeresASM\ceres.exe") { $CeresDir = (Resolve-Path "$Root\..\..\CeresASM").Path }
-else { $CeresDir = Split-Path -Parent (Find-Tool $null @() 'ceres') }
-$Ceres = Join-Path $CeresDir 'ceres.exe'
+$Ceresc = Find-Tool 'ceresc' 'CERESC'
+$Ceres = Find-Tool 'ceres' 'CERES_PATH'
+$CeresDir = Split-Path -Parent $Ceres
 
 # ---- the sources --------------------------------------------------------------------------------
 

@@ -13,8 +13,8 @@
 //                                                 (<dir>/libceres.car, libceres.decls.casm, obj/) - at every level;
 //                                                 {level} in <dir> is the level (--library build/cmake/O{level})
 //
-// The tools are found next to this checkout (../../Ceres-C, ../../CeresASM) or through CERESC (ceresc) and
-// CERES_PATH (ceres: its directory, or the executable). A program runs without a window, as fast as the host goes
+// The tools are found the way ceresc finds ceres: CERES_PATH (the executable, or its directory), then PATH; ceresc the
+// same way through CERESC. A variable that is set decides. A program runs without a window, as fast as the host goes
 // (`ceres run --headless --speed max --gpu software`), and what it wrote to its terminal comes back from
 // --transcript: it never writes to the host's stdout (CeresASM plan/v2 F5.7). What a test is compared against lives
 // in tests/expected/:
@@ -76,31 +76,23 @@ function onPath(name) {
     }
     return null;
 }
-function findCeresc() {
-    if (process.env.CERESC && fs.existsSync(process.env.CERESC)) return path.resolve(process.env.CERESC);
-    for (const build of ["gcc", "ninja", "msvc", "clang", ""]) {
-        for (const tail of [["bin", "Release"], ["bin"]]) {
-            const candidate = path.join(Root, "..", "..", "Ceres-C", "build", build, ...tail, "ceresc" + exe);
-            if (fs.existsSync(candidate)) return path.resolve(candidate);
-        }
+// Where a tool is, the way ceresc finds ceres (--ceres-path, CERES_PATH, then PATH): the environment variable - the
+// executable, or the directory that holds it - else PATH. A variable that is set decides: naming no such tool is an
+// error, not a reason to look elsewhere. Nothing is looked for next to this checkout.
+function findTool(name, variable) {
+    const given = process.env[variable];
+    if (given) {
+        const candidate = fs.existsSync(given) && fs.statSync(given).isDirectory() ? path.join(given, name + exe) : given;
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return path.resolve(candidate);
+        throw new Error(`${variable} names '${given}', which is neither the ${name} executable nor a directory that holds it (unset it to look on PATH)`);
     }
-    const found = onPath("ceresc");
+    const found = onPath(name);
     if (found) return found;
-    throw new Error("cannot find ceresc - set CERESC or build it next to this checkout");
+    throw new Error(`cannot find ${name}: set ${variable} to it or to its directory, or put its directory on PATH`);
 }
-function findCeresDir() {
-    for (const where of [process.env.CERES_PATH, process.env.CERES_DIR]) {
-        if (where && fs.existsSync(where)) return fs.statSync(where).isDirectory() ? path.resolve(where) : path.dirname(path.resolve(where));
-    }
-    const sibling = path.join(Root, "..", "..", "CeresASM");
-    if (fs.existsSync(path.join(sibling, "ceres" + exe))) return path.resolve(sibling);
-    const found = onPath("ceres");
-    if (found) return path.dirname(found);
-    throw new Error("cannot find ceres - set CERES_PATH or build it next to this checkout");
-}
-const Ceresc = findCeresc();
-const CeresDir = findCeresDir();
-const Ceres = path.join(CeresDir, "ceres" + exe);
+const Ceresc = findTool("ceresc", "CERESC");
+const Ceres = findTool("ceres", "CERES_PATH");
+const CeresDir = path.dirname(Ceres);
 process.env.CERES_HEADLESS = "1";      // no window, whatever ceresc starts
 
 // ---- a program's run (CeresASM plan/v2 F5.7) ----

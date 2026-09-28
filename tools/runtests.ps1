@@ -47,8 +47,8 @@
     test: the slow path, and the one that proves the archive changes nothing. A tests/expected/<name>.cflags file
     holds flags for the test program alone (-fshort-double), which is then always linked against the archive.
 
-    The tools are found next to this checkout (../../Ceres-C, ../../CeresASM) or through the
-    CERESC and CERES_DIR environment variables.
+    The tools are found the way ceresc finds ceres: the CERES_PATH environment variable (the executable, or the
+    directory that holds it), then PATH; ceresc the same way through CERESC. A variable that is set decides.
 
 .EXAMPLE
     tools\runtests.ps1                      # everything
