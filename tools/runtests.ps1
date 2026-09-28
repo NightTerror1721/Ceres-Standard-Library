@@ -225,7 +225,7 @@ function Test-Examples {
         }
         if (-not (Test-Path $expectedPath)) { continue }
         $leaked = Get-HostOutput "build/examples/$name.out"
-        if ($leaked -ne '') {
+        if (-not (Same $leaked '')) {
             $bad++
             [void]$failures.Add("example $name (host stdout)")
             Write-Host "  FAIL  $name  wrote to the host's stdout" -ForegroundColor Red
@@ -333,7 +333,7 @@ foreach ($name in $tests) {
         }
 
         $leaked = Get-HostOutput $out
-        if ($leaked -ne '') {
+        if (-not (Same $leaked '')) {
             [void]$failures.Add("$name -O$level (host stdout)")
             Write-Host "  FAIL  $label  wrote to the host's stdout" -ForegroundColor Red
             Show-Difference '' $leaked
