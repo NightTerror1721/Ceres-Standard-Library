@@ -53,6 +53,11 @@ int main(void)
     CHECK_EQ(sys_memory_size(), CERES_DEFAULT_RAM);
     CHECK_EQ(sys_vram_size(), 32u * 1024u * 1024u);
 
+    TEST_SECTION("running another program");
+    // Run without --host-dir there is nothing to load from: the load fails, the host's log says so on stderr, and the
+    // program goes on after the call.
+    CHECK_EQ(sys_run("games/none.cres", 0, 0, 0), -1);
+
     TEST_SECTION("panic");
     int verdict = test_summary();
     sys_panic("boom");                                         // prints, then shuts the machine down

@@ -5,6 +5,7 @@
 #   <build>/libceres.car          the archive
 #   <build>/libceres.decls.casm   the declarations of everything in it (what ceresc's --decls takes)
 #   <build>/obj/<unit>.cobj       the objects, one per unit (the optional modules are linked by naming these)
+#   <build>/bin/shell.cres        the Ceres shell (bin/shell/shell.c), linked against the archive
 #
 # The build is incremental and parallel: every C file is compiled on its own (the code ceresc generates for a
 # unit does not depend on the rest of the library - only the declarations it imports do), its declarations are
@@ -248,6 +249,23 @@ add_custom_command(
     VERBATIM)
 add_custom_target(ceres_stdlib ALL DEPENDS libceres.car libceres.decls.casm)
 
+# ---- 5. the shell -------------------------------------------------------------------------------------------------
+# What `ceres run` starts without a program (CeresASM plan/v2 F7): a program like any other, compiled against the
+# archive's declarations, assembled, and linked with the archive. The archive changes with any header the shell
+# could see, so depending on it is enough.
+
+file(MAKE_DIRECTORY "${B}/bin" "${B}/shell")
+add_custom_command(
+    OUTPUT bin/shell.cres
+    COMMAND "${CERESC}" bin/shell/shell.c ${CERESC_FLAGS} --decls "${B}/libceres.decls.casm" -S -o "${B}/shell/shell.casm"
+    COMMAND "${CERES}" asm -c "${B}/shell/shell.casm" -o "${B}/shell/shell.cobj"
+    COMMAND "${CERES}" link "${B}/shell/shell.cobj" "${B}/libceres.car" -o "${B}/bin/shell.cres"
+    DEPENDS "${ROOT}/bin/shell/shell.c" libceres.car libceres.decls.casm
+    WORKING_DIRECTORY "${ROOT}"
+    COMMENT "ceresc -O${CERES_OPT_LEVEL} bin/shell/shell.c"
+    VERBATIM)
+add_custom_target(ceres_shell ALL DEPENDS bin/shell.cres)
+
 # ---- the documentation (node tools/gendocs.js) ---------------------------------------------------------------------
 
 if(NODE)
@@ -278,9 +296,11 @@ endif()
 #   <prefix>/include/                           every header
 #   <prefix>/<lib>/libceres.car                 the archive, and libceres.decls.casm beside it
 #   <prefix>/<lib>/libceres_<m>.cobj            an optional module (-lceres_irq; -lceres_fault -lceres_fault_asm; ...)
+#   <prefix>/bin/shell.cres                     the shell: `ceres run --sysroot <prefix>` starts it
 # where <lib> is lib (CERES_LIBDIR says otherwise).
 
 install(DIRECTORY include/ DESTINATION include)
+install(FILES "${B}/bin/shell.cres" DESTINATION bin)
 install(FILES "${B}/libceres.car" "${B}/libceres.decls.casm" DESTINATION "${LIBDIR}")
 foreach(_module IN LISTS CERES_OPTIONAL_MODULES)
     foreach(_file IN LISTS MODULE_${_module})

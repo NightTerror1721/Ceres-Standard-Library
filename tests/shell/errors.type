@@ -1,0 +1,12 @@
+cd nowhere
+cd top.txt
+ls nowhere
+cat
+cat missing.txt docs
+run
+run nothing
+run docs
+run top.txt
+help nothing
+foo
+games/greet 2

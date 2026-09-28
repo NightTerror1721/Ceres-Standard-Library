@@ -2,6 +2,7 @@
 -- our own variables live in the right sections
 -- the stack
 -- the machine
+-- running another program
 -- panic
-ALL PASSED 23/23
+ALL PASSED 24/24
 panic: boom

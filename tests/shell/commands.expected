@@ -1,0 +1,42 @@
+Ceres shell. Type 'help' for the commands.
+ceres:/> Commands:
+  help [command]     what the commands do
+  ls [dir]           the files and directories in a directory
+  cd [dir]           go to a directory (/ alone: the top)
+  cat <file>...      show what a file holds
+  run <file> [args]  run a program (.cres), then come back here
+  clear              clear the screen
+  mem                how much memory there is, and how much free
+  time               the date and time, and how long since start
+  info               what this machine is
+  reset              start the machine again
+  exit [status]      leave the shell, and the machine stops
+A program can also be run by its name alone: snake, or snake.cres.
+Up and Down bring back earlier lines.
+ceres:/> cd [dir]
+  go to a directory (/ alone: the top)
+ceres:/> docs/                       <dir>
+games/                      <dir>
+top.txt                         4
+ceres:/> readme.txt                     32
+ceres:/> top.txt                         4
+ceres:/> ceres:/games> docs/                       <dir>
+games/                      <dir>
+top.txt                         4
+ceres:/games> greet: [games/greet.cres] [3] [two] PWD=/games
+(exit status 3)
+ceres:/games> greet: [games/greet.cres] [0] PWD=/games
+ceres:/games> ceres:/> ceres:/docs> Hello from a file.
+Second line.
+ceres:/docs> ceres:/> Hello from a file.
+Second line.
+top
+ceres:/> [2J[Hceres:/> RAM   64 MiB, 63 MiB free
+VRAM  32 MiB
+ceres:/> 2026-09-28 12:00:00 UTC, up 0:00:00
+ceres:/> machine   standard, CPU 50 MHz
+memory    64 MiB of RAM, 32 MiB of VRAM
+video     V0, up to V5; 640x480 at 60 Hz
+terminal  80x30
+host      a directory is attached
+ceres:/> 

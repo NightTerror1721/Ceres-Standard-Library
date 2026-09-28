@@ -1,0 +1,19 @@
+help
+help cd
+ls
+ls docs
+ls top.txt
+cd games
+ls ..
+run greet.cres 3 two
+greet 0
+cd ..
+cd /docs
+cat readme.txt
+cd /
+cat docs/readme.txt top.txt
+clear
+mem
+time
+info
+exit 5

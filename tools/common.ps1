@@ -117,6 +117,22 @@ function Invoke-Tool([string]$exe, [string]$argLine, [string]$outFile, [string]$
     return $p.ExitCode
 }
 
+# A program of one C file built against the archive at a level, the way a program is linked without --run: compiled to
+# CASM against the archive's declarations, assembled, and linked with the archive ($work names the files on the way).
+# $null when it built; otherwise what went wrong.
+function Build-Program([string]$source, [string]$cres, [string]$work, [int]$level = 2, [string]$linkFlags = '') {
+    $dir = Get-LibraryDir $level
+    $steps = @(
+        @($Ceresc, "$source --decls $dir/libceres.decls.casm -I include -O$level -Werror -S -o $work.casm"),
+        @($Ceres, "asm -c $work.casm -o $work.cobj"),
+        @($Ceres, "link $work.cobj $dir/libceres.car -o $cres $linkFlags"))
+    foreach ($step in $steps) {
+        $code = Invoke-Tool $step[0] $step[1] "$work.out" "$work.err"
+        if ($code -ne 0) { return "$([System.IO.Path]::GetFileName($step[0])): $(([string](Read-Text "$work.err")).Trim())" }
+    }
+    return $null
+}
+
 function Read-Text([string]$path) {
     if (-not (Test-Path $path)) { return $null }
     return $Latin1.GetString([System.IO.File]::ReadAllBytes($path))

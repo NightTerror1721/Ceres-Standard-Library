@@ -1,3 +1,6 @@
 # What a test feeds its program on stdin is data: its line endings are part of the test, so git must not rewrite them.
 *.stdin -text
 *.cart -text
+# The shell's sessions: what is typed, and the files it lists and shows by size - byte for byte on every checkout.
+*.type -text
+tests/shell/files/** -text

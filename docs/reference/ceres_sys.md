@@ -17,6 +17,8 @@ The machine as a program sees it: how to stop it, and where its memory is.
 #define SYS_CTRL_CPU_CLOCK    (SYS_CTRL_BASE + 0x24)   // read: the CPU clock, in cycles per second
 #define SYS_CTRL_PROFILE      (SYS_CTRL_BASE + 0x28)   // read: the machine's profile, one of SYS_PROFILE_*
 #define SYS_CTRL_FAULT_REASON (SYS_CTRL_BASE + 0x2C)   // read: why the last fault happened (CeresASM plan/v2 SPEC 5.4)
+#define SYS_CTRL_LOAD_PATH    (SYS_CTRL_BASE + 0x30)   // write: the host path of the .cres that command 3 runs
+#define SYS_CTRL_LOAD_ARGS    (SYS_CTRL_BASE + 0x34)   // write: the address of { argc, argv, envp } for command 3, or 0
 #define SYS_CTRL_VRAM_SIZE    (SYS_CTRL_BASE + 0x38)   // read: bytes of VRAM
 
 // The machines `ceres run --profile` gives (CeresASM docs/30-Machine-Clock-and-Profiles.md): from a 2 MHz micro
@@ -46,6 +48,14 @@ unsigned int sys_profile(void);      // which machine it is: SYS_PROFILE_*
 unsigned int sys_features(void);     // the features register (0 unless something switched a feature on)
 void sys_set_features(unsigned int features);
 void sys_panic(const char* msg) __attribute__((__noreturn__));   // print "panic: <msg>" on the terminal and shut down
+
+// Runs another program in place of this one, as execve does (command 3, CeresASM 7cdf0f5): the .cres at `path` in the
+// host directory (`ceres run --host-dir`; the shell's is the current one), started with argc and argv - argv[0] is
+// by convention its path - and envp, or this program's environment when envp is NULL; argv NULL starts it with argv
+// = { path }. stdio is flushed first; atexit handlers do not run. It returns only when the program could not be
+// loaded - no such file, not a Ceres program, too big for the RAM - with -1. Under `ceres run --shell` (and the
+// shell), the shell starts again when that program ends, with its environment and CERES_STATUS=<its exit status>.
+int sys_run(const char* path, int argc, char** argv, char** envp);
 
 // What the program was started with (`ceres run prog.cres --env NAME=value -- a b`, CeresASM 9c6afbb): main(int
 // argc, char** argv, char** envp) receives the same three, and these reach them anywhere (src/env.c). argv[0] is

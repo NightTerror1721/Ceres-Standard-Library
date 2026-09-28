@@ -29,6 +29,11 @@
 //   <name>.run       more words for `ceres run` (--env, --host-dir build/host, -- arguments)
 //   <name>.ports     media to plug in: `--port 0=file` or `--cart 1=file`, one a line
 // and a `// USE: irq` line near the top of a test links an optional module (irq, fault, mmu).
+//
+// The shell (bin/shell/shell.c) is built as `make install` builds it, into build/shell/bin/shell.cres, and each
+// tests/shell/<session>.type is typed on it - `ceres run --sysroot build/shell` with no program, the host directory a
+// copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with <session>.expected,
+// what went to its error stream with <session>.stderr (else nothing) and its exit status with <session>.status.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -349,6 +354,83 @@ function testExamples() {
     }
 }
 
+// A program of one C file, built against the archive at -O2 the way a program is linked without --run: compiled to
+// CASM against the archive's declarations, assembled, and linked with the archive.
+function buildProgram(source, cres, work) {
+    const dir = libraryDir("2");
+    const casm = `${work}.casm`, cobj = `${work}.cobj`;
+    const steps = [
+        [Ceresc, [source, "--decls", `${dir}/libceres.decls.casm`, "-I", "include", "-O2", "-Werror", "-S", "-o", casm]],
+        [Ceres, ["asm", "-c", casm, "-o", cobj]],
+        [Ceres, ["link", cobj, `${dir}/libceres.car`, "-o", cres, ...(opt.gc ? ["--gc-sections"] : [])]],
+    ];
+    for (const [tool, argv] of steps) {
+        const code = run(tool, argv, `${work}.out`, `${work}.err`);
+        if (code !== 0) return `${path.basename(tool)} ${argv[0]}: ${(readText(`${work}.err`) || "").trim()}`;
+    }
+    return null;
+}
+
+function copyTree(from, to) {
+    fs.mkdirSync(to, { recursive: true });
+    for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+        const a = path.join(from, entry.name), b = path.join(to, entry.name);
+        if (entry.isDirectory()) copyTree(a, b);
+        else fs.copyFileSync(a, b);
+    }
+}
+
+function testShell() {
+    console.log(cyan("shell: build it, and type each session of tests/shell on it"));
+    const dir = "build/shell", host = `${dir}/host`;
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(`${dir}/bin`, { recursive: true });
+    copyTree("tests/shell/files", host);
+    let error = buildProgram("bin/shell/shell.c", `${dir}/bin/shell.cres`, `${dir}/shell`);
+    for (const program of fs.readdirSync("tests/shell").filter((f) => f.endsWith(".c")).sort()) {
+        if (error) break;
+        fs.mkdirSync(`${host}/games`, { recursive: true });
+        error = buildProgram(`tests/shell/${program}`, `${host}/games/${program.slice(0, -2)}.cres`, `${dir}/${program.slice(0, -2)}`);
+    }
+    if (error) {
+        failures.push("shell (build)");
+        console.log(red(`  FAIL  the shell does not build: ${error}`));
+        return;
+    }
+    const sessions = fs.readdirSync("tests/shell").filter((f) => f.endsWith(".type")).map((f) => f.slice(0, -5)).sort();
+    let bad = 0;
+    for (const name of sessions) {
+        const base = `tests/shell/${name}`, transcript = `${dir}/${name}.transcript`;
+        const code = run(Ceres, ["run", "--sysroot", dir, "--host-dir", host, "--headless", "--speed", "max", "--gpu", "software",
+            "--rtc", "2026-09-28T12:00:00", "--type", `${base}.type`, "--transcript", transcript], `${dir}/${name}.out`, `${dir}/${name}.err`);
+        const wantStatus = fs.existsSync(`${base}.status`) ? Number(readText(`${base}.status`).trim()) : 0;
+        const { out, err } = splitTranscript(readText(transcript) || "");
+        const errors = err + hostErrors(readText(`${dir}/${name}.err`) || "");
+        if (opt.update) {
+            fs.writeFileSync(`${base}.expected`, Buffer.from(out, "latin1"));
+            if (errors !== "") fs.writeFileSync(`${base}.stderr`, Buffer.from(errors, "latin1"));
+            console.log(yellow(`  wrote ${base}.expected (${out.length} bytes)`));
+            continue;
+        }
+        const problems = [];
+        if (code !== wantStatus) problems.push(`exit ${code}, not ${wantStatus}`);
+        if (lf(readText(`${base}.expected`) || "") !== out) problems.push("output");
+        if (lf(readText(`${base}.stderr`) || "") !== errors) problems.push("error stream");
+        if (hostOutput(readText(`${dir}/${name}.out`) || "") !== "") problems.push("host stdout");
+        if (problems.length) {
+            bad++;
+            failures.push(`shell ${name} (${problems.join(", ")})`);
+            console.log(red(`  FAIL  shell ${name}: ${problems.join(", ")}`));
+            if (problems.includes("output")) showDifference(lf(readText(`${base}.expected`) || ""), out);
+            if (problems.includes("error stream")) showDifference(lf(readText(`${base}.stderr`) || ""), errors);
+        }
+    }
+    if (bad === 0) {
+        console.log(green(`  ok    the shell, ${sessions.length} sessions`));
+        passed++;
+    }
+}
+
 function recreateHostDirectory() {
     fs.rmSync("build/host", { recursive: true, force: true });
     fs.mkdirSync("build/host", { recursive: true });
@@ -495,11 +577,14 @@ if (opt.tests.length) tests = tests.filter((t) => opt.tests.includes(t));
 if (!tests.length) throw new Error("no tests match");
 fs.mkdirSync("tests/expected", { recursive: true });
 // The archive, unless every test compiles the library from its sources - a test with a .cflags file never does.
-if (!opt.library && (!opt.fromSources || tests.some((t) => programFlagsOf(t).length)))
+const archivesBuilt = !opt.library && (!opt.fromSources || tests.some((t) => programFlagsOf(t).length));
+if (archivesBuilt)
     ensureLibrary([...new Set([...opt.levels, "2"])].sort(byLevel));
 for (const name of tests) testOne(name);
 testHeaders();
 testExamples();
+if (!opt.library && !archivesBuilt) ensureLibrary(["2"]);        // the shell is always linked against the archive
+testShell();
 console.log("");
 if (!failures.length) {
     console.log(green(`all tests passed (${passed} checks: ${tests.length} tests x ${opt.levels.length} levels, plus the headers)`));

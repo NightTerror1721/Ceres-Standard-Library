@@ -36,6 +36,12 @@
     A test that includes ceres/text.h or ceres/tui.h also has its screens compared: the text plane at every
     Present and at the end (--screen-log), with tests/expected/<name>.screen.
 
+    The shell (bin/shell/shell.c) is built as an install builds it, into build/shell/bin/shell.cres, and each
+    tests/shell/<session>.type is typed on it - `ceres run --sysroot build/shell` with no program, the host directory
+    a copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with
+    <session>.expected, what went to its error stream with <session>.stderr (else nothing) and its exit status with
+    <session>.status.
+
     A test with a tests/expected/<name>.flags file sets a compile-time option of the LIBRARY (-DCERES_...), so
     the library is compiled again with it, together with the test, as before. -FromSources does that for every
     test: the slow path, and the one that proves the archive changes nothing. A tests/expected/<name>.cflags file
@@ -252,6 +258,69 @@ function Test-Examples {
     }
 }
 
+# ---- the shell ----------------------------------------------------------------------------------
+# The shell as an install builds it, and the sessions of tests/shell typed on it (see the description above).
+
+function Test-Shell {
+    Write-Host "shell: build it, and type each session of tests/shell on it" -ForegroundColor Cyan
+    $dir = 'build/shell'
+    $hostDir = "$dir/host"
+    if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
+    New-Item -ItemType Directory -Force "$dir/bin", "$hostDir/games" | Out-Null
+    Copy-Item tests/shell/files/* $hostDir -Recurse -Force
+    $problem = Build-Program 'bin/shell/shell.c' "$dir/bin/shell.cres" "$dir/shell" 2 $LinkFlags
+    foreach ($program in (Get-ChildItem tests/shell -Filter *.c | Sort-Object Name)) {
+        if ($problem) { break }
+        $problem = Build-Program "tests/shell/$($program.Name)" "$hostDir/games/$($program.BaseName).cres" "$dir/$($program.BaseName)" 2 $LinkFlags
+    }
+    if ($problem) {
+        [void]$failures.Add("shell (build)")
+        Write-Host "  FAIL  the shell does not build: $problem" -ForegroundColor Red
+        return
+    }
+    $sessions = @(Get-ChildItem tests/shell -Filter *.type | Sort-Object Name)
+    $bad = 0
+    foreach ($session in $sessions) {
+        $name = $session.BaseName
+        $base = "tests/shell/$name"
+        $transcript = "$dir/$name.transcript"
+        $cmd = "run --sysroot $dir --host-dir $hostDir --headless --speed max --gpu software --rtc 2026-09-28T12:00:00 --type $base.type --transcript $transcript"
+        $code = Invoke-Tool $Ceres $cmd "$dir/$name.out" "$dir/$name.err"
+        $wantStatus = if (Test-Path "$base.status") { [int]((Read-Text "$base.status").Trim()) } else { 0 }
+        $raw = Read-Text $transcript
+        $streams = Split-Transcript $(if ($null -eq $raw) { '' } else { $raw })
+        $errText = Read-Text "$dir/$name.err"
+        if ($null -eq $errText) { $errText = '' }
+        $errors = $streams.Err + (((Get-ProgramOutput $errText) -split "(?<=`n)" | Where-Object { $_ -notmatch '^(Wrote |  warning \[)' }) -join '')
+        if ($Update) {
+            [System.IO.File]::WriteAllBytes("$Root\$base.expected", $Latin1.GetBytes($streams.Out))
+            if ($errors -ne '') { [System.IO.File]::WriteAllBytes("$Root\$base.stderr", $Latin1.GetBytes($errors)) }
+            Write-Host "  wrote $base.expected ($($streams.Out.Length) bytes)" -ForegroundColor Yellow
+            continue
+        }
+        $expected = Read-Text "$base.expected"
+        $expected = if ($null -eq $expected) { '' } else { $expected -replace "`r`n", "`n" }
+        $expectedErrors = Read-Text "$base.stderr"
+        $expectedErrors = if ($null -eq $expectedErrors) { '' } else { $expectedErrors -replace "`r`n", "`n" }
+        $problems = @()
+        if ($code -ne $wantStatus) { $problems += "exit $code, not $wantStatus" }
+        if (-not (Same $streams.Out $expected)) { $problems += 'output' }
+        if (-not (Same $errors $expectedErrors)) { $problems += 'error stream' }
+        if (-not (Same (Get-HostOutput "$dir/$name.out") '')) { $problems += 'host stdout' }
+        if ($problems.Count -gt 0) {
+            $bad++
+            [void]$failures.Add("shell $name ($($problems -join ', '))")
+            Write-Host "  FAIL  shell $($name): $($problems -join ', ')" -ForegroundColor Red
+            if ($problems -contains 'output') { Show-Difference $expected $streams.Out }
+            if ($problems -contains 'error stream') { Show-Difference $expectedErrors $errors }
+        }
+    }
+    if ($bad -eq 0) {
+        Write-Host "  ok    the shell, $($sessions.Count) sessions" -ForegroundColor Green
+        $script:passed++
+    }
+}
+
 # ---- the tests ----------------------------------------------------------------------------------
 
 $tests = @(Get-ChildItem tests -Filter *.c | Sort-Object Name | ForEach-Object { $_.BaseName })
@@ -270,8 +339,9 @@ function Get-ProgramFlags([string]$name) {
 }
 
 # The archive, unless every test compiles the library from its sources - a test with a .cflags file never does.
-if (-not $FromSources -or @($tests | Where-Object { (Get-ProgramFlags $_) -ne '' }).Count -gt 0) {
-    Ensure-Library @($LevelList + 2 | Sort-Object -Unique)   # -O2 also serves the examples
+$archivesBuilt = -not $FromSources -or @($tests | Where-Object { (Get-ProgramFlags $_) -ne '' }).Count -gt 0
+if ($archivesBuilt) {
+    Ensure-Library @($LevelList + 2 | Sort-Object -Unique)   # -O2 also serves the examples and the shell
 }
 
 foreach ($name in $tests) {
@@ -426,6 +496,8 @@ foreach ($name in $tests) {
 
 Test-EachHeader
 Test-Examples
+if (-not $archivesBuilt) { Ensure-Library @(2) }   # the shell is always linked against the archive
+Test-Shell
 
 Write-Host ""
 if ($failures.Count -eq 0) {

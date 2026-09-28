@@ -1,0 +1,13 @@
+cd: no such directory: nowhere
+cd: not a directory: top.txt
+ls: no such file or directory: nowhere
+cat: which file? (cat <file>...)
+cat: no such file or directory: missing.txt
+cat: is a directory: docs
+run: which program? (run <file.cres> [arguments])
+run: no such program: nothing
+run: is a directory: docs
+run: not a program this machine can load: top.txt
+help: no such command: nothing
+unknown command: foo ('help' lists them)
+[ceres:warn] Cannot load 'top.txt': Failed to read program header from file: top.txt
