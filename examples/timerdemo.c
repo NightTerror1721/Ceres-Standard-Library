@@ -1,6 +1,7 @@
 // Timers without interrupts: timer_every and timer_after register callbacks, and timer_poll() runs the ones
 // that are due. The clock is the machine's instruction counter (see ceres/timer.h), so the sequence below is
-// the same on every run and at every optimization level.
+// the same on every run and at every optimization level. The deadlines are far apart next to what a printf
+// costs (a few thousand cycles), so the order does not hang on how fast the compiled code is.
 #include "stdio.h"
 #include "ceres/timer.h"
 
@@ -27,9 +28,9 @@ static void on_stop(void* ctx)
 int main(void)
 {
     unsigned int start = timer_ticks();
-    timer_every(3000, on_tick, "tick");          // 3000, 6000, 9000, ...
-    timer_after(10000, on_once, "one-shot at 10000");
-    int stop = timer_after(16000, on_stop, "stop at 16000");
+    timer_every(30000, on_tick, "tick");         // 30000, 60000, 90000, ...
+    timer_after(100000, on_once, "one-shot at 100000");
+    int stop = timer_after(160000, on_stop, "stop at 160000");
     printf("%d timers waiting\n", timer_pending());
 
     while (!finished)
@@ -37,6 +38,6 @@ int main(void)
 
     timer_cancel(stop);                            // safe on one that already ran
     printf("%d timer left (the repeating one)\n", timer_pending());
-    printf("took at least %s\n", timer_elapsed(start) >= 16000u ? "16000 ticks" : "less?!");
+    printf("took at least %s\n", timer_elapsed(start) >= 160000u ? "160000 ticks" : "less?!");
     return 0;
 }
