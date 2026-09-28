@@ -8,24 +8,22 @@
     the modules the program calls are linked, the optional ones (irq, fault) among them. Nothing of the library
     is compiled again; ceresc gets the archive's declarations with --decls.
 
-    A machine has a screen: the program's window opens when it first shows a frame (of the text framebuffer or
-    of the pixel display), so the games are played in it and the keyboard, mouse and gamepad go to the program.
-    A program that never shows a frame opens none, and its output appears here. -Window opens the window at
-    once (ceres run --window); -Terminal keeps it out of the way (ceres run --terminal), so text frames appear
-    here as text and the games take their input from the terminal.
+    A machine has a screen: the program runs in its window, where its terminal and its graphics are, and the
+    keyboard, mouse and gamepad go to it; the window stays with the last frame when it ends, until a key is pressed.
+    -Headless runs it without one (ceres run --headless): what it writes to its terminal is then shown here when it
+    ends (--transcript), and -Type <file> types a file on its terminal (--type).
 
 .EXAMPLE
-    tools\example.ps1 snake                            # the window opens with its first frame
-    tools\example.ps1 snake -Terminal                  # the frames as text, here
-    tools\example.ps1 snake -Window
+    tools\example.ps1 snake                            # in the window
+    tools\example.ps1 calc -Headless -Type input.txt   # no window: its output here
     tools\example.ps1 life -Define DEMO_FRAMES=100      # the demo build the tests compare
     tools\example.ps1 hello
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true, Position = 0)][string]$Name,
-    [switch]$Window,
-    [switch]$Terminal,
+    [switch]$Headless,
+    [string]$Type = '',
     [string[]]$Define = @(),
     [int]$Level = 2,
     [switch]$NoRun,
@@ -64,7 +62,10 @@ Write-Host ("built $cres ({0} bytes)" -f (Get-Item $cres).Length) -ForegroundCol
 if ($NoRun) { exit 0 }
 
 $runArgs = @("run", $cres)
-if ($Window) { $runArgs += "--window" }
-if ($Terminal) { $runArgs += "--terminal" }
+$transcript = "build/examples/$Name.transcript"
+if ($Headless) { $runArgs += @("--headless", "--transcript", $transcript) }
+if ($Type) { $runArgs += @("--type", $Type) }
 & $Ceres @runArgs
-exit $LASTEXITCODE
+$code = $LASTEXITCODE
+if ($Headless -and (Test-Path $transcript)) { Write-Host ([System.IO.File]::ReadAllText("$Root\$transcript")) }
+exit $code

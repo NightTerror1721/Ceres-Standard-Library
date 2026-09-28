@@ -287,4 +287,3 @@ optional module.
 | `tools/gen_tables.js` | The constant tables the sources include (the sine of `ceres/fixed.h`, the CRC-32 table). |
 | `tools/gen_math_tables.js`, `tools/gen_f64_vectors.js` | Reference values for the math and soft-double tests. |
 | `tools/example.ps1` | Builds one program from `examples/` and runs it. |
-| `tools/consolecheck.ps1` | Checks the text interface against a real Windows console. |

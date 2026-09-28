@@ -14,11 +14,16 @@
 //                                                 {level} in <dir> is the level (--library build/cmake/O{level})
 //
 // The tools are found next to this checkout (../../Ceres-C, ../../CeresASM) or through CERESC (ceresc) and
-// CERES_PATH (ceres: its directory, or the executable). What a test is compared against lives in tests/expected/:
-//   <name>.expected  what it prints (compared byte for byte; the driver's "Wrote" lines are left out)
-//   <name>.stderr    what it writes to its error stream (else it must write nothing there)
+// CERES_PATH (ceres: its directory, or the executable). A program runs without a window, as fast as the host goes
+// (`ceres run --headless --speed max --gpu software`), and what it wrote to its terminal comes back from
+// --transcript: it never writes to the host's stdout (CeresASM plan/v2 F5.7). What a test is compared against lives
+// in tests/expected/:
+//   <name>.expected  what it prints (compared byte for byte)
+//   <name>.stderr    what it writes to its error stream, then what `ceres` itself says (else nothing at all)
 //   <name>.status    the exit status it must end with (0 when there is none)
-//   <name>.stdin     what it reads from the terminal
+//   <name>.stdin     what is typed on its terminal (`ceres run --type`: through the line discipline, as it reads)
+//   <name>.screen    the text plane at every Present and at the end (`--screen-log`): for a test that includes
+//                    ceres/text.h or ceres/tui.h
 //   <name>.flags     compiler flags for it - and then the library is compiled with them, from its sources
 //   <name>.run       more words for `ceres run` (--env, --host-dir build/host, -- arguments)
 //   <name>.ports     media to plug in: `--port 0=file` or `--cart 1=file`, one a line
@@ -90,7 +95,34 @@ function findCeresDir() {
 const Ceresc = findCeresc();
 const CeresDir = findCeresDir();
 const Ceres = path.join(CeresDir, "ceres" + exe);
-process.env.CERES_HEADLESS = "1";      // frames of the text framebuffer go to the terminal, where they are compared
+process.env.CERES_HEADLESS = "1";      // no window, whatever ceresc starts
+
+// ---- a program's run (CeresASM plan/v2 F5.7) ----
+// The words for `ceres run`, each after a --run-arg: no window, flat out, the transcript and, when asked for, the
+// screen log and what is typed.
+function runArgs(transcript, screenLog, typed) {
+    const words = ["--headless", "--speed", "max", "--gpu", "software", "--transcript", transcript];
+    if (screenLog) words.push("--screen-log", screenLog);
+    if (typed) words.push("--type", typed);
+    return words.flatMap((w) => ["--run-arg", w]);
+}
+// The transcript's two streams: the error stream's bytes are between ESC [ E and ESC [ e.
+function splitTranscript(raw) {
+    let out = "", err = "", inError = false;
+    for (let i = 0; i < raw.length; i++) {
+        if (raw[i] === "\x1b" && raw[i + 1] === "[" && (raw[i + 2] === "E" || raw[i + 2] === "e")) {
+            inError = raw[i + 2] === "E";
+            i += 2;
+        } else if (inError) err += raw[i];
+        else out += raw[i];
+    }
+    return { out, err };
+}
+// Whether a program draws on the text plane, so its screens are compared.
+const usesTextPlane = (file) => /#include\s+"ceres\/(text|tui)\.h"/.test(fs.readFileSync(file, "latin1"));
+// What the run itself wrote to stderr - ceresc's and ceres's own messages - without ceresc's "Wrote" lines and the
+// assembler's notes on an optimized unit.
+const hostErrors = (errText) => programOutput(errText).split(/(?<=\n)/).filter((l) => !/^(Wrote |  warning \[)/.test(l)).join("");
 
 // ---- the sources ----
 const Optional = {
@@ -268,6 +300,8 @@ function testExamples() {
         const flags = fs.existsSync(flagsFile) ? splitWords(readText(flagsFile)) : [];
         const expectedPath = `examples/expected/${name}.expected`;
         const stdin = fs.existsSync(`examples/expected/${name}.stdin`) ? `examples/expected/${name}.stdin` : null;
+        const transcript = `build/examples/${name}.transcript`;
+        fs.rmSync(transcript, { force: true });
         const statusFile = `examples/expected/${name}.status`;
         const wantStatus = fs.existsSync(statusFile) ? Number(readText(statusFile).trim()) : 0;
         const sources = [...CoreC, ...extra, ...Asm, `examples/${name}.c`];
@@ -275,7 +309,7 @@ function testExamples() {
         if (fs.existsSync(expectedPath)) {
             const body = opt.fromSources ? [...sources, ...flags] : [`examples/${name}.c`, ...libraryArgs(2, use), ...flags];
             code = run(Ceresc, [...body, "-I", "include", "-O2", "-Werror", "-o", `build/examples/${name}.cres`, ...(opt.gc ? ["--gc-sections"] : []),
-                "--run", "--clean", "--ceres-path", CeresDir], `build/examples/${name}.out`, `build/examples/${name}.err`, stdin);
+                "--run", "--clean", "--ceres-path", CeresDir, ...runArgs(transcript, null, stdin)], `build/examples/${name}.out`, `build/examples/${name}.err`);
         } else {
             code = run(Ceresc, [...sources, "-I", "include", "-O2", "-Werror", "-S", "-o", `build/examples/${name}.casm`], `build/examples/${name}.out`, `build/examples/${name}.err`);
         }
@@ -286,7 +320,7 @@ function testExamples() {
             continue;
         }
         if (!fs.existsSync(expectedPath)) continue;
-        const actual = programOutput(readText(`build/examples/${name}.out`) || "");
+        const actual = splitTranscript(readText(transcript) || "").out;
         if (opt.update) {
             fs.writeFileSync(expectedPath, Buffer.from(actual, "latin1"));
             console.log(yellow(`  wrote ${expectedPath} (${actual.length} bytes)`));
@@ -325,8 +359,13 @@ function testOne(name) {
         const out = `build/${name}.O${level}.out`;
         const err = `build/${name}.O${level}.err`;
         const body = fromSource ? [...sources, ...testFlags] : [src, ...libraryArgs(level, use)];
+        const transcript = `build/${name}.O${level}.transcript`;
+        const screenLog = usesTextPlane(src) ? `build/${name}.O${level}.screen` : null;
+        const stdin = fs.existsSync(`tests/expected/${name}.stdin`) ? `tests/expected/${name}.stdin` : null;
+        for (const f of [transcript, screenLog]) if (f) fs.rmSync(f, { force: true });
+        // The run's own words first: a .run file may end with `-- a b`, the program's arguments.
         const cmd = [...body, "-I", "include", `-O${level}`, "-Werror", "-o", `build/${name}.O${level}.cres`, ...(opt.gc ? ["--gc-sections"] : []),
-            "--run", "--clean", "--ceres-path", CeresDir];
+            "--run", "--clean", "--ceres-path", CeresDir, ...runArgs(transcript, screenLog, stdin)];
         const portsFile = `tests/expected/${name}.ports`;
         if (fs.existsSync(portsFile)) {
             fs.mkdirSync("build/ports", { recursive: true });
@@ -343,8 +382,7 @@ function testOne(name) {
             for (const word of splitWords(text)) cmd.push("--run-arg", word);
             if (/--host-dir\s+build\/host(\s|$)/.test(text)) recreateHostDirectory();
         }
-        const stdin = fs.existsSync(`tests/expected/${name}.stdin`) ? `tests/expected/${name}.stdin` : null;
-        const code = run(Ceresc, cmd, out, err, stdin);
+        const code = run(Ceresc, cmd, out, err);
         const errText = readText(err) || "";
         const statusFile = `tests/expected/${name}.status`;
         const wantStatus = fs.existsSync(statusFile) ? Number(readText(statusFile).trim()) : 0;
@@ -354,7 +392,8 @@ function testOne(name) {
             for (const l of errText.split(/\r?\n/).filter((l) => l && !l.startsWith("Wrote ")).slice(0, 6)) console.log(yellow(`      ${l}`));
             continue;
         }
-        const actual = programOutput(readText(out) || "");
+        const streams = splitTranscript(readText(transcript) || "");
+        const actual = streams.out;
         if (opt.update && level === opt.levels[0]) {
             fs.writeFileSync(expectedPath, Buffer.from(actual, "latin1"));
             console.log(yellow(`  wrote ${expectedPath} (${actual.length} bytes)`));
@@ -366,7 +405,7 @@ function testOne(name) {
             showDifference(reference, actual);
             continue;
         }
-        const errActual = programOutput(errText).split(/(?<=\n)/).filter((l) => !/^(Wrote |  warning \[)/.test(l)).join("");
+        const errActual = streams.err + hostErrors(errText);
         const errPath = `tests/expected/${name}.stderr`;
         let errExpected = fs.existsSync(errPath) ? lf(readText(errPath)) : "";
         if (opt.update && level === opt.levels[0]) {
@@ -379,6 +418,19 @@ function testOne(name) {
             console.log(red(`  FAIL  ${label}  its error stream differs from ${errPath}`));
             showDifference(errExpected, errActual);
             continue;
+        }
+        if (screenLog) {
+            const screenPath = `tests/expected/${name}.screen`;
+            const screenActual = lf(readText(screenLog) || "");
+            if (opt.update && level === opt.levels[0])
+                fs.writeFileSync(screenPath, Buffer.from(screenActual, "latin1"));
+            const screenExpected = readText(screenPath);
+            if (screenExpected === null || lf(screenExpected) !== screenActual) {
+                failures.push(`${name} -O${level} (screen)`);
+                console.log(red(`  FAIL  ${label}  its screens differ from ${screenPath}`));
+                showDifference(screenExpected === null ? "" : lf(screenExpected), screenActual);
+                continue;
+            }
         }
         const expected = readText(expectedPath);
         if (expected === null) {

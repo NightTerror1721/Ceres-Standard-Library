@@ -192,7 +192,7 @@ int main(void)
 
     TEST_SECTION("terminal fallback");
     input_init();
-    wait_for_terminal_bytes(6);                                  // the stdin file is "wD 1\nq" = 6 bytes
+    wait_for_terminal_bytes(6);                                  // the stdin file is "wDq 1\n" = 6 bytes, one line
     input_update();                                              // fallback is off: the terminal is left alone
     CHECK(!key_down(KEY_W));
     CHECK_EQ(term_bytes_available(), 6);

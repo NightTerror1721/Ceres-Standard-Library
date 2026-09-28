@@ -1,0 +1,62 @@
+--- present 1 ---
+¿Qué año?   and encoding
+?uroé      ß string
+-- to and from Latin-1
+-- uchar.h
+-- wchar.h and stdlib.h
+-- printf and scanf
+printed: ¿Qué año? ¡Sí!
+-- the text plane
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--- end ---
+¿Qué año?   and encoding
+?uroé      ß string
+-- to and from Latin-1
+-- uchar.h
+-- wchar.h and stdlib.h
+-- printf and scanf
+printed: ¿Qué año? ¡Sí!
+-- the text plane
+-- the pixel font
+ALL PASSED 139/139
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

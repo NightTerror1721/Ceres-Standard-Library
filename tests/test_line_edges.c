@@ -23,11 +23,12 @@ int main(void)
     CHECK_STR(buf, "three");
 
     TEST_SECTION("discarding what is waiting");
-    for (int spin = 0; spin < 3000000 && line_available() < 22; spin++)
+    // What the script typed reaches the terminal a line at a time, as the program reads: "discard me\n" first.
+    for (int spin = 0; spin < 3000000 && line_available() < 11; spin++)
     {
     }
-    CHECK_EQ(line_available(), 22);                              // "discard me\nand me too\n"
-    line_discard();
+    CHECK_EQ(line_available(), 11);
+    line_discard();                                              // takes "and me too\n" too, as it comes while it reads
     CHECK_EQ(line_available(), 0);
     return test_summary();
 }

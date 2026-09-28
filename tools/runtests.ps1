@@ -25,8 +25,16 @@
     `-- a b` for main's arguments. Words are split at white space, so no value can contain any. With `--host-dir build/host` the directory is made afresh for every level,
     with a copy of tests/data/host in it.
 
-    What a test writes to its error stream (stderr, perror, assert, abort) is compared with
-    tests/expected/<name>.stderr, and must be empty when there is none.
+    A program runs without a window, as fast as the host goes (`ceres run --headless --speed max --gpu software`),
+    and never writes to the host's stdout (CeresASM plan/v2 F5.7): what it wrote to its terminal comes back from
+    --transcript, where the error stream's bytes are between ESC[E and ESC[e. tests/expected/<name>.stdin is typed
+    on its terminal (--type), through the line discipline, as the program reads.
+
+    What a test writes to its error stream (stderr, perror, assert, abort), then what `ceres` itself says, is
+    compared with tests/expected/<name>.stderr, and must be empty when there is none.
+
+    A test that includes ceres/text.h or ceres/tui.h also has its screens compared: the text plane at every
+    Present and at the end (--screen-log), with tests/expected/<name>.screen.
 
     A test with a tests/expected/<name>.flags file sets a compile-time option of the LIBRARY (-DCERES_...), so
     the library is compiled again with it, together with the test, as before. -FromSources does that for every
@@ -61,9 +69,40 @@ $LevelList = @(($Levels -join ',') -split '[,; ]+' | Where-Object { $_ } | ForEa
 $LinkFlags = if ($GcSections) { "--gc-sections" } else { "" }
 . "$PSScriptRoot/common.ps1"    # $Root, $Ceresc, $CeresDir, the source lists, Invoke-Tool, Same, ...
 
-# A machine has a screen: without this, a program that shows a frame of the text framebuffer would open a window
-# (ceres, built with SDL, does). The tests compare the frames as text on the terminal, so they run without one.
+# No window, whatever ceresc starts.
 $env:CERES_HEADLESS = '1'
+
+# ---- a program's run (CeresASM plan/v2 F5.7) ------------------------------------------------------
+
+# The words for `ceres run`, each after a --run-arg: no window, flat out, the transcript and, when asked for, the
+# screen log and what is typed.
+function Get-RunArgs([string]$transcript, [string]$screenLog, [string]$typed) {
+    $words = @('--headless', '--speed', 'max', '--gpu', 'software', '--transcript', $transcript)
+    if ($screenLog) { $words += @('--screen-log', $screenLog) }
+    if ($typed) { $words += @('--type', $typed) }
+    return (($words | ForEach-Object { "--run-arg $_" }) -join ' ')
+}
+
+# The transcript's two streams: the error stream's bytes are between ESC [ E and ESC [ e.
+function Split-Transcript([string]$raw) {
+    $out = New-Object System.Text.StringBuilder
+    $err = New-Object System.Text.StringBuilder
+    $inError = $false
+    for ($i = 0; $i -lt $raw.Length; $i++) {
+        if ($raw[$i] -eq [char]27 -and $i + 2 -lt $raw.Length -and $raw[$i + 1] -eq '[' -and ($raw[$i + 2] -ceq 'E' -or $raw[$i + 2] -ceq 'e')) {
+            $inError = $raw[$i + 2] -ceq 'E'
+            $i += 2
+        }
+        elseif ($inError) { [void]$err.Append($raw[$i]) }
+        else { [void]$out.Append($raw[$i]) }
+    }
+    return @{ Out = $out.ToString(); Err = $err.ToString() }
+}
+
+# Whether a program draws on the text plane, so its screens are compared.
+function Test-UsesTextPlane([string]$file) {
+    return [bool](Select-String -Path $file -Pattern '#include\s+"ceres/(text|tui)\.h"' -Quiet)
+}
 
 # ---- reporting differences ----------------------------------------------------------------------
 
@@ -156,13 +195,15 @@ function Test-Examples {
         $expectedPath = "examples/expected/$name.expected"
         $stdin = "examples/expected/$name.stdin"
         if (-not (Test-Path $stdin)) { $stdin = '' }
+        $transcript = "build/examples/$name.transcript"
+        Remove-Item $transcript -Force -ErrorAction SilentlyContinue
         $statusFile = "examples/expected/$name.status"
         $wantStatus = if (Test-Path $statusFile) { [int]((Read-Text $statusFile).Trim()) } else { 0 }
         if (Test-Path $expectedPath) {
-            # ceresc builds, links and runs in one go; the program reads its stdin from the .stdin file
+            # ceresc builds, links and runs in one go; the .stdin file is typed on the program's terminal
             $body = if ($FromSources) { "$sources $flags" } else { "examples/$name.c $(Get-LibraryArgs 2 $use) $flags" }   # a define only the example reads goes with either
-            $cmd = "$body -I include -O2 -Werror -o build/examples/$name.cres $LinkFlags --run --clean --ceres-path `"$CeresDir`""
-            $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err" $stdin
+            $cmd = "$body -I include -O2 -Werror -o build/examples/$name.cres $LinkFlags --run --clean --ceres-path `"$CeresDir`" $(Get-RunArgs $transcript '' $stdin)"
+            $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err"
         } else {
             $cmd = "$sources -I include -O2 -Werror -S -o build/examples/$name.casm"   # only prove it compiles
             $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err"
@@ -175,7 +216,8 @@ function Test-Examples {
             continue
         }
         if (-not (Test-Path $expectedPath)) { continue }
-        $actual = Get-ProgramOutput (Read-Text "build/examples/$name.out")
+        $raw = Read-Text $transcript
+        $actual = (Split-Transcript $(if ($null -eq $raw) { '' } else { $raw })).Out
         if ($Update) {
             [System.IO.File]::WriteAllBytes("$Root\$expectedPath", $Latin1.GetBytes($actual))
             Write-Host "  wrote $expectedPath ($($actual.Length) bytes)" -ForegroundColor Yellow
@@ -229,7 +271,14 @@ foreach ($name in $tests) {
         $out = "build/$name.O$level.out"
         $err = "build/$name.O$level.err"
         $body = if ($fromSource) { "$sources $testFlags" } else { "$src $(Get-LibraryArgs $level $use)" }
-        $cmdLine = "$body -I include -O$level -Werror -o build/$name.O$level.cres $LinkFlags --run --clean --ceres-path `"$CeresDir`""
+        $transcript = "build/$name.O$level.transcript"
+        $screenLog = if (Test-UsesTextPlane $src) { "build/$name.O$level.screen" } else { '' }
+        $stdin = "tests/expected/$name.stdin"        # what is typed on the program's terminal, if anything
+        if (-not (Test-Path $stdin)) { $stdin = '' }
+        Remove-Item $transcript -Force -ErrorAction SilentlyContinue
+        if ($screenLog) { Remove-Item $screenLog -Force -ErrorAction SilentlyContinue }
+        # The run's own words first: a .run file may end with `-- a b`, the program's arguments.
+        $cmdLine = "$body -I include -O$level -Werror -o build/$name.O$level.cres $LinkFlags --run --clean --ceres-path `"$CeresDir`" $(Get-RunArgs $transcript $screenLog $stdin)"
         # tests/expected/<name>.ports: media to plug in, one `--port 0=file` or `--cart 1=file` per line. The files a
         # test writes to are new for every level, so each run starts from the same empty stick.
         $portsFile = "tests/expected/$name.ports"
@@ -249,15 +298,13 @@ foreach ($name in $tests) {
                 if ($word) { $cmdLine += " --run-arg $word" }
             }
         }
-        $stdin = "tests/expected/$name.stdin"        # what the program reads from the terminal, if it reads
-        if (-not (Test-Path $stdin)) { $stdin = '' }
         if ((Test-Path $runFile) -and ((Get-Content $runFile -Raw) -match '--host-dir\s+build/host(\s|$)')) {
             # a new, empty host directory for every level, as for the sticks
             Remove-Item "build/host" -Recurse -Force -ErrorAction SilentlyContinue
             New-Item -ItemType Directory -Force "build/host" | Out-Null
             if (Test-Path "tests/data/host") { Get-ChildItem "tests/data/host" -Force | Copy-Item -Destination "build/host" -Recurse -Force }
         }
-        $code = Invoke-Tool $Ceresc $cmdLine $out $err $stdin
+        $code = Invoke-Tool $Ceresc $cmdLine $out $err
         $errText = Read-Text $err
         $statusFile = "tests/expected/$name.status"          # the exit status the test must end with (default 0)
         $wantStatus = if (Test-Path $statusFile) { [int]((Read-Text $statusFile).Trim()) } else { 0 }
@@ -269,7 +316,9 @@ foreach ($name in $tests) {
             continue
         }
 
-        $actual = Get-ProgramOutput (Read-Text $out)
+        $raw = Read-Text $transcript
+        $streams = Split-Transcript $(if ($null -eq $raw) { '' } else { $raw })
+        $actual = $streams.Out
 
         if ($Update -and $level -eq $LevelList[0]) {
             [System.IO.File]::WriteAllBytes("$Root\$expectedPath", $Latin1.GetBytes($actual))
@@ -283,10 +332,10 @@ foreach ($name in $tests) {
             continue
         }
 
-        # What the program wrote to its error stream (the host's stderr: the same file as ceresc's own messages,
-        # whose "Wrote" lines are left out): tests/expected/<name>.stderr, or nothing at all.
-        # (the assembler's notes on an optimized unit - "  warning [x.casm:n] ... never used" - are the build's, too)
-        $errActual = ((Get-ProgramOutput $errText) -split "(?<=`n)" | Where-Object { $_ -notmatch '^(Wrote |  warning \[)' }) -join ''
+        # What the program wrote to its error stream, then what the run itself said on stderr (ceresc's "Wrote" lines
+        # and the assembler's notes on an optimized unit - "  warning [x.casm:n] ... never used" - left out):
+        # tests/expected/<name>.stderr, or nothing at all.
+        $errActual = $streams.Err + (((Get-ProgramOutput $errText) -split "(?<=`n)" | Where-Object { $_ -notmatch '^(Wrote |  warning \[)' }) -join '')
         $errExpectedPath = "tests/expected/$name.stderr"
         $errExpected = Read-Text $errExpectedPath
         $errExpected = if ($null -eq $errExpected) { '' } else { $errExpected -replace "`r`n", "`n" }
@@ -301,6 +350,23 @@ foreach ($name in $tests) {
             Write-Host "  FAIL  $label  its error stream differs from $errExpectedPath" -ForegroundColor Red
             Show-Difference $errExpected $errActual
             continue
+        }
+
+        if ($screenLog) {
+            $screenPath = "tests/expected/$name.screen"
+            $screenRaw = Read-Text $screenLog
+            $screenActual = if ($null -eq $screenRaw) { '' } else { $screenRaw -replace "`r`n", "`n" }
+            if ($Update -and $level -eq $LevelList[0]) {
+                [System.IO.File]::WriteAllBytes("$Root\$screenPath", $Latin1.GetBytes($screenActual))
+            }
+            $screenExpected = Read-Text $screenPath
+            $screenExpected = if ($null -eq $screenExpected) { '' } else { $screenExpected -replace "`r`n", "`n" }
+            if (-not (Same $screenExpected $screenActual)) {
+                [void]$failures.Add("$name -O$level (screen)")
+                Write-Host "  FAIL  $label  its screens differ from $screenPath" -ForegroundColor Red
+                Show-Difference $screenExpected $screenActual
+                continue
+            }
         }
 
         $expected = Read-Text $expectedPath

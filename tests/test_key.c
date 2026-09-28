@@ -1,6 +1,6 @@
-// Keystrokes (ceres/key.h). Here the input is a file, so the host cannot hand over raw keys: they are decoded
-// from the bytes a terminal sends, which test_key.stdin spells out one after another. The keyboard device's own
-// words are normalised by the same function that turns them into keystrokes on a console and in a window.
+// Keystrokes (ceres/key.h). The keys are decoded from the bytes a terminal sends in raw mode, which
+// test_key.stdin spells out one after another (typed with `ceres run --type`). The keyboard device's own words are
+// normalised by the same function that turns them into keystrokes.
 #include "ceres/test.h"
 #include "ceres/key.h"
 
@@ -9,12 +9,14 @@
 
 int main(void)
 {
-    TEST_SECTION("a file cannot be given raw keys");
-    CHECK_EQ(term_set_raw(1), 0);                     // asked, and not granted
-    CHECK_EQ(key_start(), 0);                         // so the keys are read from the bytes
+    TEST_SECTION("raw keys are the terminal's");
+    CHECK((term_set_raw(1) & TERM_MODE_RAW) != 0);    // granted: the terminal's own mode
+    CHECK_EQ(term_set_raw(0) & TERM_MODE_RAW, 0);
+    CHECK_EQ(key_start(), 0);                         // the keys are read from the terminal's bytes
     CHECK_EQ(key_start(), 0);                         // and calls nest
     key_stop();
     key_stop();
+    key_start();                                      // raw for the rest: the file is typed as the keys are read
     KEY_IS('a');                                      // the first byte of the file
 
     TEST_SECTION("the keyboard register, as keystrokes");
@@ -83,5 +85,6 @@ int main(void)
     KEY_IS(KEYC_NONE);                                // nothing more, and none coming: waiting does not hang
     int none = key_get();
     CHECK_EQ(none, KEYC_NONE);                        // and the non-blocking read says so too
+    key_stop();
     return test_summary();
 }

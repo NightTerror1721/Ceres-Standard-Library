@@ -1,4 +1,4 @@
--- a file cannot be given raw keys
+-- raw keys are the terminal's
 -- the keyboard register, as keystrokes
 -- characters
 -- Enter, however it is spelled
@@ -9,4 +9,4 @@
 -- function keys
 -- what is not a key is dropped
 -- the end
-ALL PASSED 50/50
+ALL PASSED 51/51

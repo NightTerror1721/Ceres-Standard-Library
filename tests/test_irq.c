@@ -33,7 +33,7 @@ int main(void)
     CHECK_EQ(irq_attach(28, on_tick), 0);
     CHECK_STR(irq_name(28), "Audio");
     irq_detach(28);
-    CHECK_EQ(irq_attach(35, on_tick), -1);         // one past the last device number, 34 (the blitter's)
+    CHECK_EQ(irq_attach(36, on_tick), -1);         // one past the last device number, 35 (the GPU's fault)
     CHECK(irq_handler(3) == 0);
     CHECK_STR(irq_name(16), "Timer");
     CHECK_STR(irq_name(19), "Terminal");

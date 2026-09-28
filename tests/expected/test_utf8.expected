@@ -5,8 +5,6 @@
 -- wchar.h and stdlib.h
 -- printf and scanf
 printed: ¿Qué año? ¡Sí!
--- the text framebuffer
-¿Qué año?   
-?uroé      ß
+-- the text plane
 -- the pixel font
 ALL PASSED 139/139

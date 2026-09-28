@@ -1,0 +1,8 @@
+-- before fb_init
+-- init
+-- colours
+-- the flip at the vertical blank
+-- clear and blit
+-- indexed
+-- shutdown
+ALL PASSED 43/43

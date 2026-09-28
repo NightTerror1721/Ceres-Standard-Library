@@ -2,5 +2,5 @@
 -- the same pixels, by the blitter and in software
 -- what software does a pixel at a time
 -- indexed pixels through a palette
--- the display's indexed mode and scroll
+-- the bitmap's indexed format and scroll
 ALL PASSED 14/14
