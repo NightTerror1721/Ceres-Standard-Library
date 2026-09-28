@@ -506,8 +506,9 @@ int main(int argc, char** argv, char** envp)
 
     // Where it was: PWD, when the shell comes back from a program, and still a directory.
     const char* pwd = getenv("PWD");
-    if (pwd && resolve(pwd[0] == '/' ? pwd : "/", cwd) == 0 && kind_of(cwd) != 1)
-        cwd[0] = 0;
+    char where[MAX_PATH];
+    if (pwd && pwd[0] == '/' && resolve(pwd, where) == 0 && kind_of(where) == 1)
+        strcpy(cwd, where);
 
     // A clear screen - the machine has just started, or was reset - gets the greeting; after a program, the shell
     // says how it ended when that was not with 0.
@@ -522,6 +523,13 @@ int main(int argc, char** argv, char** envp)
     char line[MAX_LINE];
     for (;;)
     {
+        // A Ctrl+C pressed while a command ran has done its part (there is nothing to interrupt now): it goes, so
+        // the read does not answer it with a second prompt.
+        if (term_interrupted())
+        {
+            mmio_w32(TERM_INT_ACK, 1u);
+            putchar('\n');
+        }
         prompt();
         if (!fgets(line, sizeof line, stdin))
         {
