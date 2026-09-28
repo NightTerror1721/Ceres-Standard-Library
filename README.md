@@ -18,24 +18,23 @@ On any system, with CMake 3.21+ (and Ninja, when it is there), GNU Make 4.2+ and
 make                                        # the library at -O2: build/cmake/O2/libceres.car, libceres.decls.casm, obj/
 make OPT=s                                  # at -Os (OPT: 0, 1, 2, 3, s, g), in build/cmake/Os
 make -j levels LEVELS="0 1 2 s"             # several levels at once, one directory each
-make SOFT_DOUBLE=1                          # for -fsoft-double programs, in build/cmake/O2-sd
 make FS_MAX_OPEN=4 CERES_HEAP_DEBUG=1       # any setting of include/ceres/config.h
 make FLAGS="-fno-inline" DEFINES="NDEBUG"   # optimizations one by one, more macros
-make sysroot PREFIX=<dir>                   # <dir>/include, <dir>/lib and <dir>/lib/soft-double
+make install PREFIX=<dir>                   # a sysroot: <dir>/include and <dir>/lib
 make help                                   # everything else
 ```
 
 The build is `CMakeLists.txt`, and the Makefile only drives it; CMake works on its own too, with any generator:
 
 ```sh
-cmake --preset O2 && cmake --build --preset O2 && ctest --preset O2      # CMakePresets.json: O0 ... Og, O2-sd, ...
-cmake -S . -B build/cmake/mine -G Ninja -DCERES_OPT_LEVEL=s -DFS_MAX_OPEN=4 -DCERES_SOFT_DOUBLE=ON
+cmake --preset O2 && cmake --build --preset O2 && ctest --preset O2      # CMakePresets.json: O0 ... Og
+cmake -S . -B build/cmake/mine -G Ninja -DCERES_OPT_LEVEL=s -DFS_MAX_OPEN=4
 cmake --build build/cmake/mine -j && cmake --install build/cmake/mine --prefix <dir>
 ```
 
 Every C file is compiled on its own and assembled against the library's merged declarations, so the build is
 parallel and incremental: a changed source rebuilds its unit, a changed header the units that include it. Its
-cache variables are the settings: `CERES_OPT_LEVEL`, `CERES_SOFT_DOUBLE`, `CERES_WERROR`, `CERES_OPT_FLAGS`,
+cache variables are the settings: `CERES_OPT_LEVEL`, `CERES_WERROR`, `CERES_OPT_FLAGS`,
 `CERES_DEFINES`, `CERES_EXTRA_FLAGS`, `CERES_OPTIONAL_MODULES`, `CERES_LIBDIR`, and one for every setting of
 `include/ceres/config.h` (read from the header, so a new one there is one here). `<build>/libceres.flags` records
 the flags a build was compiled with.
@@ -44,7 +43,7 @@ the flags a build was compiled with.
 and `CERES_PATH` environment variables, or on `PATH`; `make CERESC=... CERES=...` (or `-DCERESC=`, `-DCERES=`)
 names them outright.
 
-The PowerShell scripts of before still work on Windows: `tools/mklib.ps1` (build/lib/O<n>, `-SoftDouble`) and
+The PowerShell scripts of before still work on Windows: `tools/mklib.ps1` (build/lib/O<n>) and
 `tools/install.ps1 -Prefix <dir>`.
 
 ## The Makefile, target by target
@@ -70,8 +69,7 @@ FS_MAX_OPEN = 4
 PREFIX = /opt/ceres
 ```
 
-The build directory follows from two variables: `build/cmake/O<OPT>`, with `-sd` when `SOFT_DOUBLE=1`
-(`make OPT=s` builds in `build/cmake/Os`). Each level keeps its own; two configurations at one level share one, and
+The build directory follows from the level: `build/cmake/O<OPT>` (`make OPT=s` builds in `build/cmake/Os`). Each level keeps its own; two configurations at one level share one, and
 the later replaces the earlier.
 
 ### The variables
@@ -82,7 +80,6 @@ What to build:
 | --- | --- | --- |
 | `OPT` | `2` | The optimization level: `0`, `1`, `2`, `3` (the same as 2), `s` (size), `g` (debugging). |
 | `LEVELS` | `0 1 2` | The levels of `make levels` and `make test`. |
-| `SOFT_DOUBLE` | `0` | `1` (or `yes`, `on`, `true`): the library for programs compiled with `-fsoft-double`. |
 | `WERROR` | `1` | `0`: warnings are not errors. |
 | `FLAGS` | | Optimizations one by one, on top of the level: `FLAGS="-fno-inline -fcse"`. `ceresc --help` lists them; anything not shaped `-f...`/`-fno-...` is refused. |
 | `DEFINES` | | More macros for every unit: `DEFINES="NDEBUG TRACE=2"`. |
@@ -107,7 +104,7 @@ Where, and with what:
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `BUILD_ROOT` | `build/cmake` | Where the build directories go. |
-| `BUILD_DIR` | `$(BUILD_ROOT)/O<OPT>[-sd]` | A build directory of your own naming (`BUILD_DIR=build/mine`). |
+| `BUILD_DIR` | `$(BUILD_ROOT)/O<OPT>` | A build directory of your own naming (`BUILD_DIR=build/mine`). |
 | `GENERATOR` | `Ninja`, when it is there | Any CMake generator (`"Unix Makefiles"`, `"MinGW Makefiles"`...). To change it in a directory that exists, `make clean` first. |
 | `JOBS` | | Parallel jobs for `cmake --build` and `ctest` (Ninja is parallel already). |
 | `PREFIX` | | Where `install` and `sysroot` put the library. **Required** by those two. |
@@ -133,50 +130,35 @@ ceresc prog.c build/cmake/Os/libceres.car --decls build/cmake/Os/libceres.decls.
 **`make configure`** - only the configure step: to see whether a configuration is valid (`OPT=5` and
 `FS_MAX_OPEN=abc` are refused here) or to open the directory in an IDE. The same variables as `lib`, but `JOBS`.
 
-**`make levels`** - one library per level in `LEVELS`, each in `$(BUILD_ROOT)/O<level>` (`-sd` with
-`SOFT_DOUBLE=1`); with `-j`, all at once. Every build variable applies to every level; `BUILD_DIR` is ignored,
+**`make levels`** - one library per level in `LEVELS`, each in `$(BUILD_ROOT)/O<level>`; with `-j`, all at once. Every build variable applies to every level; `BUILD_DIR` is ignored,
 since each level needs its own. `make lib-O<level>` builds one level without touching `OPT` (`make lib-Os`).
 
 ```sh
 make -j levels LEVELS="0 2 s"
 ```
 
-**`make soft-double`** - `make SOFT_DOUBLE=1`: the library for `-fsoft-double` programs, in
-`build/cmake/O<OPT>-sd`. Give it a `BUILD_DIR` only to send it there.
-
 **`make install`** - builds, then installs the layout `ceresc --sysroot` expects:
-`PREFIX/include/` (every header), `PREFIX/lib/libceres.car` and `libceres.decls.casm` (`lib/soft-double/` for a
-soft-double build), and `PREFIX/lib/libceres_<module>.cobj` for the modules in `MODULES`. A program then needs
+`PREFIX/include/` (every header), `PREFIX/lib/libceres.car` and `libceres.decls.casm`, and
+`PREFIX/lib/libceres_<module>.cobj` for the modules in `MODULES`. A program then needs
 `ceresc prog.c --sysroot /opt/ceres -lceres --run` and nothing else. `PREFIX` is required, and the build variables
 must be the ones the library was built with (or `config.mk`), or another configuration is what gets installed. It
 removes nothing an earlier install left: a module taken out of `MODULES` stays until you delete it.
 
-**`make sysroot`** - installs both kinds into one `PREFIX`: the library in `lib/`, the soft-double one in
-`lib/soft-double/`, so `ceresc -lceres` picks the right one by whether the program uses `-fsoft-double`. `PREFIX` is
-required; `OPT` and every other setting apply to both; `BUILD_DIR` is ignored.
-
-```sh
-make sysroot PREFIX=/opt/ceres OPT=2
-```
-
 **`make check`** - builds, then runs `ctest` on that build:
 
-- `verify.hello`, `verify.test_user_irq17` (and `verify.test_double` with `SOFT_DOUBLE=1`): programs linked against
-  the archive with ceresc alone, run, and compared with what they must print;
-- `suite`: every test of `tests/` against this library, at its level - when Node is there and the build is not
-  soft double.
+- `verify.hello`, `verify.test_user_irq17` and `verify.test_double`: programs linked against the archive with ceresc
+  alone, run, and compared with what they must print;
+- `suite`: every test of `tests/` against this library, at its level - when Node is there.
 
 The build variables say which build is checked; `JOBS` runs the tests in parallel. It is how one configuration is
-checked, the soft-double one included. A configuration that is not the default can change what tests print or how
+checked. A configuration that is not the default can change what tests print or how
 long they take: with `CERES_HEAP_DEBUG=1`, `test_disk_fs` takes longer than the 180 seconds a program gets
 (`make test TIMEOUT=900` gives it more).
 
 **`make test`** - the whole suite at every level of `LEVELS`, against libraries built here: it builds
 `$(BUILD_ROOT)/O<level>` for each level, and `O2` for the examples, then runs every test, compiles each header on
 its own and runs the examples. Takes `LEVELS`, `TEST`, `GC`, `TIMEOUT` - and the build variables, so
-`make test FS_MAX_OPEN=3` tests that configuration. `BUILD_DIR` is ignored (`BUILD_ROOT` is not). Refused with
-`SOFT_DOUBLE=1`, before anything is built: what the tests must print was written for the library without soft
-double - `make check SOFT_DOUBLE=1` checks that one.
+`make test FS_MAX_OPEN=3` tests that configuration. `BUILD_DIR` is ignored (`BUILD_ROOT` is not).
 
 ```sh
 make test LEVELS="0 2" GC=1
@@ -231,7 +213,7 @@ With a sysroot installed, a program needs nothing else:
 ```sh
 ceresc prog.c --sysroot <dir> -lceres -O2 --run
 ceresc prog.c --sysroot <dir> -lceres -O2 --gc-sections --run      # leave out the functions nothing reaches
-ceresc prog.c --sysroot <dir> -lceres -O2 -fsoft-double --run      # double as a real 64-bit IEEE double
+ceresc prog.c --sysroot <dir> -lceres -O2 -fshort-double --run     # double as float: the float math under the standard names
 ```
 
 Without one, name the archive and its declarations:
@@ -243,9 +225,12 @@ once in a program: `-lceres_irq` (`ceres/irq.h`), `-lceres_fault -lceres_fault_a
 
 A few things this library is that a desktop libc is not:
 
-- **One floating-point format.** The machine has IEEE binary32, and `double` is `float` unless a program is compiled
-  with `-fsoft-double`; then `double` is a real binary64 computed in software (`ceres/f64.h`), and a library built
-  with `SOFT_DOUBLE=1` prints and reads it whole. The math functions are float either way.
+- **Two floating-point formats, both native.** `float` is IEEE binary32 and `double` (and `long double`, the same
+  type) IEEE binary64, each computed by the machine's own instructions - the doubles on register pairs. `<math.h>`
+  has both families: `sin`, `pow`, `erf`... take and give a `double`, within about an ulp for most of them (the
+  header lists how close each one is), and `sinf`, `powf`... are the faster `float` ones. A program compiled with
+  `-fshort-double` makes `double` a `float` and gets the `float` family under the standard names, from the same
+  library.
 - **Exact conversions.** `printf`, `scanf`, `strtof`/`strtod` convert between binary and decimal exactly, correctly
   rounded, whatever the number of digits (`src/fconv.c`, `src/fconv64.c`).
 - **UTF-8.** Strings, the multibyte functions (`MB_CUR_MAX` is 4), `%lc`/`%ls`, the terminal, the text plane and the
@@ -264,7 +249,7 @@ powershell tools/runtests.ps1           # the same runner in PowerShell (-Test, 
 ```
 
 `make test` runs the suite against the library as configured (`make test FS_MAX_OPEN=3` tests that one); what
-the tests must print was written for the defaults, without soft double.
+the tests must print was written for the defaults.
 
 A test is `tests/<name>.c`; what it must print is `tests/expected/<name>.expected`, byte for byte. Beside it can be
 `.stderr` (its error stream), `.status` (its exit status), `.stdin` (what is typed on its terminal), `.screen` (what
@@ -291,5 +276,5 @@ fails.
 | `tools/mkpack.js` | Builds a resource pack (`ceres/pack.h`) from host files, as a cartridge image. |
 | `tools/gen_font.js` | Generates the 8x8 font (`src/ceres/font_data.inc`), and the VM's text-window font. |
 | `tools/gen_tables.js` | The constant tables the sources include (the sine of `ceres/fixed.h`, the CRC-32 table). |
-| `tools/gen_math_tables.js`, `tools/gen_f64_vectors.js` | Reference values for the math and soft-double tests. |
+| `tools/gen_math_tables.js`, `tools/gen_math64_tables.js`, `tools/gen_f64_vectors.js` | Reference values for the `float` and `double` math tests and the binary64 arithmetic vectors. |
 | `tools/example.ps1` | Builds one program from `examples/` and runs it. |
