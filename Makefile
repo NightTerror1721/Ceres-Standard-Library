@@ -10,7 +10,8 @@
 #   make levels LEVELS="0 1 2 s"              several levels, each in build/cmake/O<level>
 #   make FS_MAX_OPEN=4 TASK_MAX=32            any setting of include/ceres/config.h
 #   make FLAGS="-fno-inline -fno-cse"         optimizations one by one, on top of the level
-#   make install PREFIX=/opt/ceres            a sysroot: ceresc prog.c --sysroot /opt/ceres -lceres --run
+#   make install PREFIX=/opt/ceres            a sysroot: ceresc prog.c --sysroot /opt/ceres -lceres --run,
+#                                             and the shell: ceres run --sysroot /opt/ceres
 #   make test                                 every test, at every level in LEVELS, against what was built here
 #   make check                                ctest in the build directory: link programs against it and run them
 
@@ -163,7 +164,7 @@ The Ceres standard library.
 Targets
   make [lib]            build the library: $(BUILD_DIR)/libceres.car, libceres.decls.casm and obj/
   make levels           one library per level in LEVELS, each in $(BUILD_ROOT)/O<level>
-  make install          install the library as a sysroot under PREFIX
+  make install          install the library, and the shell, as a sysroot under PREFIX
   make check            ctest: link programs against this build and run them (and the suite)
   make test             every test at every level in LEVELS, against the libraries built here
   make test-NAME        one test: tests/NAME.c

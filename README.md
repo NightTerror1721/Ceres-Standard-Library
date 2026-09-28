@@ -5,7 +5,8 @@ library a program expects - `stdio`, `stdlib`, `string`, `math`, `time`, `setjmp
 rest - and, under `ceres/`, everything the machine has to offer a program: its devices (terminal, keyboard, mouse,
 gamepad, GPU (text plane, bitmap, copy engine), blitter, audio, disk, peripheral ports, timer, MMU, interrupts), a file system,
 graphics, sprites, fonts, music, tasks and channels, and the pieces every program ends up writing (containers,
-arenas, hashing, JSON, INI, saved games, images, compression, resource packs).
+arenas, hashing, JSON, INI, saved games, images, compression, resource packs). And the **Ceres shell**
+(`bin/shell/shell.c`), the prompt `ceres run` starts when it is given no program.
 
 Every header documents itself; [docs/reference](docs/reference/README.md) has them all as pages, generated from the
 headers by `node tools/gendocs.js`.
@@ -20,7 +21,7 @@ make OPT=s                                  # at -Os (OPT: 0, 1, 2, 3, s, g), in
 make -j levels LEVELS="0 1 2 s"             # several levels at once, one directory each
 make FS_MAX_OPEN=4 CERES_HEAP_DEBUG=1       # any setting of include/ceres/config.h
 make FLAGS="-fno-inline" DEFINES="NDEBUG"   # optimizations one by one, more macros
-make install PREFIX=<dir>                   # a sysroot: <dir>/include and <dir>/lib
+make install PREFIX=<dir>                   # a sysroot: <dir>/include, <dir>/lib and the shell in <dir>/bin
 make help                                   # everything else
 ```
 
@@ -138,9 +139,10 @@ make -j levels LEVELS="0 2 s"
 ```
 
 **`make install`** - builds, then installs the layout `ceresc --sysroot` expects:
-`PREFIX/include/` (every header), `PREFIX/lib/libceres.car` and `libceres.decls.casm`, and
-`PREFIX/lib/libceres_<module>.cobj` for the modules in `MODULES`. A program then needs
-`ceresc prog.c --sysroot /opt/ceres -lceres --run` and nothing else. `PREFIX` is required, and the build variables
+`PREFIX/include/` (every header), `PREFIX/lib/libceres.car` and `libceres.decls.casm`,
+`PREFIX/lib/libceres_<module>.cobj` for the modules in `MODULES`, and the shell, `PREFIX/bin/shell.cres`. A program
+then needs `ceresc prog.c --sysroot /opt/ceres -lceres --run` and nothing else, and `ceres run --sysroot /opt/ceres`
+starts the shell. `PREFIX` is required, and the build variables
 must be the ones the library was built with (or `config.mk`), or another configuration is what gets installed. It
 removes nothing an earlier install left: a module taken out of `MODULES` stays until you delete it.
 
@@ -238,6 +240,32 @@ A few things this library is that a desktop libc is not:
   font (Latin-1 glyphs and box drawing) all speak it (`ceres/utf8.h`).
 - **No threads, cooperative tasks.** `ceres/task.h` has tasks and channels that switch only where they wait.
 
+## The shell
+
+`bin/shell/shell.c` is the prompt of the machine: `ceres run` without a program starts
+`<sysroot>/bin/shell.cres`, from the sysroot of `--sysroot` or `CERES_SYSROOT` (CeresASM
+[docs/36](../../CeresASM/docs/36-Shell-and-Program-Loading.md)):
+
+```sh
+make install PREFIX=C:/ceres               # or: powershell tools/install.ps1 -Prefix C:\ceres
+ceres run --sysroot C:/ceres               # the host directory is the current one; --host-dir names another
+```
+
+```
+Ceres shell. Type 'help' for the commands.
+ceres:/> cd games
+ceres:/games> ls
+snake.cres                  76148
+ceres:/games> snake
+```
+
+Its commands: `help`, `ls`, `cd`, `cat`, `run` (or a program by its name alone), `clear`, `mem`, `time`, `info`,
+`reset` and `exit`; Up and Down bring back earlier lines. It is an ordinary program built against the library, and
+any program can do what its `run` does: `sys_run(path, argc, argv, envp)` (`ceres/sys.h`) asks the machine to load
+another program of the host directory in place of this one, and returns only if it could not. Under the shell, the
+shell comes back when that program ends, with `CERES_STATUS` set to its exit status and `PWD` still saying where it
+was.
+
 ## Testing
 
 ```sh
@@ -251,6 +279,10 @@ powershell tools/runtests.ps1           # the same runner in PowerShell (-Test, 
 
 `make test` runs the suite against the library as configured (`make test FS_MAX_OPEN=3` tests that one); what
 the tests must print was written for the defaults.
+
+The shell is tested by sessions: each `tests/shell/<session>.type` is typed on it (`ceres run --sysroot build/shell`,
+the host directory a copy of `tests/shell/files` with `tests/shell/*.c` built into its `games/`), and what it printed,
+its error stream and its exit status are compared with `<session>.expected`, `.stderr` and `.status`.
 
 A test is `tests/<name>.c`; what it must print is `tests/expected/<name>.expected`, byte for byte. Beside it can be
 `.stderr` (its error stream), `.status` (its exit status), `.stdin` (what is typed on its terminal), `.screen` (what
@@ -271,7 +303,7 @@ fails.
 | `Makefile`, `CMakeLists.txt`, `CMakePresets.json` | The build: `make help`. |
 | `tools/cmake/*.cmake` | The build's steps: header dependencies, merging the declarations, the verify tests. |
 | `tools/mklib.ps1` | Builds the library archives per optimization level, in PowerShell. |
-| `tools/install.ps1` | Lays out a sysroot for `ceresc --sysroot`, in PowerShell. |
+| `tools/install.ps1` | Lays out a sysroot for `ceresc --sysroot` (and the shell for `ceres run --sysroot`), in PowerShell. |
 | `tools/runtests.js`, `tools/runtests.ps1` | The test runner. |
 | `tools/gendocs.js` | Writes `docs/reference` from the headers. |
 | `tools/mkpack.js` | Builds a resource pack (`ceres/pack.h`) from host files, as a cartridge image. |
