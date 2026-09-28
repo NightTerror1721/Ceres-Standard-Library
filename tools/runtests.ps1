@@ -100,6 +100,14 @@ function Split-Transcript([string]$raw) {
 }
 
 # Whether a program draws on the text plane, so its screens are compared.
+# What the run wrote to the host's stdout, without ceresc's "Wrote" lines: nothing, ever - a program's output goes to
+# its terminal, never to the host's (CeresASM plan/v2 SPEC 1.4, F5.12).
+function Get-HostOutput([string]$outFile) {
+    $text = Read-Text $outFile
+    if ($null -eq $text) { return '' }
+    return (((Get-ProgramOutput $text) -split "(?<=`n)" | Where-Object { $_ -notmatch '^Wrote ' }) -join '')
+}
+
 function Test-UsesTextPlane([string]$file) {
     return [bool](Select-String -Path $file -Pattern '#include\s+"ceres/(text|tui)\.h"' -Quiet)
 }
@@ -216,6 +224,14 @@ function Test-Examples {
             continue
         }
         if (-not (Test-Path $expectedPath)) { continue }
+        $leaked = Get-HostOutput "build/examples/$name.out"
+        if ($leaked -ne '') {
+            $bad++
+            [void]$failures.Add("example $name (host stdout)")
+            Write-Host "  FAIL  $name  wrote to the host's stdout" -ForegroundColor Red
+            Show-Difference '' $leaked
+            continue
+        }
         $raw = Read-Text $transcript
         $actual = (Split-Transcript $(if ($null -eq $raw) { '' } else { $raw })).Out
         if ($Update) {
@@ -313,6 +329,14 @@ foreach ($name in $tests) {
             [void]$failures.Add("$name -O$level (exit $code)")
             Write-Host "  FAIL  $label  the build or the run failed (exit $code)" -ForegroundColor Red
             ($errText -split "`r?`n") | Where-Object { $_ -and $_ -notmatch '^Wrote ' } | Select-Object -First 6 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }
+            continue
+        }
+
+        $leaked = Get-HostOutput $out
+        if ($leaked -ne '') {
+            [void]$failures.Add("$name -O$level (host stdout)")
+            Write-Host "  FAIL  $label  wrote to the host's stdout" -ForegroundColor Red
+            Show-Difference '' $leaked
             continue
         }
 

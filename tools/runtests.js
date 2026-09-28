@@ -123,6 +123,9 @@ const usesTextPlane = (file) => /#include\s+"ceres\/(text|tui)\.h"/.test(fs.read
 // What the run itself wrote to stderr - ceresc's and ceres's own messages - without ceresc's "Wrote" lines and the
 // assembler's notes on an optimized unit.
 const hostErrors = (errText) => programOutput(errText).split(/(?<=\n)/).filter((l) => !/^(Wrote |  warning \[)/.test(l)).join("");
+// What the run wrote to the host's stdout, without ceresc's "Wrote" lines: nothing, ever - a program's output goes to
+// its terminal, never to the host's (CeresASM plan/v2 SPEC 1.4, F5.12).
+const hostOutput = (outText) => programOutput(outText).split(/(?<=\n)/).filter((l) => !/^Wrote /.test(l)).join("");
 
 // ---- the sources ----
 const Optional = {
@@ -320,6 +323,14 @@ function testExamples() {
             continue;
         }
         if (!fs.existsSync(expectedPath)) continue;
+        const leaked = hostOutput(readText(`build/examples/${name}.out`) || "");
+        if (leaked !== "") {
+            bad++;
+            failures.push(`example ${name} (host stdout)`);
+            console.log(red(`  FAIL  ${name}  wrote to the host's stdout`));
+            showDifference("", leaked);
+            continue;
+        }
         const actual = splitTranscript(readText(transcript) || "").out;
         if (opt.update) {
             fs.writeFileSync(expectedPath, Buffer.from(actual, "latin1"));
@@ -390,6 +401,13 @@ function testOne(name) {
             failures.push(`${name} -O${level} (exit ${code})`);
             console.log(red(`  FAIL  ${label}  the build or the run failed (exit ${code})`));
             for (const l of errText.split(/\r?\n/).filter((l) => l && !l.startsWith("Wrote ")).slice(0, 6)) console.log(yellow(`      ${l}`));
+            continue;
+        }
+        const leaked = hostOutput(readText(out) || "");
+        if (leaked !== "") {
+            failures.push(`${name} -O${level} (host stdout)`);
+            console.log(red(`  FAIL  ${label}  wrote to the host's stdout`));
+            showDifference("", leaked);
             continue;
         }
         const streams = splitTranscript(readText(transcript) || "");

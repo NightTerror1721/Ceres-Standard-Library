@@ -3,7 +3,7 @@
 The C library of the [Ceres](../../CeresASM) virtual machine, compiled by [Ceres-C](../../Ceres-C): the C standard
 library a program expects - `stdio`, `stdlib`, `string`, `math`, `time`, `setjmp`, `locale`, `wchar`, `uchar` and the
 rest - and, under `ceres/`, everything the machine has to offer a program: its devices (terminal, keyboard, mouse,
-gamepad, text and pixel display, blitter, audio, disk, peripheral ports, timer, MMU, interrupts), a file system,
+gamepad, GPU (text plane, bitmap, copy engine), blitter, audio, disk, peripheral ports, timer, MMU, interrupts), a file system,
 graphics, sprites, fonts, music, tasks and channels, and the pieces every program ends up writing (containers,
 arenas, hashing, JSON, INI, saved games, images, compression, resource packs).
 
@@ -248,8 +248,8 @@ A few things this library is that a desktop libc is not:
   with `SOFT_DOUBLE=1` prints and reads it whole. The math functions are float either way.
 - **Exact conversions.** `printf`, `scanf`, `strtof`/`strtod` convert between binary and decimal exactly, correctly
   rounded, whatever the number of digits (`src/fconv.c`, `src/fconv64.c`).
-- **UTF-8.** Strings, the multibyte functions (`MB_CUR_MAX` is 4), `%lc`/`%ls`, the text framebuffer and the font
-  (Latin-1 glyphs) all speak it (`ceres/utf8.h`).
+- **UTF-8.** Strings, the multibyte functions (`MB_CUR_MAX` is 4), `%lc`/`%ls`, the terminal, the text plane and the
+  font (Latin-1 glyphs and box drawing) all speak it (`ceres/utf8.h`).
 - **No threads, cooperative tasks.** `ceres/task.h` has tasks and channels that switch only where they wait.
 
 ## Testing
@@ -267,10 +267,16 @@ powershell tools/runtests.ps1           # the same runner in PowerShell (-Test, 
 the tests must print was written for the defaults, without soft double.
 
 A test is `tests/<name>.c`; what it must print is `tests/expected/<name>.expected`, byte for byte. Beside it can be
-`.stderr` (its error stream), `.status` (its exit status), `.stdin` (what it reads), `.flags` (compiler options -
+`.stderr` (its error stream), `.status` (its exit status), `.stdin` (what is typed on its terminal), `.screen` (what
+a test that draws on the text plane shows, frame by frame), `.flags` (compiler options -
 the library is then compiled with them too), `.run` (more for `ceres run`: `--env`, `--host-dir build/host`,
 `-- arguments`) and `.ports` (sticks and cartridges to plug in). A `// USE: irq` line near the top links an
 optional module.
+
+Every run is headless (`ceres run --headless`): what the program writes to its terminal is read back from
+`--transcript`, the `.stdin` file is typed with `--type` and the screens come from `--screen-log`. A program never
+writes to the host's terminal, so a run that leaves anything on the host's stdout (besides ceresc's `Wrote` lines)
+fails.
 
 ## Tools
 
