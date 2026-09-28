@@ -62,9 +62,9 @@ int timespec_getres(struct timespec* ts, int base)
     return 0;
 }
 
-float difftime(time_t end, time_t start)
+double difftime(time_t end, time_t start)
 {
-    return (float)(end - start);
+    return (double)(end - start);                  // exact up to 2^53 seconds
 }
 
 unsigned int sleep(unsigned int seconds)

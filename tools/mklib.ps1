@@ -30,25 +30,17 @@
     build/libceres.car and build/libceres.decls.casm are kept as copies of the -O2 ones, where they have
     always been.
 
-    -SoftDouble builds the library for programs compiled with -fsoft-double (double a real binary64, see
-    ceres/f64.h), whose printf, scanf and strtod handle doubles whole, into build/lib/O<level>-sd/ instead; a
-    program then takes that archive and the same option:
-
-        ceresc prog.c build/lib/O2-sd/libceres.car --decls build/lib/O2-sd/libceres.decls.casm -I include -O2 -fsoft-double --run
-
 .EXAMPLE
     tools\mklib.ps1                  # all three levels, and verify
     tools\mklib.ps1 -Levels 2        # only -O2
     tools\mklib.ps1 -NoVerify        # just the archives
     tools\mklib.ps1 -Keep            # leave the generated .casm files next to the sources
-    tools\mklib.ps1 -SoftDouble      # the library for -fsoft-double programs, in build/lib/O<level>-sd
 #>
 [CmdletBinding()]
 param(
     [string]$Levels = "0,1,2",
     [switch]$Keep,
     [switch]$NoVerify,
-    [switch]$SoftDouble,
     [int]$TimeoutSeconds = 180
 )
 
@@ -72,18 +64,15 @@ $LevelList = @(($Levels -split '[,; ]+') | Where-Object { $_ } | ForEach-Object 
 Write-Host "ceresc  $Ceresc" -ForegroundColor DarkGray
 Write-Host "ceres   $CeresDir" -ForegroundColor DarkGray
 
-$ExtraFlags = if ($SoftDouble) { "-fsoft-double" } else { "" }
-$Suffix = if ($SoftDouble) { "-sd" } else { "" }
-
 foreach ($level in $LevelList) {
-    $dir = "$(Get-LibraryDir $level)$Suffix"
+    $dir = Get-LibraryDir $level
     $objDir = "$dir/obj"
     if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
     New-Item -ItemType Directory -Force $objDir | Out-Null
 
     # ---- 1. C -> CASM -----------------------------------------------------------------------------
     Write-Host "-O$level : compiling $($AllC.Count) C files" -ForegroundColor Cyan
-    $code = Invoke-Tool $Ceresc "$($AllC -join ' ') -I include -O$level $ExtraFlags -Werror -S -o $dir/libceres.cres" "$dir/compile.out" "$dir/compile.err"
+    $code = Invoke-Tool $Ceresc "$($AllC -join ' ') -I include -O$level -Werror -S -o $dir/libceres.cres" "$dir/compile.out" "$dir/compile.err"
     if ($code -ne 0) { Fail "ceresc could not compile the library at -O$level" "$dir/compile.err" }
 
     # ---- 2. CASM -> objects -----------------------------------------------------------------------
@@ -104,7 +93,7 @@ foreach ($level in $LevelList) {
 }
 
 # the -O2 archive where it has always been
-if ($LevelList -contains 2 -and -not $SoftDouble) {
+if ($LevelList -contains 2) {
     Copy-Item "$(Get-LibraryDir 2)/libceres.car" build/libceres.car -Force
     Copy-Item "$(Get-LibraryDir 2)/libceres.decls.casm" build/libceres.decls.casm -Force
 }
@@ -112,11 +101,11 @@ if ($LevelList -contains 2 -and -not $SoftDouble) {
 # ---- 4. build two programs against the archive with ceresc alone, and run them ----------------------------
 
 if (-not $NoVerify -and ($LevelList -contains 2)) {
-    $dir = "$(Get-LibraryDir 2)$Suffix"
+    $dir = Get-LibraryDir 2
     New-Item -ItemType Directory -Force build/verify | Out-Null
-    $programs = if ($SoftDouble) { @('hello', 'test_user_irq17', 'test_double') } else { @('hello', 'test_user_irq17') }
+    $programs = @('hello', 'test_user_irq17', 'test_double')
     foreach ($name in $programs) {
-        $code = Invoke-Tool $Ceresc "tests/$name.c $dir/libceres.car --decls $dir/libceres.decls.casm -I include -O2 $ExtraFlags -o build/verify/$name.cres --run --clean --ceres-path `"$CeresDir`"" "build/verify/$name.out" build/mklib.v.err
+        $code = Invoke-Tool $Ceresc "tests/$name.c $dir/libceres.car --decls $dir/libceres.decls.casm -I include -O2 -o build/verify/$name.cres --run --clean --ceres-path `"$CeresDir`"" "build/verify/$name.out" build/mklib.v.err
         if ($code -ne 0) { Fail "building and running $name against libceres.car" build/mklib.v.err }
 
         $actual = (Get-ProgramOutput (Read-Text "build/verify/$name.out")) -replace "`r`n", "`n"

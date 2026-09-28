@@ -12,7 +12,7 @@ struct vec2 vec2_normalize(struct vec2 a)
 struct vec2 vec2_rotate(struct vec2 a, float radians)
 {
     float s, c;
-    sincos(radians, &s, &c);                     // one argument reduction for both
+    sincosf(radians, &s, &c);                     // one argument reduction for both
     return vec2_make(a.x * c - a.y * s, a.x * s + a.y * c);
 }
 
@@ -43,7 +43,7 @@ float wrapf(float v, float lo, float hi)
     if (period <= 0.0f)
         return lo;
     float r = v - lo;
-    r -= floor(r / period) * period;
+    r -= floorf(r / period) * period;
     if (r >= period)                    // rounding can land exactly on the far edge
         r = 0.0f;
     return lo + r;

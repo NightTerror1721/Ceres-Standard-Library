@@ -10,7 +10,7 @@
 
 // ---- exponent handling ----
 
-float ldexp(float x, int e)
+float ldexpf(float x, int e)
 {
     if (x == 0.0f || isinf(x) || isnan(x))
         return x;
@@ -20,7 +20,7 @@ float ldexp(float x, int e)
     return r;
 }
 
-float frexp(float x, int* e)
+float frexpf(float x, int* e)
 {
     *e = 0;
     if (x == 0.0f || isinf(x) || isnan(x))
@@ -36,35 +36,35 @@ float frexp(float x, int* e)
     return float_from_bits((u & 0x807FFFFFu) | 0x3F000000u);   // exponent field 126: [0.5, 1)
 }
 
-float modf(float x, float* ip)
+float modff(float x, float* ip)
 {
     if (isinf(x))
     {
         *ip = x;
-        return copysign(0.0f, x);
+        return copysignf(0.0f, x);
     }
     if (isnan(x))
     {
         *ip = x;
         return x;
     }
-    float whole = trunc(x);
+    float whole = truncf(x);
     *ip = whole;
-    return copysign(x - whole, x);                 // a whole x has a fraction of exactly +-0
+    return copysignf(x - whole, x);                 // a whole x has a fraction of exactly +-0
 }
 
 // ---- rounding ----
 
 // nearbyint and rint (ties to even) are the `fround` instruction, in asm/math_ops.casm.
 
-int lround(float x)
+int lroundf(float x)
 {
     if (isnan(x))
     {
         errno = EDOM;
         return 0;
     }
-    float r = round(x);
+    float r = roundf(x);
     if (r >= 2147483648.0f)
     {
         errno = ERANGE;
@@ -78,14 +78,14 @@ int lround(float x)
     return (int)r;
 }
 
-int lrint(float x)
+int lrintf(float x)
 {
     if (isnan(x))
     {
         errno = EDOM;
         return 0;
     }
-    float r = nearbyint(x);
+    float r = nearbyintf(x);
     if (r >= 2147483648.0f)
     {
         errno = ERANGE;
@@ -117,36 +117,36 @@ static long long ll_from_rounded(float r)
     return (long long)r;
 }
 
-long long llround(float x)
+long long llroundf(float x)
 {
     if (isnan(x))
     {
         errno = EDOM;
         return 0;
     }
-    return ll_from_rounded(round(x));
+    return ll_from_rounded(roundf(x));
 }
 
-long long llrint(float x)
+long long llrintf(float x)
 {
     if (isnan(x))
     {
         errno = EDOM;
         return 0;
     }
-    return ll_from_rounded(nearbyint(x));
+    return ll_from_rounded(nearbyintf(x));
 }
 
 // ---- simple arithmetic ----
 
-float fdim(float x, float y)
+float fdimf(float x, float y)
 {
     if (isnan(x) || isnan(y))
         return NAN;
     return x > y ? x - y : 0.0f;
 }
 
-float remainder(float x, float y)
+float remainderf(float x, float y)
 {
     if (isnan(x) || isnan(y) || isinf(x) || y == 0.0f)
     {
@@ -156,26 +156,26 @@ float remainder(float x, float y)
     }
     if (isinf(y))
         return x;
-    float ay = fabs(y);
-    float r = fmod(fabs(x), ay);                   // 0 <= r < |y|
+    float ay = fabsf(y);
+    float r = fmodf(fabsf(x), ay);                   // 0 <= r < |y|
     float twice = r + r;
     if (r == 0.0f)
-        return copysign(0.0f, x);                  // an exact multiple: zero with the sign of x
-    if (twice > ay || (twice == ay && fmod(fabs(x), ay + ay) >= ay))
+        return copysignf(0.0f, x);                  // an exact multiple: zero with the sign of x
+    if (twice > ay || (twice == ay && fmodf(fabsf(x), ay + ay) >= ay))
         r -= ay;                                   // nearer the next multiple, or halfway with an odd quotient
     return x < 0.0f ? -r : r;                      // r was found for |x|: mirror it for a negative x
 }
 
-float nan(const char* tag) { return NAN; }
+float nanf(const char* tag) { return NAN; }
 
-float hypot(float x, float y)
+float hypotf(float x, float y)
 {
     if (isinf(x) || isinf(y))
         return INFINITY;                           // an infinity wins even over a NaN
     if (isnan(x) || isnan(y))
         return NAN;
-    float a = fabs(x);
-    float b = fabs(y);
+    float a = fabsf(x);
+    float b = fabsf(y);
     if (a < b)
     {
         float t = a;
@@ -185,7 +185,7 @@ float hypot(float x, float y)
     if (b == 0.0f)
         return a;
     float q = b / a;                               // a >= b > 0, so a is not zero
-    float r = a * sqrt(1.0f + q * q);
+    float r = a * sqrtf(1.0f + q * q);
     if (isinf(r))
         errno = ERANGE;
     return r;
@@ -193,11 +193,11 @@ float hypot(float x, float y)
 
 // ---- roots ----
 
-float cbrt(float x)
+float cbrtf(float x)
 {
     if (x == 0.0f || isnan(x) || isinf(x))
         return x;
-    float a = fabs(x);
+    float a = fabsf(x);
     float scale = 1.0f;
     if (a < 1.17549435e-38f)                       // subnormal: 2^24 is a cube's worth of 2^8, undone below
     {
@@ -211,18 +211,18 @@ float cbrt(float x)
     y = (2.0f * y + a / (y * y)) * (1.0f / 3.0f);
     y = (2.0f * y + a / (y * y)) * (1.0f / 3.0f);
     y = y * scale;
-    return copysign(y, x);
+    return copysignf(y, x);
 }
 
 // ---- exp and log near their fixed points ----
 
-float expm1(float x)
+float expm1f(float x)
 {
     if (isnan(x))
         return x;
     if (x > 88.7f || x < -18.0f)
-        return exp(x) - 1.0f;                      // far from 0 there is nothing to lose (exp(-18) - 1 is -1)
-    float ax = fabs(x);
+        return expf(x) - 1.0f;                      // far from 0 there is nothing to lose (exp(-18) - 1 is -1)
+    float ax = fabsf(x);
     if (ax < LN2_HALF)
     {
         // the Taylor series to x^9/9!, without the leading 1, so nothing cancels
@@ -236,10 +236,10 @@ float expm1(float x)
         p = p * x + 0.5f;
         return x + x * x * p;
     }
-    return exp(x) - 1.0f;
+    return expf(x) - 1.0f;
 }
 
-float log1p(float x)
+float log1pf(float x)
 {
     if (isnan(x))
         return x;
@@ -255,7 +255,7 @@ float log1p(float x)
     }
     if (isinf(x))
         return x;
-    if (fabs(x) < 0.25f)
+    if (fabsf(x) < 0.25f)
     {
         // log(1+x) = 2 atanh(x / (2+x)); |y| < 0.112 so the series is short and 1+x is never formed
         float y = x / (2.0f + x);
@@ -267,7 +267,7 @@ float log1p(float x)
         q = q * yy + 1.0f;
         return 2.0f * y * q;
     }
-    return log(1.0f + x);
+    return logf(1.0f + x);
 }
 
 // ---- hyperbolic ----
@@ -287,15 +287,15 @@ static float half_exp(float ax)
     return r;
 }
 
-float sinh(float x)
+float sinhf(float x)
 {
     if (isnan(x) || isinf(x))
         return x;
-    float ax = fabs(x);
+    float ax = fabsf(x);
     float r;
     if (ax < 1.0f)
     {
-        float em1 = expm1(ax);                     // no cancellation for small x: sinh = (e^x - e^-x) / 2
+        float em1 = expm1f(ax);                     // no cancellation for small x: sinh = (e^x - e^-x) / 2
         r = 0.5f * (em1 + em1 / (em1 + 1.0f));
     }
     else if (ax > 88.0f)
@@ -304,50 +304,50 @@ float sinh(float x)
     }
     else
     {
-        float t = exp(ax);
+        float t = expf(ax);
         r = 0.5f * (t - 1.0f / t);
     }
-    return copysign(r, x);
+    return copysignf(r, x);
 }
 
-float cosh(float x)
+float coshf(float x)
 {
     if (isnan(x))
         return x;
     if (isinf(x))
         return INFINITY;
-    float ax = fabs(x);
+    float ax = fabsf(x);
     if (ax > 88.0f)
         return half_exp(ax);
-    float t = exp(ax);
+    float t = expf(ax);
     return 0.5f * (t + 1.0f / t);
 }
 
-float tanh(float x)
+float tanhf(float x)
 {
     if (isnan(x))
         return x;
-    float ax = fabs(x);
+    float ax = fabsf(x);
     if (ax > 9.0f)
-        return copysign(1.0f, x);                  // 1 - tanh(9) < 3e-8: below a float's resolution
-    float em1 = expm1(ax + ax);
-    return copysign(em1 / (em1 + 2.0f), x);
+        return copysignf(1.0f, x);                  // 1 - tanh(9) < 3e-8: below a float's resolution
+    float em1 = expm1f(ax + ax);
+    return copysignf(em1 / (em1 + 2.0f), x);
 }
 
-float asinh(float x)
+float asinhf(float x)
 {
     if (isnan(x) || isinf(x))
         return x;
-    float ax = fabs(x);
+    float ax = fabsf(x);
     float r;
     if (ax > 268435456.0f)                         // 2^28: x*x would overflow; asinh(x) ~ log(2x)
-        r = log(ax) + LN2;
+        r = logf(ax) + LN2;
     else
-        r = log1p(ax + ax * ax / (1.0f + sqrt(1.0f + ax * ax)));
-    return copysign(r, x);
+        r = log1pf(ax + ax * ax / (1.0f + sqrtf(1.0f + ax * ax)));
+    return copysignf(r, x);
 }
 
-float acosh(float x)
+float acoshf(float x)
 {
     if (isnan(x))
         return x;
@@ -359,16 +359,16 @@ float acosh(float x)
     if (isinf(x))
         return x;
     if (x > 268435456.0f)
-        return log(x) + LN2;
+        return logf(x) + LN2;
     float t = x - 1.0f;
-    return log1p(t + sqrt(t * (x + 1.0f)));       // log(x + sqrt(x^2 - 1)), without forming x^2 - 1
+    return log1pf(t + sqrtf(t * (x + 1.0f)));       // log(x + sqrt(x^2 - 1)), without forming x^2 - 1
 }
 
-float atanh(float x)
+float atanhf(float x)
 {
     if (isnan(x))
         return x;
-    float ax = fabs(x);
+    float ax = fabsf(x);
     if (ax > 1.0f)
     {
         errno = EDOM;
@@ -377,14 +377,14 @@ float atanh(float x)
     if (ax == 1.0f)
     {
         errno = ERANGE;
-        return copysign(INFINITY, x);
+        return copysignf(INFINITY, x);
     }
-    return copysign(0.5f * log1p((ax + ax) / (1.0f - ax)), x);
+    return copysignf(0.5f * log1pf((ax + ax) / (1.0f - ax)), x);
 }
 
 // ---- the exponent, and the next float ----
 
-int ilogb(float x)
+int ilogbf(float x)
 {
     if (x == 0.0f || isnan(x))
     {
@@ -397,11 +397,11 @@ int ilogb(float x)
         return 2147483647;
     }
     int e;
-    frexp(x, &e);                                        // 0.5 <= |m| < 1: one below it is floor(log2|x|)
+    frexpf(x, &e);                                        // 0.5 <= |m| < 1: one below it is floor(log2|x|)
     return e - 1;
 }
 
-float logb(float x)
+float logbf(float x)
 {
     if (isnan(x))
         return x;
@@ -412,10 +412,10 @@ float logb(float x)
         errno = ERANGE;                                  // a pole
         return -INFINITY;
     }
-    return (float)ilogb(x);
+    return (float)ilogbf(x);
 }
 
-float nextafter(float x, float y)
+float nextafterf(float x, float y)
 {
     if (isnan(x) || isnan(y))
         return x + y;
@@ -423,7 +423,7 @@ float nextafter(float x, float y)
         return y;                                        // y, so nextafter(0, -0) is -0
     float r;
     if (x == 0.0f)
-        r = copysign(float_from_bits(1u), y);            // the smallest subnormal, towards y
+        r = copysignf(float_from_bits(1u), y);            // the smallest subnormal, towards y
     else
     {
         unsigned int bits = float_bits(x);

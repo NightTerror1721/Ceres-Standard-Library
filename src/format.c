@@ -5,8 +5,8 @@
 // Conversions: %d %i %u %o %x %X %b %c %s %p %n %f %F %e %E %g %G %%
 // Flags: - + space # 0; width and precision, either digits or *; length modifiers hh h l ll z t j L
 // (a `long` is 32 bits, `long long` is 64: `ll` reads a wide argument as two words, `hh`/`h` narrow
-// the 32-bit read, and everything else is 32 bits). A float argument is read as the f32 it is: there
-// is no double promotion (see stdarg.h).
+// the 32-bit read, and everything else is 32 bits). %f and its kin read a double: a float argument arrives promoted
+// to one, as C has it (see stdarg.h).
 //
 // Accuracy: a float has a 24-bit mantissa, so about 7 significant digits are exact; the digits
 // after those are deterministic noise, where C would print the exact binary value. %.0f rounds
@@ -180,8 +180,8 @@ static void fmt_integer64(struct __sink* s, uint64_t v, int is_signed, int neg, 
 // Every digit is exact (src/fconv.c): a float is converted from its exact decimal expansion, rounded to nearest
 // with ties to even at the place the conversion asks for. A precision past the float's last nonzero digit gets
 // zeros, put out after the body without a buffer to hold them.
-// A floating value as its bits: a float's in the low word, or - in a library built with -fsoft-double, where printf's
-// %f takes a real double - a binary64's. Everything below works on those bits, so one layout serves both.
+// A floating value as its bits: a binary64's - what printf's %f takes - or a float's in the low word (strfromf's).
+// Everything below works on those bits, so one layout serves both.
 struct real
 {
     unsigned long long bits;
@@ -215,10 +215,8 @@ static int real_zero(const struct real* v)
 // The digits of |v| as __fconv_digits gives them (fconv_priv.h).
 static int real_digits(const struct real* v, int significant, int count, char* out, int* x10)
 {
-#ifdef __CERES_SOFT_DOUBLE__
     if (v->wide)
         return __fconv64_digits(v->bits, significant, count, out, x10);
-#endif
     return __fconv_digits(float_from_bits((unsigned int)v->bits & 0x7FFFFFFFu), significant, count, out, x10);
 }
 
@@ -334,15 +332,10 @@ static void fmt_hex_float(struct __sink* s, const struct real* v, const char* pr
     put_number(s, prefix, body, n, zeros, tail, nt, width, flags);
 }
 
-#ifdef __CERES_SOFT_DOUBLE__
 #define REAL_MAX_DIGITS FCONV64_MAX_DIGITS
 #define REAL_BUFFER static                             // 1.6 KiB: not on the stack of whatever called printf - so
                                                        // printing a double does not nest (an interrupt handler that
                                                        // prints one while the program does garbles the program's)
-#else
-#define REAL_MAX_DIGITS FCONV_MAX_DIGITS
-#define REAL_BUFFER
-#endif
 
 static void fmt_float(struct __sink* s, const struct real* v, int conv, int width, int prec, int flags)
 {
@@ -591,15 +584,9 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
         else if (c == 'f' || c == 'F' || c == 'e' || c == 'E' || c == 'g' || c == 'G' || c == 'a' || c == 'A')
         {
             struct real v;
-#ifdef __CERES_SOFT_DOUBLE__
-            double d = va_arg(ap, double);                  // a real double: a float was promoted to one
+            double d = va_arg(ap, double);                  // a float argument was promoted to one
             memcpy(&v.bits, &d, 8);
             v.wide = 1;
-#else
-            float f = va_arg(ap, float);
-            v.bits = float_bits(f);
-            v.wide = 0;
-#endif
             fmt_float(s, &v, c, width, prec, flags);
         }
         else if (c == 'n') { int* p = va_arg(ap, int*); *p = (int)s->len; }

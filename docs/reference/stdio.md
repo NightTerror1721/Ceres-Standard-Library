@@ -74,8 +74,8 @@ int  vsnprintf(char* buf, size_t n, const char* fmt, va_list ap) __attribute__((
 
 ```c
 // %d %i %u %x %X %o %c %s %f %e %g %[set] %p %n %%, with a width, `*` to skip a conversion and the length
-// modifiers hh h l ll z t j q (%lf is a float: double IS float here, except under -fsoft-double, where it stores
-// a real double - and printf's %f then takes one, a float argument arriving promoted). Returns how many conversions stored a
+// modifiers hh h l ll z t j q L (%f stores a float, %lf and %Lf a double; printf's %f takes a double, a float
+// argument arriving promoted). Returns how many conversions stored a
 // value, or EOF when the input ended before the first one. Whitespace in the format matches any run of
 // whitespace; any other character must match exactly, and the first mismatch stops the scan.
 int  scanf(const char* fmt, ...) __attribute__((__format__(__scanf__, 1, 2)));

@@ -1,8 +1,8 @@
 #pragma once
 
-// Ceres has one floating-point format: IEEE 754 binary32. `double` and `long double` are `float`
-// (the compiler reduces them, with W2001), so all three families carry the same numbers - unless the program is
-// compiled with -fsoft-double, and then they are a real IEEE binary64 done in software (ceres/f64.h).
+// Ceres has two floating-point formats, IEEE 754 binary32 (`float`) and binary64 (`double`, and `long double`, which is
+// the same type). A program compiled with -fshort-double makes `double` a `float`, and then the DBL_ and LDBL_ limits
+// are FLT_'s.
 
 #define FLT_RADIX          2
 #define FLT_MANT_DIG       24
@@ -21,7 +21,7 @@
 #define FLT_EVAL_METHOD    0
 #define FLT_ROUNDS         1              // to nearest
 
-#ifdef __CERES_SOFT_DOUBLE__
+#ifndef __CERES_SHORT_DOUBLE__
 #define DBL_MANT_DIG       53
 #define DBL_DIG            15
 #define DBL_DECIMAL_DIG    17

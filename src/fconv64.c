@@ -1,5 +1,5 @@
-// Exact binary64 <-> decimal conversion (fconv_priv.h): src/fconv.c's method for a double, which a program compiled
-// with -fsoft-double has (ceres/f64.h). The value is handled as its bits, so this file needs no double itself.
+// Exact binary64 <-> decimal conversion (fconv_priv.h): src/fconv.c's method for a double - printf's, scanf's and
+// strtod's. The value is handled as its bits, so this file needs no double arithmetic itself.
 //
 // A double is m x 2^e exactly, with m below 2^53 and e from -1074 to 971: the integer m x 2^e when e >= 0 (up to
 // 309 digits), and m x 5^-e divided by 10^-e when it is not (up to 767). Reading takes D x 10^E as num/den and 54

@@ -42,16 +42,9 @@ unsigned long long strtoull(const char* s, char** end, int base);
 float        strtof(const char* s, char** end);    // correctly rounded; decimal, 0x hex floats ("0x1.8p3"), inf/infinity and nan
 int          strfromf(char* restrict s, size_t n, const char* restrict format, float fp);   // C23: format is "%[.p]{aAeEfFgG}"
 int          ftoa_shortest(char* buf, size_t size, float x);   // the fewest digits that read back as x ("0.1", "1e+30"); its length
-#ifdef __CERES_SOFT_DOUBLE__
-// -fsoft-double: a real double, read the way strtof reads a float and rounded once to binary64.
-double       strtod(const char* s, char** end);
+double       strtod(const char* s, char** end);    // read the way strtof reads a float, rounded once to binary64
 double       atof(const char* s);
-#define strtold   strtod
-#else
-float        strtod(const char* s, char** end);    // == strtof (double is float)
-float        atof(const char* s);
-#define strtold   strtof
-#endif
+#define strtold   strtod                           // long double is double
 ```
 
 ## Multibyte (UTF-8) and wide characters (src/wchar.c; more in wchar.h and uchar.h)

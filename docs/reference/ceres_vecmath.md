@@ -12,7 +12,7 @@ static inline struct vec2 vec2_sub(struct vec2 a, struct vec2 b) { return vec2_m
 static inline struct vec2 vec2_scale(struct vec2 a, float k)     { return vec2_make(a.x * k, a.y * k); }
 static inline float vec2_dot(struct vec2 a, struct vec2 b)       { return a.x * b.x + a.y * b.y; }
 static inline float vec2_len2(struct vec2 a)                     { return a.x * a.x + a.y * a.y; }
-static inline float vec2_len(struct vec2 a)                      { return sqrt(vec2_len2(a)); }
+static inline float vec2_len(struct vec2 a)                      { return sqrtf(vec2_len2(a)); }
 struct vec2 vec2_normalize(struct vec2 a);                       // the zero vector stays zero
 struct vec2 vec2_rotate(struct vec2 a, float radians);           // counter-clockwise for +y up
 
@@ -21,7 +21,7 @@ static inline struct vec3 vec3_add(struct vec3 a, struct vec3 b) { return vec3_m
 static inline struct vec3 vec3_sub(struct vec3 a, struct vec3 b) { return vec3_make(a.x - b.x, a.y - b.y, a.z - b.z); }
 static inline struct vec3 vec3_scale(struct vec3 a, float k)     { return vec3_make(a.x * k, a.y * k, a.z * k); }
 static inline float vec3_dot(struct vec3 a, struct vec3 b)       { return a.x * b.x + a.y * b.y + a.z * b.z; }
-static inline float vec3_len(struct vec3 a)                      { return sqrt(vec3_dot(a, a)); }
+static inline float vec3_len(struct vec3 a)                      { return sqrtf(vec3_dot(a, a)); }
 struct vec3 vec3_cross(struct vec3 a, struct vec3 b);
 struct vec3 vec3_normalize(struct vec3 a);
 

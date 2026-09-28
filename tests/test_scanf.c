@@ -65,8 +65,11 @@ int main(void)
     CHECK(f == 3.5f && g == -200.0f && h == 0.25f);
     CHECK_EQ(sscanf("1.5e-1 2E+2 7.", "%e %E %g", &f, &g, &h), 3);
     CHECK(f == 0.15f && g == 200.0f && h == 7.0f);
-    CHECK_EQ(sscanf("2.5", "%lf", &f), 1);                       // double is float here
-    CHECK(f == 2.5f);
+    {
+        double d = 0.0, e = 0.0;
+        CHECK_EQ(sscanf("2.5 0.1", "%lf %Lf", &d, &e), 2);      // %lf and %Lf store a double
+        CHECK(d == 2.5 && e == 0.1);
+    }
     CHECK_EQ(sscanf("inf -inf nan", "%f %f %f", &f, &g, &h), 3);
     CHECK(isinf(f) && f > 0.0f && isinf(g) && g < 0.0f && isnan(h));
     CHECK_EQ(sscanf("12abc", "%f", &f), 1);                      // stops at the first character that is not part of it

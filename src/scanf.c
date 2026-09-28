@@ -288,7 +288,7 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
             i++;
         }
         int narrow = 0;                                  // 'H' = hh, 'h' = h, 'W' = ll (64-bit), 0 = 32 bits
-        int long_double = 0;                             // L: long double, a double under -fsoft-double
+        int long_double = 0;                             // L: long double, which is double
         for (;;)
         {
             char m = fmt[i];
@@ -503,17 +503,15 @@ static int scan_core(struct scan* s, const char* fmt, va_list ap)
             if (suppress)
                 continue;
             char* end;
-#ifdef __CERES_SOFT_DOUBLE__
             if (narrow == 'l' || long_double)
             {
-                double d = strtod(field, &end);          // %lf and %Lf: a real double
+                double d = strtod(field, &end);          // %lf and %Lf: a double
                 if (end == field)
                     return assigned;
                 *va_arg(ap, double*) = d;
                 assigned++;
                 continue;
             }
-#endif
             float v = strtof(field, &end);
             if (end == field)
                 return assigned;                         // "inf" was not a word after all, or a lone sign

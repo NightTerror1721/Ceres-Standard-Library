@@ -49,7 +49,7 @@ static float erf_below_one(float x)
 static float exp_minus_square(float x)
 {
     float hi = float_from_bits(float_bits(x) & 0xFFFFF000u);
-    return exp(-hi * hi) * exp(-(x - hi) * (x + hi));
+    return expf(-hi * hi) * expf(-(x - hi) * (x + hi));
 }
 
 // erfc(x) for 1 <= x < 10.1.
@@ -60,18 +60,18 @@ static float erfc_tail(float x)
     return exp_minus_square(x) * g * t;
 }
 
-float erf(float x)
+float erff(float x)
 {
     if (isnan(x))
         return x;
-    float ax = fabs(x);
+    float ax = fabsf(x);
     if (ax < 1.0f)
         return erf_below_one(x);                     // keeps the sign of a zero
     float y = ax >= 4.0f ? 1.0f : 1.0f - erfc_tail(ax);   // from 4 on erfc is below half a unit of 1
-    return copysign(y, x);
+    return copysignf(y, x);
 }
 
-float erfc(float x)
+float erfcf(float x)
 {
     if (isnan(x))
         return x;
@@ -83,7 +83,7 @@ float erfc(float x)
             return 1.0f - erf_below_one(x);
         if (x <= -10.1f)
             return 2.0f;                             // 2 - (a tail that underflowed): exactly 2, and no ERANGE
-        return 2.0f - erfc(-x);
+        return 2.0f - erfcf(-x);
     }
     if (x >= 10.1f)
     {
@@ -158,7 +158,7 @@ static float rising_product(float f, int n, float g)
 // sin(pi x) with x reduced exactly first, so it is 0 at the integers and right near them.
 static float sin_pi(float x)
 {
-    float r = x - 2.0f * floor(x * 0.5f);            // [0, 2), exact
+    float r = x - 2.0f * floorf(x * 0.5f);            // [0, 2), exact
     float sign = 1.0f;
     if (r >= 1.0f)
     {
@@ -167,10 +167,10 @@ static float sin_pi(float x)
     }
     if (r > 0.5f)
         r = 1.0f - r;
-    return sign * sin(PI * r);
+    return sign * sinf(PI * r);
 }
 
-float tgamma(float x)
+float tgammaf(float x)
 {
     if (isnan(x))
         return x;
@@ -184,11 +184,11 @@ float tgamma(float x)
     if (x == 0.0f)
     {
         errno = ERANGE;                              // a pole, on the side of the zero's sign
-        return copysign(INFINITY, x);
+        return copysignf(INFINITY, x);
     }
     if (x < 0.0f)
     {
-        if (x == floor(x))
+        if (x == floorf(x))
         {
             errno = EDOM;
             return NAN;
@@ -229,30 +229,30 @@ float tgamma(float x)
     return g;
 }
 
-float lgamma(float x)
+float lgammaf(float x)
 {
     signgam = 1;
     if (isnan(x))
         return x;
     if (isinf(x))
         return INFINITY;
-    if (x <= 0.0f && x == floor(x))
+    if (x <= 0.0f && x == floorf(x))
     {
         errno = ERANGE;                              // a pole
         return INFINITY;
     }
     if (x > 0.0f && x < 1.0f)
-        return lgamma1p(x) - log(x);                 // lgamma(x) = lgamma(1 + x) - log x: both terms positive
+        return lgamma1p(x) - logf(x);                 // lgamma(x) = lgamma(1 + x) - log x: both terms positive
     if (x >= 1.0f && x < 2.0f)
         return lgamma1p(x - 1.0f);                   // x - 1 is exact
     if (x >= 2.0f && x < 3.0f)
-        return log1p(x - 2.0f) + lgamma1p(x - 2.0f); // lgamma(x) = log(x - 1) + lgamma(x - 1)
+        return log1pf(x - 2.0f) + lgamma1p(x - 2.0f); // lgamma(x) = log(x - 1) + lgamma(x - 1)
     if (x >= 3.0f && x < 35.0f)
-        return log(tgamma(x));
+        return logf(tgammaf(x));
     if (x >= 35.0f)
     {
         // Stirling: (x - 1/2) ln x - x + ln sqrt(2 pi) + 1/(12x) - 1/(360x^3) + 1/(1260x^5).
-        float lx = log(x);
+        float lx = logf(x);
         float t = 1.0f / x, t2 = t * t;
         float series = t * (1.0f / 12.0f - t2 * (1.0f / 360.0f - t2 * (1.0f / 1260.0f)));
         float y = x * (lx - 1.0f) - 0.5f * lx + 0.918938533f + series;
@@ -262,14 +262,14 @@ float lgamma(float x)
     }
     if (x > -34.0f)
     {
-        float g = tgamma(x);
+        float g = tgammaf(x);
         if (g < 0.0f)
             signgam = -1;
-        return log(fabs(g));
+        return logf(fabsf(g));
     }
     // Reflection: gamma(x) gamma(1 - x) = pi / sin(pi x), and gamma(1 - x) > 0.
     float s = sin_pi(x);
-    float rest = lgamma(1.0f - x);                   // (which sets signgam: set it after)
+    float rest = lgammaf(1.0f - x);                   // (which sets signgam: set it after)
     signgam = s < 0.0f ? -1 : 1;
-    return log(PI / fabs(s)) - rest;
+    return logf(PI / fabsf(s)) - rest;
 }

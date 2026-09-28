@@ -15,11 +15,11 @@
 // C's round(): halfway cases go AWAY from zero. (The `fround` instruction rounds them to even: that is
 // rint(), in asm/math_ops.casm.) Written as trunc plus a correction, not floor(x + 0.5), which is wrong
 // for 0.49999997f.
-float round(float x)
+float roundf(float x)
 {
-    float t = trunc(x);
-    if (fabs(x - t) >= 0.5f)
-        t += copysign(1.0f, x);
+    float t = truncf(x);
+    if (fabsf(x - t) >= 0.5f)
+        t += copysignf(1.0f, x);
     return t;
 }
 
@@ -82,7 +82,7 @@ static float reduce_large(float ax, int* quad)
 // exact-product pieces (Cody and Waite), which keeps r right to its last digit; past it, reduce_large.
 static float reduce_pio2(float x, int* quad)
 {
-    float ax = fabs(x);
+    float ax = fabsf(x);
     if (ax > 6000.0f)
     {
         float r = reduce_large(ax, quad);
@@ -93,7 +93,7 @@ static float reduce_pio2(float x, int* quad)
         }
         return r;
     }
-    float nf = floor(x * TWO_OVER_PI + 0.5f);
+    float nf = floorf(x * TWO_OVER_PI + 0.5f);
     *quad = ((int)nf) & 3;
     return ((x - nf * PIO2_1) - nf * PIO2_2) - nf * PIO2_3;
 }
@@ -124,7 +124,7 @@ static float cos_kernel(float r)
 static float tan_kernel(float r)
 {
     float z = r * r;
-    if (fabs(r) < 1.0e-4f)
+    if (fabsf(r) < 1.0e-4f)
         return r;
     float p = 9.38540185543e-3f;
     p = p * z + 3.11992232697e-3f;
@@ -148,7 +148,7 @@ static int trig_domain(float x)
     return 0;
 }
 
-float sin(float x)
+float sinf(float x)
 {
     if (trig_domain(x))
         return NAN;
@@ -160,7 +160,7 @@ float sin(float x)
     return -cos_kernel(r);
 }
 
-float cos(float x)
+float cosf(float x)
 {
     if (trig_domain(x))
         return NAN;
@@ -172,7 +172,7 @@ float cos(float x)
     return sin_kernel(r);
 }
 
-void sincos(float x, float* s, float* c)
+void sincosf(float x, float* s, float* c)
 {
     if (trig_domain(x))
     {
@@ -190,7 +190,7 @@ void sincos(float x, float* s, float* c)
     else             { *s = -ck; *c = sk; }
 }
 
-float tan(float x)
+float tanf(float x)
 {
     if (trig_domain(x))
         return NAN;
@@ -202,14 +202,14 @@ float tan(float x)
     if (t == 0.0f)                          // tan(r + pi/2) = -1/tan(r): a pole no float reaches, but never divide by zero
     {
         errno = ERANGE;
-        return copysign(INFINITY, -t);
+        return copysignf(INFINITY, -t);
     }
     return -1.0f / t;
 }
 
 // ---- inverse trigonometric ----
 
-float atan(float x)
+float atanf(float x)
 {
     if (isnan(x))
         return x;
@@ -241,7 +241,7 @@ float atan(float x)
     return r;
 }
 
-float atan2(float y, float x)
+float atan2f(float y, float x)
 {
     if (isnan(x) || isnan(y))
         return x + y;
@@ -262,19 +262,19 @@ float atan2(float y, float x)
             return y > 0.0f ? a : -a;
         }
         if (x > 0.0f)
-            return copysign(0.0f, y);
+            return copysignf(0.0f, y);
         return y > 0.0f ? PI : -PI;
     }
     if (isinf(y))
         return y > 0.0f ? HALF_PI : -HALF_PI;
 
-    float a = atan(y / x);                      // y / x may overflow to infinity: atan handles that
+    float a = atanf(y / x);                      // y / x may overflow to infinity: atan handles that
     if (x < 0.0f)
         a += (y >= 0.0f) ? PI : -PI;
     return a;
 }
 
-float asin(float x)
+float asinf(float x)
 {
     if (isnan(x))
         return x;
@@ -283,10 +283,10 @@ float asin(float x)
         errno = EDOM;
         return NAN;
     }
-    return atan2(x, sqrt((1.0f - x) * (1.0f + x)));
+    return atan2f(x, sqrtf((1.0f - x) * (1.0f + x)));
 }
 
-float acos(float x)
+float acosf(float x)
 {
     if (isnan(x))
         return x;
@@ -295,7 +295,7 @@ float acos(float x)
         errno = EDOM;
         return NAN;
     }
-    return atan2(sqrt((1.0f - x) * (1.0f + x)), x);
+    return atan2f(sqrtf((1.0f - x) * (1.0f + x)), x);
 }
 
 // ---- exponentials and logarithms ----
@@ -318,12 +318,12 @@ static float exp_kernel(float r)
 // finite and within about +-104; no errno is set here.
 float __exp_shift(float x, int shift)
 {
-    float nf = floor(x * LOG2E + 0.5f);
+    float nf = floorf(x * LOG2E + 0.5f);
     float r = (x - nf * LN2_C1) - nf * LN2_C2;
     return __scale2(exp_kernel(r), (int)nf + shift);
 }
 
-float exp(float x)
+float expf(float x)
 {
     if (isnan(x))
         return x;
@@ -346,7 +346,7 @@ float exp(float x)
 }
 
 // 2^x: the integer part goes straight into the exponent, so only the fraction is approximated.
-float exp2(float x)
+float exp2f(float x)
 {
     if (isnan(x))
         return x;
@@ -362,7 +362,7 @@ float exp2(float x)
             errno = ERANGE;
         return 0.0f;
     }
-    float nf = floor(x + 0.5f);
+    float nf = floorf(x + 0.5f);
     float result = __scale2(exp_kernel((x - nf) * LN2), (int)nf);
     if (isinf(result))
         errno = ERANGE;
@@ -416,7 +416,7 @@ static int log_special(float x, float* out)
     return 0;
 }
 
-float log(float x)
+float logf(float x)
 {
     float special;
     if (log_special(x, &special))
@@ -427,7 +427,7 @@ float log(float x)
     return (kf * LN2_C2 + log_kernel(m)) + kf * LN2_C1;
 }
 
-float log2(float x)
+float log2f(float x)
 {
     float special;
     if (log_special(x, &special))
@@ -437,7 +437,7 @@ float log2(float x)
     return (float)k + log_kernel(m) * LOG2E;
 }
 
-float log10(float x)
+float log10f(float x)
 {
     float special;
     if (log_special(x, &special))
@@ -466,24 +466,24 @@ static float power_int(float base, int n)
 // An odd integer? Every float of 2^24 or more is an even integer.
 static int is_odd_integer(float y)
 {
-    if (fabs(y) >= 16777216.0f || trunc(y) != y)
+    if (fabsf(y) >= 16777216.0f || truncf(y) != y)
         return 0;
     return ((int)y) & 1;
 }
 
-float pow(float x, float y)
+float powf(float x, float y)
 {
     if (y == 0.0f || x == 1.0f)
         return 1.0f;                                    // even when the other one is NaN
     if (isnan(x) || isnan(y))
         return NAN;
 
-    int y_is_integer = trunc(y) == y;
+    int y_is_integer = truncf(y) == y;
     int odd = is_odd_integer(y);
 
     if (isinf(y))
     {
-        float ax = fabs(x);
+        float ax = fabsf(x);
         if (ax == 1.0f)
             return 1.0f;
         return ((ax > 1.0f) == (y > 0.0f)) ? INFINITY : 0.0f;
@@ -516,9 +516,9 @@ float pow(float x, float y)
     }
 
     float r;
-    if (y_is_integer && fabs(y) <= 32.0f)
+    if (y_is_integer && fabsf(y) <= 32.0f)
     {
-        int n = (int)fabs(y);
+        int n = (int)fabsf(y);
         r = power_int(x, n);
         if (y < 0.0f)
         {
@@ -531,7 +531,7 @@ float pow(float x, float y)
     else
     {
         // The error of y*log(x) is multiplied into the result: about |y log x| * 6e-8 relative.
-        r = exp(y * log(x));
+        r = expf(y * logf(x));
     }
     if (isinf(r) || r == 0.0f)
         errno = ERANGE;

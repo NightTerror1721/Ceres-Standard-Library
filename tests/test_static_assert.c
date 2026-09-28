@@ -2,7 +2,7 @@
 #include "ceres/test.h"
 #include "assert.h"
 #include "time.h"
-#include "ceres/ns64.h"
+#include "stdint.h"
 
 enum { WORDS = 2 };
 
@@ -16,7 +16,7 @@ struct pair
     static_assert(sizeof(int) == 4, "inside a struct");
 };
 static_assert(sizeof(struct pair) == WORDS * 4, "a pair is two words");
-static_assert(sizeof(struct ns64) == sizeof(struct pair), "the library's own layouts hold");
+static_assert(sizeof(uint64_t) == sizeof(struct pair), "a 64-bit integer is two words");
 static_assert(sizeof(struct tm) == 9 * sizeof(int), "a tm is nine words");
 
 static const char* name_of_this(void)

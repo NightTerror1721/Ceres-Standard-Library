@@ -12,7 +12,7 @@
 # changing a header rebuilds the units that include it.
 #
 #   cmake --preset O2 && cmake --build --preset O2          (CMakePresets.json: O0, O1, O2, O3, Os, Og, O2-sd, ...)
-#   cmake -S . -B build/cmake/mine -G Ninja -DCERES_OPT_LEVEL=s -DFS_MAX_OPEN=4 -DCERES_SOFT_DOUBLE=ON
+#   cmake -S . -B build/cmake/mine -G Ninja -DCERES_OPT_LEVEL=s -DFS_MAX_OPEN=4
 #   cmake --build build/cmake/mine -j
 #   ctest --test-dir build/cmake/mine                     (the library linked into programs that are run)
 #   cmake --install build/cmake/mine --prefix <sysroot>    (ceresc prog.c --sysroot <sysroot> -lceres --run)
@@ -71,7 +71,6 @@ if(NOT CERES_OPT_LEVEL MATCHES "^[0123sg]$")
     message(FATAL_ERROR "CERES_OPT_LEVEL is '${CERES_OPT_LEVEL}': it must be 0, 1, 2, 3, s or g")
 endif()
 
-option(CERES_SOFT_DOUBLE "double as a real binary64 done in software (-fsoft-double): for programs compiled with it" OFF)
 option(CERES_WERROR "treat compiler warnings as errors (-Werror)" ON)
 
 set(CERES_OPT_FLAGS "" CACHE STRING
@@ -117,9 +116,6 @@ set(CERESC_FLAGS -I include -O${CERES_OPT_LEVEL})
 if(CERES_WERROR)
     list(APPEND CERESC_FLAGS -Werror)
 endif()
-if(CERES_SOFT_DOUBLE)
-    list(APPEND CERESC_FLAGS -fsoft-double)
-endif()
 list(APPEND CERESC_FLAGS ${CERES_OPT_FLAGS})
 set(_changed "")
 foreach(_setting IN LISTS CERES_CONFIG_SETTINGS)
@@ -138,11 +134,9 @@ endforeach()
 list(APPEND CERESC_FLAGS ${CERES_EXTRA_FLAGS})
 
 set(CERES_LIBDIR "" CACHE STRING
-    "where the library goes under the install prefix; empty: lib, or lib/soft-double for a soft-double build (ceresc -l looks in lib, and in lib/soft-double first under -fsoft-double)")
+    "where the library goes under the install prefix; empty: lib (where ceresc -l looks)")
 if(CERES_LIBDIR)
     set(LIBDIR "${CERES_LIBDIR}")
-elseif(CERES_SOFT_DOUBLE)
-    set(LIBDIR "lib/soft-double")
 else()
     set(LIBDIR "lib")
 endif()
@@ -262,22 +256,18 @@ endif()
 
 # ---- tests (ctest) ------------------------------------------------------------------------------------------------
 # verify.*: programs built against this archive with ceresc alone, run, and compared with what they must print - the
-# proof that the archive links. suite: every test of tests/ against this archive (node tools/runtests.js --library),
-# which only means something for a library built the way the expected outputs were written: no soft double.
+# proof that the archive links. suite: every test of tests/ against this archive (node tools/runtests.js --library).
 
 enable_testing()
-set(_verify hello test_user_irq17)
-if(CERES_SOFT_DOUBLE)
-    list(APPEND _verify test_double)
-endif()
+set(_verify hello test_user_irq17 test_double)
 foreach(_program IN LISTS _verify)
     add_test(NAME verify.${_program}
         COMMAND "${CMAKE_COMMAND}" "-DCERESC=${CERESC}" "-DCERES_DIR=${CERES_DIR}" "-DROOT=${ROOT}" "-DLIB=${B}"
-                "-DNAME=${_program}" "-DFLAGS=-O${CERES_OPT_LEVEL}$<$<BOOL:${CERES_SOFT_DOUBLE}>:|-fsoft-double>"
+                "-DNAME=${_program}" "-DFLAGS=-O${CERES_OPT_LEVEL}"
                 -P "${SCRIPTS}/run_program.cmake")
     set_tests_properties(verify.${_program} PROPERTIES ENVIRONMENT "CERES_HEADLESS=1" LABELS verify TIMEOUT 180)
 endforeach()
-if(NODE AND NOT CERES_SOFT_DOUBLE)
+if(NODE)
     add_test(NAME suite COMMAND "${NODE}" tools/runtests.js --library "${B}" --levels ${CERES_OPT_LEVEL}
         WORKING_DIRECTORY "${ROOT}")
     set_tests_properties(suite PROPERTIES ENVIRONMENT "CERESC=${CERESC};CERES_PATH=${CERES_DIR}" LABELS suite
@@ -288,9 +278,7 @@ endif()
 #   <prefix>/include/                           every header
 #   <prefix>/<lib>/libceres.car                 the archive, and libceres.decls.casm beside it
 #   <prefix>/<lib>/libceres_<m>.cobj            an optional module (-lceres_irq; -lceres_fault -lceres_fault_asm; ...)
-# where <lib> is lib, or lib/soft-double for a soft-double build (CERES_LIBDIR says otherwise).
-# A soft-double build installs into lib/soft-double, so installing both builds into one prefix makes a sysroot for
-# either kind of program.
+# where <lib> is lib (CERES_LIBDIR says otherwise).
 
 install(DIRECTORY include/ DESTINATION include)
 install(FILES "${B}/libceres.car" "${B}/libceres.decls.casm" DESTINATION "${LIBDIR}")

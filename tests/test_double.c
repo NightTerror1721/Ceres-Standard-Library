@@ -1,5 +1,4 @@
-// -fsoft-double: double is a real binary64 (tests/expected/test_double.flags), every operation a call to
-// ceres/f64.h. What the compiler lowers - literals, arithmetic, comparisons, conversions, increments, compound
+// double is the machine's binary64, every operation one of its 64-bit instructions (F6.3). What the compiler lowers - literals, arithmetic, comparisons, conversions, increments, compound
 // assignment, conditions, arguments and returns, globals, arrays and struct fields, variadic arguments - checked
 // against the bits a binary64 must have.
 #include "ceres/test.h"
@@ -68,7 +67,7 @@ int main(void)
 
     TEST_SECTION("comparisons and conditions");
     CHECK(a < b && b > a && a <= a && a >= a && a != b && !(a == b));
-    double zero = 0.0, nan = zero / zero;
+    double zero = 0.0, nan = __builtin_sqrt(-1.0);         // (0.0 / 0.0 traps instead: fdiv.d, like div)
     CHECK(!(nan == nan) && nan != nan && !(nan < 1) && !(nan > 1));
     CHECK(nan ? 1 : 0);                                  // a NaN is true
     CHECK(!(zero ? 1 : 0) && !(-zero ? 1 : 0));

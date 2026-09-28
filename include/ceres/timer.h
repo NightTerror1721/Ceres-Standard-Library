@@ -3,7 +3,6 @@
 #include "../ceres.h"
 #include "../stdint.h"
 #include "../interrupts.h"
-#include "ns64.h"
 
 // Timer device (0xFF010000). See CeresASM docs/07-IO-Devices-and-Ports.md.
 //

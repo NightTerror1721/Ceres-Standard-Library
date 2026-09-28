@@ -1,0 +1,10 @@
+-- tables: trigonometric
+-- tables: exponential and logarithmic
+-- tables: hyperbolic and the rest
+-- erf, erfc, tgamma, lgamma
+-- exact values
+-- special values and errno
+-- classification
+-- identities
+-- the float family is still there
+ALL PASSED 65/65

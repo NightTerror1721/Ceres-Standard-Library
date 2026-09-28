@@ -123,7 +123,7 @@ static void fixed_trig(void)
     int close = 1;
     for (int a = 0; a < 256; a++)
     {
-        float want = sin(6.28318531f * (float)a / 256.0f);
+        float want = sinf(6.28318531f * (float)a / 256.0f);
         float have = fx_to_float(fx_sin(a));
         float d = have - want;
         if (d < 0.0f) d = -d;

@@ -9,12 +9,12 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<assert.h>`](assert.md) | assert(expr) stops the program with "file:line: function: assertion 'expr' failed" when expr is 0. |
 | [`<ctype.h>`](ctype.md) | Every one looks at its argument alone (the "C" locale), so each is `const`: a call whose result nothing reads may go. |
 | [`<errno.h>`](errno.md) | One variable for the whole program: the machine has a single thread of control. |
-| [`<float.h>`](float.md) | Ceres has one floating-point format: IEEE 754 binary32. |
+| [`<float.h>`](float.md) | Ceres has two floating-point formats, IEEE 754 binary32 (`float`) and binary64 (`double`, and `long double`, which is the same type). |
 | [`<inttypes.h>`](inttypes.md) | printf/scanf conversion specifiers for the fixed-width types, e.g. printf("%" PRIu32 " bytes\n", n); `long` is 32 bits here, so the 32-bit specifiers carry... |
 | [`<iso646.h>`](iso646.md) | The alternative spellings of the operators (ISO C, Amendment 1). |
 | [`<limits.h>`](limits.md) | Ceres is a 32-bit machine: `long` is `int` (32 bits). |
 | [`<locale.h>`](locale.md) | Locales. |
-| [`<math.h>`](math.md) | The machine's floating point is binary32, and these functions are float: every one has ONE implementation and the f-suffixed C99 names (sinf, powf, ...) are... |
+| [`<math.h>`](math.md) | <math.h> in the machine's two formats. |
 | [`<setjmp.h>`](setjmp.md) | Non-local jumps (asm/setjmp.casm). |
 | [`<signal.h>`](signal.md) | Signals. |
 | [`<stdalign.h>`](stdalign.md) | C11 <stdalign.h>. |
@@ -77,7 +77,6 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/ds/strbuf.h>`](ceres_ds_strbuf.md) | A string that grows as text is appended, so a message can be built piece by piece without strcat's repeated scans or a buffer size guessed in advance. |
 | [`<ceres/ds/trie.h>`](ceres_ds_trie.md) | A trie over ASCII strings: "every word starting with this prefix" is a query neither ceres/ds/hashmap.h nor ceres/ds/omap.h answers well - the tree would... |
 | [`<ceres/ds/vector.h>`](ceres_ds_vector.md) | A growable array of fixed-size elements. |
-| [`<ceres/f64.h>`](ceres_f64.md) | IEEE 754 binary64 - a real double - in software, on the bits of one in an unsigned long long. |
 | [`<ceres/fb.h>`](ceres_fb.md) | The GPU's bitmap plane (level V1, CeresASM plan/v2 SPEC 7): a picture in video memory, behind the text plane, that the screen shows at every vertical blank. |
 | [`<ceres/fixed.h>`](ceres_fixed.md) | 16.16 fixed-point arithmetic, for games that want exact, repeatable numbers without the float unit. |
 | [`<ceres/font.h>`](ceres_font.md) | An 8x8 bitmap font for the pixel surfaces: printable ASCII (32..126) and Latin-1 (0xA0..0xFF, the code points U+00A0..U+00FF: accented letters, the Spanish... |
@@ -101,7 +100,6 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/mmu.h>`](ceres_mmu.md) | The MMU (CeresASM docs/27-Virtual-Memory-and-Paging.md): two-level page tables over 4 KiB pages, off until a program turns it on. |
 | [`<ceres/mouse.h>`](ceres_mouse.md) | Mouse device (0xFF110000). |
 | [`<ceres/music.h>`](ceres_music.md) | Music and sound effects on the audio device's four channels (CeresASM 848fae2): each a waveform, a volume and an ADSR envelope, mixed by the host. |
-| [`<ceres/ns64.h>`](ceres_ns64.md) | A 64-bit unsigned count, in two words: the machine is 32-bit, but `long long` is a real 8-byte type and the arithmetic below runs on it. |
 | [`<ceres/pack.h>`](ceres_pack.md) | Resource packs: a program's assets - images, levels, text, music - in one file that is read a piece at a time, from a cartridge in a peripheral port, a... |
 | [`<ceres/periph.h>`](ceres_periph.md) | Peripheral ports (0xFF320000): media that a person plugs in while the program runs - a memory stick, a game cartridge. |
 | [`<ceres/pool.h>`](ceres_pool.md) | Fixed-size blocks with allocation and release in constant time: entities, bullets, particles. |

@@ -211,7 +211,7 @@ static int hex_value(int c)
 }
 
 // A floating number as the text has it, before it is rounded to a format: inf, nan, a hexadecimal mantissa times a
-// power of two, or decimal digits times a power of ten. strtof rounds it to a float and strtod (under -fsoft-double)
+// power of two, or decimal digits times a power of ten. strtof rounds it to a float and strtod
 // to a double, so the two read exactly the same text.
 enum { REAL_NONE, REAL_INF, REAL_NAN, REAL_HEX, REAL_DECIMAL };
 
@@ -400,8 +400,7 @@ float strtof(const char* s, char** end)
     return t.negative ? -r : r;
 }
 
-#ifdef __CERES_SOFT_DOUBLE__
-// The same for a real double (-fsoft-double), rounded once to binary64 from the exact digits.
+// The same for a double, rounded once to binary64 from the exact digits.
 double strtod(const char* s, char** end)
 {
     static char digits[FCONV64_MAX_DIGITS];          // (static: 780 bytes)
@@ -429,7 +428,3 @@ double strtod(const char* s, char** end)
 }
 
 double atof(const char* s) { return strtod(s, 0); }
-#else
-float strtod(const char* s, char** end) { return strtof(s, end); }
-float atof(const char* s) { return strtof(s, 0); }
-#endif

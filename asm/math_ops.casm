@@ -1,57 +1,110 @@
 @text
 
-global fabs:
+// ---- floats ----
+
+global fabsf:
     abs f0, f0
     ret
 
-global sqrt:
+global sqrtf:
     sqrt f0, f0
     ret
 
-global floor:
+global floorf:
     ffloor f0, f0
     ret
 
-global ceil:
+global ceilf:
     fceil f0, f0
     ret
 
 // `fround` rounds ties to EVEN: that is C's rint()/nearbyint(). C's round() (ties away from zero) is in math.c.
-global rint:
+global rintf:
     fround f0, f0
     ret
 
-global nearbyint:
+global nearbyintf:
     fround f0, f0
     ret
 
-global trunc:
+global truncf:
     ftrunc f0, f0
     ret
 
-global fmin:
+global fminf:
     fmin f0, f0, f1
     ret
 
-global fmax:
+global fmaxf:
     fmax f0, f0, f1
     ret
 
-global copysign:
+global copysignf:
     fcopysign f0, f0, f1
     ret
 
-global fma:                     // x*y + z. The instruction ACCUMULATES: fd = fd + fs * ft
+global fmaf:                     // x*y + z. The instruction ACCUMULATES: fd = fd + fs * ft
     fma f2, f0, f1
     mov f0, f2
     ret
 
-global rcp:
+global rcpf:
     frecipe f0, f0
     ret
 
-global rsqrt:
+global rsqrtf:
     frsqrte f0, f0
+    ret
+
+// ---- doubles: the pair instructions (CeresASM docs/34-64-bit.md); a double argument is in d0 (f0:f1), the second
+// in d1, and the result goes back in d0 ----
+
+global fabs:
+    fabs.d d0, d0
+    ret
+
+global sqrt:
+    fsqrt.d d0, d0
+    ret
+
+global floor:
+    ffloor.d d0, d0
+    ret
+
+global ceil:
+    fceil.d d0, d0
+    ret
+
+global rint:
+    fround.d d0, d0
+    ret
+
+global nearbyint:
+    fround.d d0, d0
+    ret
+
+global trunc:
+    ftrunc.d d0, d0
+    ret
+
+global fmin:
+    fmin.d d0, d0, d1
+    ret
+
+global fmax:
+    fmax.d d0, d0, d1
+    ret
+
+global copysign:
+    fcopysign.d d0, d0, d1
+    ret
+
+// z is the third double, and with d0 and d1 taken it came on the stack: the caller's [sp + 0], [sp + 4] past the
+// return address `call` pushed.
+global fma:
+    fldr.d d2, [sp + 4]
+    fma.d d2, d0, d1
+    fmov.d d0, d2
     ret
 
 // ---- classification and bit access ----

@@ -183,7 +183,7 @@ int main(void)
     TEST_SECTION("clocks");
     CHECK(difftime(100u, 40u) == 60.0f);
     CHECK(difftime(40u, 100u) == -60.0f);
-    CHECK(difftime(4294967295u, 0u) == 4294967296.0f);               // (float can only be close here)
+    CHECK(difftime(4294967295u, 0u) == 4294967295.0);                // exact: a double holds it
     time_t now = 0;
     time_t returned = time(&now);
     CHECK(now == returned);

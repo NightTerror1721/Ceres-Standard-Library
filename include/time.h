@@ -34,7 +34,7 @@ time_t time(time_t* out);
 // cycles at the CPU clock (ceres/timer.h), so it reads the same on every run. The machine runs one program, so its
 // time is the program's. (The cycles themselves are timer_cycles64().)
 clock_t clock(void);
-float   difftime(time_t end, time_t start);
+double  difftime(time_t end, time_t start);
 
 // gmtime and localtime return NULL (errno EOVERFLOW) for a time whose year an int cannot hold.
 struct tm* gmtime(const time_t* t);                  // points at ONE static struct, overwritten by the next call

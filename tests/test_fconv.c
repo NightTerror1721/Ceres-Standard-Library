@@ -70,7 +70,7 @@ int main(void)
     CHECK_STR(fmt1("%a", 1.0f), "0x1p+0");
     CHECK_STR(fmt1("%a", 0.1f), "0x1.99999ap-4");
     CHECK_STR(fmt1("%A", -12.0f), "-0X1.8P+3");
-    CHECK_STR(fmt1("%a", from(1)), "0x0.000002p-126");
+    CHECK_STR(fmt1("%a", from(1)), "0x1p-149");                     // a float subnormal, promoted: a normal double
     CHECK_STR(fmt1("%a", 0.0f), "0x0p+0");
     CHECK_STR(fmt1("%.1a", 1.96875f), "0x2.0p+0");                  // 0x1.f8 rounded to one digit
     CHECK_STR(fmt1("%.0a", 1.5f), "0x2p+0");                        // a tie, and the lead 1 is odd: up to even

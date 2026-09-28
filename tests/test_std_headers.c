@@ -16,8 +16,9 @@ int main(void)
     CHECK_EQ(FLT_MANT_DIG, 24);
     CHECK_EQ(FLT_DIG, 6);
     CHECK_EQ(FLT_DECIMAL_DIG, 9);
-    CHECK(DBL_MAX == FLT_MAX);
-    CHECK(LDBL_EPSILON == FLT_EPSILON);
+    CHECK_EQ(DBL_MANT_DIG, 53);                         // double is binary64 ...
+    CHECK(DBL_MAX > FLT_MAX && DBL_EPSILON == 0x1p-52);
+    CHECK(LDBL_EPSILON == DBL_EPSILON && LDBL_MAX == DBL_MAX);   // ... and long double is double
     volatile float one = 1.0f;                          // volatile: keep the compiler from folding
     CHECK(one + FLT_EPSILON > one);                     // epsilon is the gap above 1.0
     CHECK(one + FLT_EPSILON / 2.0f == one);             // half of it is rounded away
