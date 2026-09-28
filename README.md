@@ -146,7 +146,7 @@ removes nothing an earlier install left: a module taken out of `MODULES` stays u
 
 **`make check`** - builds, then runs `ctest` on that build:
 
-- `verify.hello`, `verify.test_user_irq17` and `verify.test_double`: programs linked against the archive with ceresc
+- `verify.hello`, `verify.test_user_irq19` and `verify.test_double`: programs linked against the archive with ceresc
   alone, run, and compared with what they must print;
 - `suite`: every test of `tests/` against this library, at its level - when Node is there.
 

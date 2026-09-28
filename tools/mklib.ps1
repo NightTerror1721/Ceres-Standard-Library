@@ -23,9 +23,11 @@
        anything calls them, but ARCHIVE MEMBERS ARE PULLED IN ONLY WHEN THEY ANSWER A NAME NOTHING ELSE
        DEFINES - so a program that calls one routine carries one, and the modules that bind interrupt vectors
        (src/ceres/irq.c) stay out unless something calls into them.
-    4. Verification (-O2 only, unless -NoVerify): two programs are built against the archive with ceresc and
-       run. One of them binds vector 17 itself; it can only link because irq.cobj, which also binds 17, was
-       never pulled.
+    4. Verification (-O2 only, unless -NoVerify): three programs are built against the archive with ceresc and
+       run. One of them binds vector 19 itself; it can only link because irq.cobj, which also binds 19, was
+       never pulled. A program writes to the machine's terminal, never to the host's stdout (CeresASM plan/v2
+       F5), so each runs headless and its output stream is read back from `ceres run --transcript`, then
+       compared with tests/expected/<name>.expected; it must exit with 0, or with tests/expected/<name>.status.
 
     build/libceres.car and build/libceres.decls.casm are kept as copies of the -O2 ones, where they have
     always been.
@@ -98,17 +100,38 @@ if ($LevelList -contains 2) {
     Copy-Item "$(Get-LibraryDir 2)/libceres.decls.casm" build/libceres.decls.casm -Force
 }
 
-# ---- 4. build two programs against the archive with ceresc alone, and run them ----------------------------
+# ---- 4. build three programs against the archive with ceresc alone, and run them --------------------------
+
+# The transcript's output stream: the error stream's bytes are between ESC [ E and ESC [ e (as in runtests.ps1).
+function Get-TranscriptOutput([string]$raw) {
+    $out = New-Object System.Text.StringBuilder
+    $inError = $false
+    for ($i = 0; $i -lt $raw.Length; $i++) {
+        if ($raw[$i] -eq [char]27 -and $i + 2 -lt $raw.Length -and $raw[$i + 1] -eq '[' -and ($raw[$i + 2] -ceq 'E' -or $raw[$i + 2] -ceq 'e')) {
+            $inError = $raw[$i + 2] -ceq 'E'
+            $i += 2
+        }
+        elseif (-not $inError) { [void]$out.Append($raw[$i]) }
+    }
+    return $out.ToString()
+}
 
 if (-not $NoVerify -and ($LevelList -contains 2)) {
     $dir = Get-LibraryDir 2
     New-Item -ItemType Directory -Force build/verify | Out-Null
-    $programs = @('hello', 'test_user_irq17', 'test_double')
+    $env:CERES_HEADLESS = '1'                   # no window, whatever ceresc starts
+    $programs = @('hello', 'test_user_irq19', 'test_double')
     foreach ($name in $programs) {
-        $code = Invoke-Tool $Ceresc "tests/$name.c $dir/libceres.car --decls $dir/libceres.decls.casm -I include -O2 -o build/verify/$name.cres --run --clean --ceres-path `"$CeresDir`"" "build/verify/$name.out" build/mklib.v.err
-        if ($code -ne 0) { Fail "building and running $name against libceres.car" build/mklib.v.err }
+        $transcript = "build/verify/$name.transcript"
+        Remove-Item $transcript -Force -ErrorAction SilentlyContinue
+        $runArgs = (@('--headless', '--speed', 'max', '--gpu', 'software', '--transcript', $transcript) | ForEach-Object { "--run-arg $_" }) -join ' '
+        $code = Invoke-Tool $Ceresc "tests/$name.c $dir/libceres.car --decls $dir/libceres.decls.casm -I include -O2 -o build/verify/$name.cres --run --clean --ceres-path `"$CeresDir`" $runArgs" "build/verify/$name.out" build/mklib.v.err
+        $statusFile = "tests/expected/$name.status"
+        $wantStatus = if (Test-Path $statusFile) { [int]((Read-Text $statusFile).Trim()) } else { 0 }
+        if ($code -ne $wantStatus) { Fail "building and running $name against libceres.car (exit $code, expected $wantStatus)" build/mklib.v.err }
 
-        $actual = (Get-ProgramOutput (Read-Text "build/verify/$name.out")) -replace "`r`n", "`n"
+        $raw = Read-Text $transcript
+        $actual = (Get-TranscriptOutput $(if ($null -eq $raw) { '' } else { $raw })) -replace "`r`n", "`n"
         $expected = (Read-Text "tests/expected/$name.expected") -replace "`r`n", "`n"
         if (-not (Same $actual $expected)) { Fail "$name printed something other than tests/expected/$name.expected" $null }
         Write-Host ("  built against the archive and ran: {0}" -f $name) -ForegroundColor Green

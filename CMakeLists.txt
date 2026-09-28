@@ -259,7 +259,7 @@ endif()
 # proof that the archive links. suite: every test of tests/ against this archive (node tools/runtests.js --library).
 
 enable_testing()
-set(_verify hello test_user_irq17 test_double)
+set(_verify hello test_user_irq19 test_double)
 foreach(_program IN LISTS _verify)
     add_test(NAME verify.${_program}
         COMMAND "${CMAKE_COMMAND}" "-DCERESC=${CERESC}" "-DCERES_DIR=${CERES_DIR}" "-DROOT=${ROOT}" "-DLIB=${B}"
