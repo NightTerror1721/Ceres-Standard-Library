@@ -46,8 +46,8 @@
 
 #define KEYC_NONE       (-1)                       // key_get(): nothing typed; key_wait(): the input ended
 
-int  key_start(void);                              // ask for keys as they are pressed; 1 if the host will, 0 if they are read from the terminal's bytes
-void key_stop(void);                               // give the console back (line editing, echo); calls nest: only the last one does
+int  key_start(void);                              // the terminal in raw mode: keys as they are pressed; 0 (they are read from its bytes)
+void key_stop(void);                               // the terminal back to lines (editing, echo); calls nest: only the last one does
 int  key_get(void);                                // the next keystroke, or KEYC_NONE if there is none yet
 int  key_wait(void);                               // waits for one; KEYC_NONE once the input has ended
 int  key_from_keystroke(unsigned int keystroke);   // the keyboard register's word as a keystroke as described above

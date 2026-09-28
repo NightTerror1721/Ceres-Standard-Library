@@ -2,10 +2,8 @@
 #include "ceres/terminal.h"
 #include "ceres/timer.h"
 
-// 1 when the keys are read from the keyboard device's key register; 0 while they are read from the terminal. The
-// terminal's raw mode hands every key over as it is pressed - in the window and from `ceres run --keys` alike - so
-// the keys are always read from there, as the bytes of CeresASM plan/v2 SPEC 8.3.
-static int from_keyboard = 0;
+// The keys are read from the terminal: its raw mode hands every key over as it is pressed - in the window and from
+// `ceres run --type` and `--keys` alike - as the bytes of CeresASM plan/v2 SPEC 8.3.
 
 // How many callers have asked for keys as they are pressed. The console is switched at the first and put back
 // at the last, so a menu can be run from inside a program that is reading keys itself.
@@ -21,20 +19,14 @@ static int held_byte = -1;
 int key_start(void)
 {
     if (users++ == 0)
-    {
         term_set_raw(1);
-        from_keyboard = 0;
-    }
-    return from_keyboard;
+    return 0;
 }
 
 void key_stop(void)
 {
     if (users > 0 && --users == 0)
-    {
         term_set_raw(0);
-        from_keyboard = 0;
-    }
 }
 
 int key_from_keystroke(unsigned int keystroke)
@@ -215,12 +207,6 @@ int key_get(void)
 {
     for (;;)
     {
-        if (from_keyboard)
-        {
-            if (!(mmio_r32(KBD_STATUS) & KBD_KEY_READY))
-                return KEYC_NONE;
-            return key_from_keystroke(mmio_r32(KBD_KEY));
-        }
         int c = next_byte();
         if (c < 0)
             return KEYC_NONE;
@@ -234,12 +220,6 @@ int key_wait(void)
 {
     for (;;)
     {
-        if (from_keyboard)
-        {
-            while (!(mmio_r32(KBD_STATUS) & KBD_KEY_READY))
-                __builtin_halt();                   // the keyboard's request ends the halt
-            return key_from_keystroke(mmio_r32(KBD_KEY));
-        }
         int c = held_byte;
         held_byte = -1;
         if (c < 0)
