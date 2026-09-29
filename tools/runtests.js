@@ -31,6 +31,14 @@
 //   <name>.ports     media to plug in: `--port 0=file` or `--cart 1=file`, one a line
 // and a `// USE: irq` line near the top of a test links an optional module (irq, fault, mmu).
 //
+// An example (examples/<name>.c) with examples/expected/<name>.expected is run and its output compared the same way;
+// examples/expected/<name>.flags holds compiler flags for it (-DDEMO_FRAMES=...), <name>.run more words for `ceres run`
+// (--profile micro), and <name>.frames the hashes of the screens it presents: it runs with `--frames`, and the first
+// 16 hex digits of each PNG's SHA-256, in order, must be the lines of that file.
+//
+// tools/img2tiles.cases lists runs of tools/img2tiles.js and the file each must give, byte for byte: the tool's own
+// tests (tests/img2tiles) and the headers of the examples' pictures (examples/art).
+//
 // The shell (shell/shell.c) is built as `make` builds it, into build/shell/shell/shell.cres, and each
 // tests/shell/<session>.type is typed on it - `ceres run` with no program and CERES_PATH=build/shell, the host directory
 // a copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with <session>.expected,
@@ -39,6 +47,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const crypto = require("crypto");
 
 const Root = path.resolve(__dirname, "..");
 process.chdir(Root);
@@ -312,11 +321,19 @@ function testExamples() {
         const statusFile = `examples/expected/${name}.status`;
         const wantStatus = fs.existsSync(statusFile) ? Number(readText(statusFile).trim()) : 0;
         const sources = [...CoreC, ...extra, ...Asm, `examples/${name}.c`];
+        const framesFile = `examples/expected/${name}.frames`;
+        const framesDir = `build/examples/${name}.frames`;
         let code;
         if (fs.existsSync(expectedPath)) {
             const body = opt.fromSources ? [...sources, ...flags] : [`examples/${name}.c`, ...libraryArgs(2, use), ...flags];
+            const runFile = `examples/expected/${name}.run`;
+            const more = fs.existsSync(runFile) ? splitWords(readText(runFile)).flatMap((w) => ["--run-arg", w]) : [];
+            if (fs.existsSync(framesFile)) {
+                fs.rmSync(framesDir, { recursive: true, force: true });
+                more.push("--run-arg", "--frames", "--run-arg", framesDir);
+            }
             code = run(Ceresc, [...body, "-I", "include", "-O2", "-Werror", "-o", `build/examples/${name}.cres`, ...(opt.gc ? ["--gc-sections"] : []),
-                "--run", "--clean", "--ceres-path", CeresDir, ...runArgs(transcript, null, stdin)], `build/examples/${name}.out`, `build/examples/${name}.err`);
+                "--run", "--clean", "--ceres-path", CeresDir, ...runArgs(transcript, null, stdin), ...more], `build/examples/${name}.out`, `build/examples/${name}.err`);
         } else {
             code = run(Ceresc, [...sources, "-I", "include", "-O2", "-Werror", "-S", "-o", `build/examples/${name}.casm`], `build/examples/${name}.out`, `build/examples/${name}.err`);
         }
@@ -344,10 +361,58 @@ function testExamples() {
             failures.push(`example ${name} (output)`);
             console.log(red(`  FAIL  ${name}  output differs from ${expectedPath}`));
             showDifference(lf(readText(expectedPath)), actual);
+            continue;
+        }
+        if (fs.existsSync(framesFile)) {
+            const pngs = fs.existsSync(framesDir) ? fs.readdirSync(framesDir).filter((f) => f.endsWith(".png")).sort() : [];
+            const got = pngs.map((f) => crypto.createHash("sha256").update(fs.readFileSync(path.join(framesDir, f))).digest("hex").slice(0, 16) + "\n").join("");
+            if (opt.update) {
+                fs.writeFileSync(framesFile, got);
+                console.log(yellow(`  wrote ${framesFile} (${pngs.length} screens)`));
+            } else if (lf(readText(framesFile)) !== got) {
+                bad++;
+                failures.push(`example ${name} (screens)`);
+                console.log(red(`  FAIL  ${name}  its screens differ from ${framesFile} (the PNGs are in ${framesDir})`));
+                showDifference(lf(readText(framesFile)), got);
+            }
         }
     }
     if (bad === 0) {
         console.log(green(`  ok    ${examples.length} examples`));
+        passed++;
+    }
+}
+
+// Each line of tools/img2tiles.cases: the file a run of tools/img2tiles.js must give, then its arguments.
+function testImg2tiles() {
+    console.log(cyan("img2tiles: the runs of tools/img2tiles.cases"));
+    fs.mkdirSync("build/img2tiles", { recursive: true });
+    let count = 0, bad = 0;
+    for (const line of readText("tools/img2tiles.cases").split(/\r?\n/)) {
+        if (!line.trim() || line.trim().startsWith("#")) continue;
+        const [expected, ...argv] = line.trim().split(/\s+/);
+        const made = `build/img2tiles/${path.basename(expected)}`;
+        count++;
+        const result = spawnSync(process.execPath, ["tools/img2tiles.js", ...argv, "-o", made], { cwd: Root, encoding: "latin1", windowsHide: true });
+        if (result.status !== 0) {
+            bad++;
+            failures.push(`img2tiles ${expected} (exit ${result.status})`);
+            console.log(red(`  FAIL  ${expected}  the run failed`));
+            for (const l of (result.stderr || "").split(/\r?\n/).slice(0, 4)) console.log(yellow(`      ${l}`));
+            continue;
+        }
+        const got = lf(readText(made));
+        if (opt.update) {
+            fs.copyFileSync(made, expected);
+            console.log(yellow(`  wrote ${expected}`));
+        } else if (!fs.existsSync(expected) || lf(readText(expected)) !== got) {
+            bad++;
+            failures.push(`img2tiles ${expected} (output)`);
+            console.log(red(`  FAIL  ${expected}  differs from what tools/img2tiles.js gives now (${made})`));
+        }
+    }
+    if (bad === 0) {
+        console.log(green(`  ok    ${count} runs`));
         passed++;
     }
 }
@@ -588,6 +653,7 @@ if (archivesBuilt)
     ensureLibrary([...new Set([...opt.levels, "2"])].sort(byLevel));
 for (const name of tests) testOne(name);
 testHeaders();
+testImg2tiles();
 testExamples();
 if (!opt.library && !archivesBuilt) ensureLibrary(["2"]);        // the shell is always linked against the archive
 testShell();

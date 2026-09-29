@@ -5,7 +5,8 @@
 // The GPU (0xFF400000): the screen and what it shows, for every video level (CeresASM plan/v2 SPEC 7). The screen
 // has a resolution (640x480 when the machine starts, or the profile's largest when that is smaller) and is drawn
 // again at every vertical blank, 60 times a second (or 50), from the GPU's planes: the background colour, the
-// bitmap plane (level V1, ceres/fb.h) and the text plane in front (level V0, ceres/text.h; the terminal draws there).
+// bitmap plane (level V1, ceres/fb.h), the tile layers and sprites (level V2, ceres/tiles.h and ceres/sprite.h) and
+// the text plane in front (level V0, ceres/text.h; the terminal draws there).
 //
 //   video_set_level(1);                 // the bitmap plane as well as the text
 //   video_set_resolution(320, 240);
@@ -14,9 +15,16 @@
 // TIME. The screen keeps the machine's time: a vertical blank every CpuClockHz / 60 cycles, the remainder carried,
 // so a program paced by video_wait_vblank() runs the same on every run and every host.
 //
-// PRESENT. What a plane shows can change at any moment, and is drawn as it is at the next blank. A Present asks for
-// the planes' new bases - a flip of the bitmap's buffers, another font - to be taken at the next blank, together;
-// it is also the moment `ceres run --screen-log` and `--frames` record the screen.
+// LINES. The screen is scanned line by line: a register written while line L is on its way (in the line interrupt,
+// say) changes the picture from line L + 1. What the planes show from video memory is read when the frame ends.
+//
+// PRESENT. A Present asks for the planes' new bases - a flip of the bitmap's buffers, another font - to be taken at
+// the next blank, together, and shown from the frame after it; `ceres run --screen-log` records the screen at that
+// blank and `--frames` the first frame that shows it.
+//
+// VIDEO MEMORY. The GPU starts with the text plane's cells, font, palette and scrollback at the bottom of the VRAM;
+// the rest is the program's. video_vram_alloc() hands it out, for the bitmap plane's buffers (fb.h), tiles, maps and
+// palettes (tiles.h) and the sprites (sprite.h).
 
 #define GPU_ID            (GPU_BASE + 0x000)   // R: 0x55504743, "CGPU"
 #define GPU_VERSION       (GPU_BASE + 0x004)   // R: major << 16 | minor
@@ -56,6 +64,7 @@
 
 #define VIDEO_TEXT     0   // V0: the text plane
 #define VIDEO_BITMAP   1   // V1: and the bitmap plane
+#define VIDEO_RETRO    2   // V2: and the tile layers and the sprites
 
 int  video_level(void);                     // the level now
 int  video_set_level(int level);            // the level the GPU took: never above what it has or the profile allows
@@ -76,3 +85,11 @@ void video_wait_present(void);              // until that blank has come: a flip
 // RAM or VRAM. 0, or -1 when an address is outside both.
 int  video_copy(void* dst, const void* src, unsigned int bytes);
 int  video_fill(void* dst, unsigned int pattern, unsigned int bytes);
+
+// The program's video memory: `bytes` of it, rounded up to 256 and aligned to 256, NULL when it does not fit. Nothing
+// is given back one block at a time; video_vram_reset() makes all of it free again - the memory fb_init() and
+// sprites_init() took as well, which they take anew the next time they are called.
+void* video_vram_alloc(unsigned int bytes);
+void  video_vram_reset(void);
+unsigned int video_vram_free(void);         // bytes still to hand out
+unsigned int video_vram_resets(void);       // how many resets so far: a block from before the last one is not yours

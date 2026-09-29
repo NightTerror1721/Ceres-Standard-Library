@@ -4,7 +4,6 @@
 #include "ceres/test.h"
 #include "ceres/gfx.h"
 #include "ceres/font.h"
-#include "ceres/sprite.h"
 #include "ceres/color.h"
 
 #define BG   0x000000u

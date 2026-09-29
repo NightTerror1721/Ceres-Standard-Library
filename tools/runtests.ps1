@@ -42,6 +42,14 @@
     <session>.expected, what went to its error stream with <session>.stderr (else nothing) and its exit status with
     <session>.status.
 
+    An example (examples/<name>.c) with examples/expected/<name>.expected is run and its output compared the same
+    way; examples/expected/<name>.flags holds compiler flags for it (-DDEMO_FRAMES=...), <name>.run more words for
+    `ceres run` (--profile micro), and <name>.frames the hashes of the screens it presents: it runs with `--frames`,
+    and the first 16 hex digits of each PNG's SHA-256, in order, must be the lines of that file.
+
+    tools/img2tiles.cases lists runs of tools/img2tiles.js and the file each must give, byte for byte: the tool's
+    own tests (tests/img2tiles) and the headers of the examples' pictures (examples/art).
+
     A test with a tests/expected/<name>.flags file sets a compile-time option of the LIBRARY (-DCERES_...), so
     the library is compiled again with it, together with the test, as before. -FromSources does that for every
     test: the slow path, and the one that proves the archive changes nothing. A tests/expected/<name>.cflags file
@@ -215,10 +223,22 @@ function Test-Examples {
         Remove-Item $transcript -Force -ErrorAction SilentlyContinue
         $statusFile = "examples/expected/$name.status"
         $wantStatus = if (Test-Path $statusFile) { [int]((Read-Text $statusFile).Trim()) } else { 0 }
+        $framesFile = "examples/expected/$name.frames"
+        $framesDir = "build/examples/$name.frames"
         if (Test-Path $expectedPath) {
             # ceresc builds, links and runs in one go; the .stdin file is typed on the program's terminal
             $body = if ($FromSources) { "$sources $flags" } else { "examples/$name.c $(Get-LibraryArgs 2 $use) $flags" }   # a define only the example reads goes with either
             $cmd = "$body -I include -O2 -Werror -o build/examples/$name.cres $LinkFlags --run --clean --ceres-path `"$CeresDir`" $(Get-RunArgs $transcript '' $stdin)"
+            $runFile = "examples/expected/$name.run"
+            if (Test-Path $runFile) {
+                foreach ($word in ((Get-Content $runFile) -join ' ').Trim() -split '\s+') {
+                    if ($word) { $cmd += " --run-arg $word" }
+                }
+            }
+            if (Test-Path $framesFile) {
+                Remove-Item $framesDir -Recurse -Force -ErrorAction SilentlyContinue
+                $cmd += " --run-arg --frames --run-arg $framesDir"
+            }
             $code = Invoke-Tool $Ceresc $cmd "build/examples/$name.out" "build/examples/$name.err"
         } else {
             $cmd = "$sources -I include -O2 -Werror -S -o build/examples/$name.casm"   # only prove it compiles
@@ -251,10 +271,65 @@ function Test-Examples {
             [void]$failures.Add("example $name (output)")
             Write-Host "  FAIL  $name  output differs from $expectedPath" -ForegroundColor Red
             Show-Difference ((Read-Text $expectedPath) -replace "`r`n", "`n") $actual
+            continue
+        }
+        if (Test-Path $framesFile) {
+            $hashes = @(Get-ChildItem $framesDir -Filter *.png -ErrorAction SilentlyContinue | Sort-Object Name |
+                ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.Substring(0, 16).ToLowerInvariant() })
+            $got = ($hashes | ForEach-Object { "$_`n" }) -join ''
+            if ($Update) {
+                [System.IO.File]::WriteAllText("$Root\$framesFile", $got)
+                Write-Host "  wrote $framesFile ($($hashes.Count) screens)" -ForegroundColor Yellow
+            }
+            elseif (-not (Same $got ((Read-Text $framesFile) -replace "`r`n", "`n"))) {
+                $bad++
+                [void]$failures.Add("example $name (screens)")
+                Write-Host "  FAIL  $name  its screens differ from $framesFile (the PNGs are in $framesDir)" -ForegroundColor Red
+                Show-Difference ((Read-Text $framesFile) -replace "`r`n", "`n") $got
+            }
         }
     }
     if ($bad -eq 0) {
         Write-Host "  ok    $count examples" -ForegroundColor Green
+        $script:passed++
+    }
+}
+
+# ---- img2tiles ----------------------------------------------------------------------------------
+# Each line of tools/img2tiles.cases: the file a run of tools/img2tiles.js must give, then its arguments.
+
+function Test-Img2tiles {
+    Write-Host "img2tiles: the runs of tools/img2tiles.cases" -ForegroundColor Cyan
+    New-Item -ItemType Directory -Force build/img2tiles | Out-Null
+    $count = 0
+    $bad = 0
+    foreach ($line in (Get-Content tools/img2tiles.cases)) {
+        if (-not $line.Trim() -or $line.Trim().StartsWith('#')) { continue }
+        $words = @($line.Trim() -split '\s+')
+        $expected = $words[0]
+        $made = "build/img2tiles/$(Split-Path $expected -Leaf)"
+        $count++
+        & node tools/img2tiles.js @($words[1..($words.Count - 1)]) -o $made 2> build/img2tiles/last.err
+        if ($LASTEXITCODE -ne 0) {
+            $bad++
+            [void]$failures.Add("img2tiles $expected (exit $LASTEXITCODE)")
+            Write-Host "  FAIL  $expected  the run failed" -ForegroundColor Red
+            Get-Content build/img2tiles/last.err | Select-Object -First 4 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }
+            continue
+        }
+        $got = (Read-Text $made) -replace "`r`n", "`n"
+        if ($Update) {
+            Copy-Item $made $expected -Force
+            Write-Host "  wrote $expected" -ForegroundColor Yellow
+        }
+        elseif (-not (Test-Path $expected) -or -not (Same $got ((Read-Text $expected) -replace "`r`n", "`n"))) {
+            $bad++
+            [void]$failures.Add("img2tiles $expected (output)")
+            Write-Host "  FAIL  $expected  differs from what tools/img2tiles.js gives now ($made)" -ForegroundColor Red
+        }
+    }
+    if ($bad -eq 0) {
+        Write-Host "  ok    $count runs" -ForegroundColor Green
         $script:passed++
     }
 }
@@ -503,6 +578,7 @@ foreach ($name in $tests) {
 }
 
 Test-EachHeader
+Test-Img2tiles
 Test-Examples
 if (-not $archivesBuilt) { Ensure-Library @(2) }   # the shell is always linked against the archive
 Test-Shell

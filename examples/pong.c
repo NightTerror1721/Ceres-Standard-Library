@@ -18,7 +18,6 @@
 #include "ceres/input.h"
 #include "ceres/fixed.h"
 #include "ceres/rand.h"
-#include "ceres/sprite.h"
 
 #define W 320
 #define H 200

@@ -1,0 +1,18 @@
+# The runs of tools/img2tiles.js the tests check (tools/runtests.ps1 and tools/runtests.js): on each line, the file
+# the run must give, then the arguments. -Update / --update writes them again.
+#
+# The tool's own tests (the pictures are made by tests/img2tiles/make_pictures.js):
+tests/img2tiles/tiles_rgba.h          tests/img2tiles/tiles_rgba.png --name tiles
+tests/img2tiles/tiles_rgba_raw.h      tests/img2tiles/tiles_rgba.png --name raw --no-dedupe --no-pad
+tests/img2tiles/tiles_rgba_noflip.h   tests/img2tiles/tiles_rgba.png --name noflip --no-flip --no-pad
+tests/img2tiles/tiles_rgb.casm        tests/img2tiles/tiles_rgb.png --key 00FF80 --asm --name keyed
+tests/img2tiles/tiles_rgba16.h        tests/img2tiles/tiles_rgba.png --tile 16 --bpp 8 --name big
+tests/img2tiles/frames_palette.h      tests/img2tiles/frames_palette.png --sprites 16x8 --name frames
+tests/img2tiles/shades_grey.h         tests/img2tiles/shades_grey.png --bpp 8 --no-pad --name shades
+#
+# The examples' pictures (made by examples/art/make_art.js):
+examples/art/maze_tiles.h             examples/art/maze_tiles.png --no-pad
+examples/art/maze_hero.h              examples/art/maze_hero.png --sprites 8x8
+examples/art/platformer_tiles.h       examples/art/platformer_tiles.png --no-pad
+examples/art/platformer_hero.h        examples/art/platformer_hero.png --sprites 16x16
+examples/art/platformer_coin.h        examples/art/platformer_coin.png --sprites 8x8

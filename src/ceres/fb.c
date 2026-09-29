@@ -5,6 +5,9 @@
 static int width;
 static int height;
 static int indexed;
+static unsigned int block;          // the plane's video memory: its palette, then the two buffers
+static unsigned int block_bytes;
+static unsigned int block_resets;   // video_vram_resets() when it was taken
 
 #define ALIGN256(n) (((n) + 255u) & ~255u)
 
@@ -13,26 +16,33 @@ static unsigned int bytes_per_frame(void)
     return (unsigned int)width * (unsigned int)height * (indexed ? 1u : 4u);
 }
 
-// The VRAM after the text plane's: its scrollback ring is the last thing the GPU puts there when it starts
-// (CeresASM plan/v2 SPEC 7.4). The palette goes first, then the two buffers.
+// The program's video memory (video_vram_alloc): the palette first, then the two buffers. A later fb_init that needs
+// no more than the first reuses its memory.
 static int init(int w, int h, int bytes_per_pixel)
 {
     if (w <= 0 || h <= 0)
         return -1;
     if (video_set_resolution(w, h) != 0)
         return -1;
-    if (video_set_level(VIDEO_BITMAP) < VIDEO_BITMAP)
+    if (video_level() < VIDEO_BITMAP && video_set_level(VIDEO_BITMAP) < VIDEO_BITMAP)
         return -1;
 
-    const unsigned int scrollback = mmio_r32(GPU_BASE + 0x22C);
-    const unsigned int scrollback_bytes = mmio_r32(GPU_BASE + 0x230) * mmio_r32(TEXT_COLS) * 2u;
-    const unsigned int palette = ALIGN256(scrollback + scrollback_bytes);
     const unsigned int frame = ALIGN256((unsigned int)w * (unsigned int)h * (unsigned int)bytes_per_pixel);
+    const unsigned int need = 1024u + 2u * frame;
+    if (need < frame)
+        return -1;
+    if (need > block_bytes || block_resets != video_vram_resets())
+    {
+        void* got = video_vram_alloc(need);
+        if (got == (void*)0)
+            return -1;
+        block = (unsigned int)got;
+        block_bytes = need;
+        block_resets = video_vram_resets();
+    }
+    const unsigned int palette = block;
     const unsigned int front = palette + 1024u;
     const unsigned int back = front + frame;
-    const unsigned int end = VRAM_BASE + video_vram_size();
-    if (back < front || back + frame > end || back + frame < back)
-        return -1;
 
     width = w;
     height = h;
@@ -66,7 +76,8 @@ int fb_init_indexed(int w, int h) { return init(w, h, 1); }
 void fb_shutdown(void)
 {
     mmio_w32(FB_ENABLE, 0u);
-    video_set_level(VIDEO_TEXT);
+    if (video_level() == VIDEO_BITMAP)
+        video_set_level(VIDEO_TEXT);
     width = height = indexed = 0;
 }
 

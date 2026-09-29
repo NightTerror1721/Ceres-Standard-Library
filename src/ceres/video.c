@@ -79,3 +79,54 @@ int video_fill(void* dst, unsigned int pattern, unsigned int bytes)
 {
     return copy_engine(2u, dst, pattern, bytes);
 }
+
+// ---- the program's video memory ----
+// It starts past the text plane's scrollback ring, the last thing the GPU puts in the VRAM when it starts (CeresASM
+// plan/v2 SPEC 7.4): a quarter of the VRAM, no more than 256 KiB, no more than what is left.
+
+#define ALIGN256(n) (((n) + 255u) & ~255u)
+
+static unsigned int vram_next;   // 0 until the first allocation
+static unsigned int vram_resets;
+
+static unsigned int vram_start(void)
+{
+    const unsigned int size = video_vram_size();
+    const unsigned int scrollback = mmio_r32(GPU_BASE + 0x22C);
+    const unsigned int used = scrollback - VRAM_BASE;
+    unsigned int ring = size / 4u;
+    if (ring > 256u * 1024u)
+        ring = 256u * 1024u;
+    if (ring > size - used)
+        ring = size - used;
+    return ALIGN256(scrollback + ring);
+}
+
+static unsigned int vram_end(void) { return VRAM_BASE + video_vram_size(); }
+
+void* video_vram_alloc(unsigned int bytes)
+{
+    if (vram_next == 0)
+        vram_next = vram_start();
+    const unsigned int rounded = ALIGN256(bytes);
+    if (bytes == 0 || rounded < bytes || rounded > vram_end() - vram_next)
+        return (void*)0;
+    void* block = (void*)vram_next;
+    vram_next += rounded;
+    return block;
+}
+
+void video_vram_reset(void)
+{
+    vram_next = 0;
+    ++vram_resets;
+}
+
+unsigned int video_vram_resets(void) { return vram_resets; }
+
+unsigned int video_vram_free(void)
+{
+    if (vram_next == 0)
+        vram_next = vram_start();
+    return vram_end() - vram_next;
+}
