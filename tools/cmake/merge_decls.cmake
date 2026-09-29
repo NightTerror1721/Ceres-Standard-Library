@@ -7,6 +7,10 @@
 # even when the unit that defines it puts it in @bss (zero-initialized), as ceresc does. The output is only
 # rewritten when it changes, so the units that import it are not reassembled for nothing.
 
+# Run with -P, a script gets no policies from CMakeLists.txt: without these, an older CMake (3.28 on Ubuntu 24.04)
+# does not know IN_LIST and the like.
+cmake_policy(VERSION 3.21)
+
 file(STRINGS "${LIST}" units)
 set(sections data bss rodata text)
 foreach(section IN LISTS sections)

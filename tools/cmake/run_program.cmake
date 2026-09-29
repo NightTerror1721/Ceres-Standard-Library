@@ -10,6 +10,10 @@
 # The source is copied into the build directory first: ceresc writes what it generates beside the source, and two
 # builds testing at once must not write the same files.
 
+# Run with -P, a script gets no policies from CMakeLists.txt: without these, an older CMake (3.28 on Ubuntu 24.04)
+# does not know IN_LIST and the like.
+cmake_policy(VERSION 3.21)
+
 string(REPLACE "|" ";" FLAGS "${FLAGS}")
 set(work "${LIB}/verify")
 file(MAKE_DIRECTORY "${work}")

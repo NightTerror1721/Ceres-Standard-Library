@@ -286,6 +286,9 @@ add_custom_command(
     COMMENT "ceresc -O${CERES_OPT_LEVEL} shell/shell.c"
     VERBATIM)
 add_custom_target(ceres_shell ALL DEPENDS shell/shell.cres)
+# The archive's rules belong to ceres_stdlib: a Makefile generator copies them into every target that names its files,
+# and targets built in parallel would run them at once. Built after it, this one finds them done.
+add_dependencies(ceres_shell ceres_stdlib)
 
 # ---- 6. stdlib/: the library as it goes in the installation -------------------------------------------------------
 # The headers, the archive with its declarations, and each optional module under the name -l finds it by
@@ -320,6 +323,7 @@ add_custom_command(
     COMMENT "stdlib/: the headers, the archive and the optional modules"
     VERBATIM)
 add_custom_target(ceres_stdlib_layout ALL DEPENDS stdlib.stamp)
+add_dependencies(ceres_stdlib_layout ceres_stdlib)
 
 # ---- the documentation (node tools/gendocs.js) ---------------------------------------------------------------------
 

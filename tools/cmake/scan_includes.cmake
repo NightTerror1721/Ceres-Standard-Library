@@ -7,6 +7,10 @@
 # many, never one too few. "name" is looked for beside the including file first, then in the include directories;
 # <name> only in the include directories. A header that is not found (one the compiler would reject) is left out.
 
+# Run with -P, a script gets no policies from CMakeLists.txt: without these, an older CMake (3.28 on Ubuntu 24.04)
+# does not know IN_LIST and the like.
+cmake_policy(VERSION 3.21)
+
 string(REPLACE "|" ";" INCLUDE_DIRS "${INCLUDE_DIRS}")
 set(found "")
 set(queue "${SOURCE}")
