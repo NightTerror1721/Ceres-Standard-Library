@@ -8,24 +8,29 @@ $Latin1 = [System.Text.Encoding]::GetEncoding(28591)   # one char per byte: NULs
 if (-not $TimeoutSeconds) { $TimeoutSeconds = 180 }
 
 # ---- the tools ----------------------------------------------------------------------------------
-# Found the way ceresc finds ceres (--ceres-path, CERES_PATH, then PATH): the environment variable - CERES_PATH for
-# ceres, CERESC for ceresc: the executable, or the directory that holds it - else PATH. A variable that is set decides:
-# naming no such tool is an error, not a reason to look elsewhere. Nothing is looked for next to this checkout.
+# Found the way ceresc finds ceres (--ceres-path, CERES_PATH, then PATH): the environment variable named after the tool
+# (CERES, CERESC: the executable, or the directory that holds it), else the directory CERES_PATH names (where Ceres is
+# installed; a file in it stands for the directory), else PATH. A variable that is set decides: naming no such tool is
+# an error, not a reason to look elsewhere. Nothing is looked for next to this checkout.
 
 function Find-Tool([string]$name, [string]$variable) {
-    $given = [Environment]::GetEnvironmentVariable($variable)
-    if ($given) {
-        $candidate = if (Test-Path -LiteralPath $given -PathType Container) { Join-Path $given "$name.exe" } else { $given }
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return (Resolve-Path -LiteralPath $candidate).Path }
-        throw "$variable names '$given', which is neither the $name executable nor a directory that holds it (unset it to look on PATH)"
+    $own = [Environment]::GetEnvironmentVariable($variable)
+    $installed = $env:CERES_PATH
+    if ($own -or $installed) {
+        $from = if ($own) { $variable } else { 'CERES_PATH' }
+        $given = if ($own) { $own } else { $installed }
+        if (-not $own -and (Test-Path -LiteralPath $given -PathType Leaf)) { $given = Split-Path -Parent $given }
+        $candidate = if (Test-Path -LiteralPath $given -PathType Container) { Join-Path $given "$name.exe" } elseif ($own) { $given } else { '' }
+        if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf)) { return (Resolve-Path -LiteralPath $candidate).Path }
+        throw "$from names '$(if ($own) { $own } else { $installed })', which holds no $name (unset it to look on PATH)"
     }
     $cmd = Get-Command "$name.exe" -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($cmd) { return $cmd.Source }
-    throw "cannot find $name - set $variable to it or to its directory, or put its directory on PATH"
+    throw "cannot find $name - set CERES_PATH to the directory Ceres is installed in (or $variable to it), or put its directory on PATH"
 }
 
 $Ceresc = Find-Tool 'ceresc' 'CERESC'
-$Ceres = Find-Tool 'ceres' 'CERES_PATH'
+$Ceres = Find-Tool 'ceres' 'CERES'
 $CeresDir = Split-Path -Parent $Ceres
 
 # ---- the sources --------------------------------------------------------------------------------

@@ -13,8 +13,9 @@
 //                                                 (<dir>/libceres.car, libceres.decls.casm, obj/) - at every level;
 //                                                 {level} in <dir> is the level (--library build/cmake/O{level})
 //
-// The tools are found the way ceresc finds ceres: CERES_PATH (the executable, or its directory), then PATH; ceresc the
-// same way through CERESC. A variable that is set decides. A program runs without a window, as fast as the host goes
+// The tools are found the way ceresc finds ceres: CERES and CERESC name them (the executable, or its directory), else
+// the directory CERES_PATH names (where Ceres is installed), else PATH. A variable that is set decides. A program runs
+// without a window, as fast as the host goes
 // (`ceres run --headless --speed max --gpu software`), and what it wrote to its terminal comes back from
 // --transcript: it never writes to the host's stdout (CeresASM plan/v2 F5.7). What a test is compared against lives
 // in tests/expected/:
@@ -30,9 +31,9 @@
 //   <name>.ports     media to plug in: `--port 0=file` or `--cart 1=file`, one a line
 // and a `// USE: irq` line near the top of a test links an optional module (irq, fault, mmu).
 //
-// The shell (bin/shell/shell.c) is built as `make install` builds it, into build/shell/bin/shell.cres, and each
-// tests/shell/<session>.type is typed on it - `ceres run --sysroot build/shell` with no program, the host directory a
-// copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with <session>.expected,
+// The shell (shell/shell.c) is built as `make` builds it, into build/shell/shell/shell.cres, and each
+// tests/shell/<session>.type is typed on it - `ceres run` with no program and CERES_PATH=build/shell, the host directory
+// a copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with <session>.expected,
 // what went to its error stream with <session>.stderr (else nothing) and its exit status with <session>.status.
 "use strict";
 const fs = require("fs");
@@ -76,22 +77,27 @@ function onPath(name) {
     }
     return null;
 }
-// Where a tool is, the way ceresc finds ceres (--ceres-path, CERES_PATH, then PATH): the environment variable - the
-// executable, or the directory that holds it - else PATH. A variable that is set decides: naming no such tool is an
-// error, not a reason to look elsewhere. Nothing is looked for next to this checkout.
+// Where a tool is, the way ceresc finds ceres (--ceres-path, CERES_PATH, then PATH): the variable named after it (CERES,
+// CERESC: the executable, or the directory that holds it), else the directory CERES_PATH names (where Ceres is
+// installed; a file in it stands for the directory), else PATH. A variable that is set decides: naming no such tool
+// is an error, not a reason to look elsewhere. Nothing is looked for next to this checkout.
+const isFile = (p) => fs.existsSync(p) && fs.statSync(p).isFile();
 function findTool(name, variable) {
-    const given = process.env[variable];
-    if (given) {
-        const candidate = fs.existsSync(given) && fs.statSync(given).isDirectory() ? path.join(given, name + exe) : given;
-        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return path.resolve(candidate);
-        throw new Error(`${variable} names '${given}', which is neither the ${name} executable nor a directory that holds it (unset it to look on PATH)`);
+    const own = process.env[variable], installed = process.env.CERES_PATH;
+    if (own || installed) {
+        const from = own ? variable : "CERES_PATH";
+        let given = own || installed;
+        if (!own && isFile(given)) given = path.dirname(given);
+        const candidate = fs.existsSync(given) && fs.statSync(given).isDirectory() ? path.join(given, name + exe) : own ? given : "";
+        if (candidate && isFile(candidate)) return path.resolve(candidate);
+        throw new Error(`${from} names '${own || installed}', which holds no ${name} (unset it to look on PATH)`);
     }
     const found = onPath(name);
     if (found) return found;
-    throw new Error(`cannot find ${name}: set ${variable} to it or to its directory, or put its directory on PATH`);
+    throw new Error(`cannot find ${name}: set CERES_PATH to the directory Ceres is installed in (or ${variable} to it), or put its directory on PATH`);
 }
 const Ceresc = findTool("ceresc", "CERESC");
-const Ceres = findTool("ceres", "CERES_PATH");
+const Ceres = findTool("ceres", "CERES");
 const CeresDir = path.dirname(Ceres);
 process.env.CERES_HEADLESS = "1";      // no window, whatever ceresc starts
 
@@ -376,9 +382,9 @@ function testShell() {
     console.log(cyan("shell: build it, and type each session of tests/shell on it"));
     const dir = "build/shell", host = `${dir}/host`;
     fs.rmSync(dir, { recursive: true, force: true });
-    fs.mkdirSync(`${dir}/bin`, { recursive: true });
+    fs.mkdirSync(`${dir}/shell`, { recursive: true });
     copyTree("tests/shell/files", host);
-    let error = buildProgram("bin/shell/shell.c", `${dir}/bin/shell.cres`, `${dir}/shell`);
+    let error = buildProgram("shell/shell.c", `${dir}/shell/shell.cres`, `${dir}/shell-program`);
     for (const program of fs.readdirSync("tests/shell").filter((f) => f.endsWith(".c")).sort()) {
         if (error) break;
         fs.mkdirSync(`${host}/games`, { recursive: true });
@@ -391,9 +397,13 @@ function testShell() {
     }
     const sessions = fs.readdirSync("tests/shell").filter((f) => f.endsWith(".type")).map((f) => f.slice(0, -5)).sort();
     let bad = 0;
+    // ceres finds the shell in <CERES_PATH>/shell/shell.cres: here, the one just built. The tools were found already.
+    const savedCeresPath = process.env.CERES_PATH;
+    process.env.CERES_PATH = path.resolve(dir);
+    try {
     for (const name of sessions) {
         const base = `tests/shell/${name}`, transcript = `${dir}/${name}.transcript`;
-        const code = run(Ceres, ["run", "--sysroot", dir, "--host-dir", host, "--headless", "--speed", "max", "--gpu", "software",
+        const code = run(Ceres, ["run", "--host-dir", host, "--headless", "--speed", "max", "--gpu", "software",
             "--rtc", "2026-09-28T12:00:00", "--type", `${base}.type`, "--transcript", transcript], `${dir}/${name}.out`, `${dir}/${name}.err`);
         const wantStatus = fs.existsSync(`${base}.status`) ? Number(readText(`${base}.status`).trim()) : 0;
         const { out, err } = splitTranscript(readText(transcript) || "");
@@ -416,6 +426,10 @@ function testShell() {
             if (problems.includes("output")) showDifference(lf(readText(`${base}.expected`) || ""), out);
             if (problems.includes("error stream")) showDifference(lf(readText(`${base}.stderr`) || ""), errors);
         }
+    }
+    } finally {
+        if (savedCeresPath === undefined) delete process.env.CERES_PATH;
+        else process.env.CERES_PATH = savedCeresPath;
     }
     if (bad === 0) {
         console.log(green(`  ok    the shell, ${sessions.length} sessions`));

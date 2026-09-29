@@ -36,9 +36,9 @@
     A test that includes ceres/text.h or ceres/tui.h also has its screens compared: the text plane at every
     Present and at the end (--screen-log), with tests/expected/<name>.screen.
 
-    The shell (bin/shell/shell.c) is built as an install builds it, into build/shell/bin/shell.cres, and each
-    tests/shell/<session>.type is typed on it - `ceres run --sysroot build/shell` with no program, the host directory
-    a copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with
+    The shell (shell/shell.c) is built as `make` builds it, into build/shell/shell/shell.cres, and each
+    tests/shell/<session>.type is typed on it - `ceres run` with no program and CERES_PATH=build/shell, the host
+    directory a copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with
     <session>.expected, what went to its error stream with <session>.stderr (else nothing) and its exit status with
     <session>.status.
 
@@ -47,8 +47,9 @@
     test: the slow path, and the one that proves the archive changes nothing. A tests/expected/<name>.cflags file
     holds flags for the test program alone (-fshort-double), which is then always linked against the archive.
 
-    The tools are found the way ceresc finds ceres: the CERES_PATH environment variable (the executable, or the
-    directory that holds it), then PATH; ceresc the same way through CERESC. A variable that is set decides.
+    The tools are found the way ceresc finds ceres: the CERES and CERESC environment variables name them (the
+    executable, or the directory that holds it), else the directory CERES_PATH names (where Ceres is installed),
+    else PATH. A variable that is set decides.
 
 .EXAMPLE
     tools\runtests.ps1                      # everything
@@ -259,16 +260,16 @@ function Test-Examples {
 }
 
 # ---- the shell ----------------------------------------------------------------------------------
-# The shell as an install builds it, and the sessions of tests/shell typed on it (see the description above).
+# The shell as `make` builds it, and the sessions of tests/shell typed on it (see the description above).
 
 function Test-Shell {
     Write-Host "shell: build it, and type each session of tests/shell on it" -ForegroundColor Cyan
     $dir = 'build/shell'
     $hostDir = "$dir/host"
     if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
-    New-Item -ItemType Directory -Force "$dir/bin", "$hostDir/games" | Out-Null
+    New-Item -ItemType Directory -Force "$dir/shell", "$hostDir/games" | Out-Null
     Copy-Item tests/shell/files/* $hostDir -Recurse -Force
-    $problem = Build-Program 'bin/shell/shell.c' "$dir/bin/shell.cres" "$dir/shell" 2 $LinkFlags
+    $problem = Build-Program 'shell/shell.c' "$dir/shell/shell.cres" "$dir/shell-program" 2 $LinkFlags
     foreach ($program in (Get-ChildItem tests/shell -Filter *.c | Sort-Object Name)) {
         if ($problem) { break }
         $problem = Build-Program "tests/shell/$($program.Name)" "$hostDir/games/$($program.BaseName).cres" "$dir/$($program.BaseName)" 2 $LinkFlags
@@ -280,11 +281,15 @@ function Test-Shell {
     }
     $sessions = @(Get-ChildItem tests/shell -Filter *.type | Sort-Object Name)
     $bad = 0
+    # ceres finds the shell in <CERES_PATH>/shell/shell.cres: here, the one just built. The tools were found already.
+    $savedCeresPath = $env:CERES_PATH
+    $env:CERES_PATH = Join-Path $Root $dir
+    try {
     foreach ($session in $sessions) {
         $name = $session.BaseName
         $base = "tests/shell/$name"
         $transcript = "$dir/$name.transcript"
-        $cmd = "run --sysroot $dir --host-dir $hostDir --headless --speed max --gpu software --rtc 2026-09-28T12:00:00 --type $base.type --transcript $transcript"
+        $cmd = "run --host-dir $hostDir --headless --speed max --gpu software --rtc 2026-09-28T12:00:00 --type $base.type --transcript $transcript"
         $code = Invoke-Tool $Ceres $cmd "$dir/$name.out" "$dir/$name.err"
         $wantStatus = if (Test-Path "$base.status") { [int]((Read-Text "$base.status").Trim()) } else { 0 }
         $raw = Read-Text $transcript
@@ -314,6 +319,9 @@ function Test-Shell {
             if ($problems -contains 'output') { Show-Difference $expected $streams.Out }
             if ($problems -contains 'error stream') { Show-Difference $expectedErrors $errors }
         }
+    }
+    } finally {
+        $env:CERES_PATH = $savedCeresPath
     }
     if ($bad -eq 0) {
         Write-Host "  ok    the shell, $($sessions.Count) sessions" -ForegroundColor Green

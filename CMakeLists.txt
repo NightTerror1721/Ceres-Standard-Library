@@ -5,7 +5,16 @@
 #   <build>/libceres.car          the archive
 #   <build>/libceres.decls.casm   the declarations of everything in it (what ceresc's --decls takes)
 #   <build>/obj/<unit>.cobj       the objects, one per unit (the optional modules are linked by naming these)
-#   <build>/bin/shell.cres        the Ceres shell (bin/shell/shell.c), linked against the archive
+#
+# and, laid out as they go in the directory Ceres is installed in (CERES_PATH; the Ceres Binaries project packages
+# them from here):
+#
+#   <build>/stdlib/include/       every header                        (ceresc --stdlib: the include search)
+#   <build>/stdlib/lib/           libceres.car, libceres.decls.casm   (ceresc --stdlib --run links them)
+#                                 and libceres_<m>.cobj, the optional modules (-lceres_irq; -lceres_fault
+#                                 -lceres_fault_asm; -lceres_mmu -lceres_mmu_asm)
+#   <build>/shell/shell.cres      the Ceres shell (shell/shell.c), linked against the archive: what `ceres run`
+#                                 starts without a program
 #
 # The build is incremental and parallel: every C file is compiled on its own (the code ceresc generates for a
 # unit does not depend on the rest of the library - only the declarations it imports do), its declarations are
@@ -16,7 +25,6 @@
 #   cmake -S . -B build/cmake/mine -G Ninja -DCERES_OPT_LEVEL=s -DFS_MAX_OPEN=4
 #   cmake --build build/cmake/mine -j
 #   ctest --test-dir build/cmake/mine                     (the library linked into programs that are run)
-#   cmake --install build/cmake/mine --prefix <sysroot>    (ceresc prog.c --sysroot <sysroot> -lceres --run)
 #
 # The Makefile drives all of this: `make help`.
 
@@ -32,37 +40,46 @@ else()
 endif()
 
 # ---- the tools ----------------------------------------------------------------------------------------------------
-# Found the way ceresc finds ceres (its --ceres-path, then CERES_PATH, then PATH): -DCERES=<file> on the command line,
-# else the CERES_PATH environment variable - the executable, or the directory that holds it - else PATH. ceresc the
-# same way, through -DCERESC and CERESC. A variable that is set decides: when it names no such tool the configure
-# stops, rather than fall back to another copy. Nothing is looked for next to this checkout.
+# Found the way ceresc finds ceres: named on the command line (-DCERES=<file>, -DCERESC=<file>; the CERES and CERESC
+# environment variables say the same, the executable or its directory), else in the directory Ceres is installed in,
+# which the CERES_PATH environment variable names (a file in it stands for the directory), else PATH. A place that is
+# given decides: when it holds no such tool the configure stops, rather than fall back to another copy. Nothing is
+# looked for next to this checkout.
 
-set(CERESC "" CACHE FILEPATH "ceresc, the C compiler; empty: the CERESC environment variable, then PATH")
-set(CERES "" CACHE FILEPATH "ceres, the assembler, linker and virtual machine; empty: the CERES_PATH environment variable, then PATH")
+set(CERESC "" CACHE FILEPATH "ceresc, the C compiler; empty: the CERESC environment variable, then CERES_PATH, then PATH")
+set(CERES "" CACHE FILEPATH "ceres, the assembler, linker and virtual machine; empty: the CERES environment variable, then CERES_PATH, then PATH")
 
-# find_tool(<variable> <name> <environment variable>): the tool, in <variable>, and where it was found in <variable>_FROM.
-function(find_tool var name env)
+# find_tool(<variable> <name>): the tool, in <variable>, and where it was found in <variable>_FROM.
+function(find_tool var name)
     if(${var})
         if(NOT EXISTS "${${var}}" OR IS_DIRECTORY "${${var}}")
             message(FATAL_ERROR "-D${var}=${${var}} is not the ${name} executable")
         endif()
         set(_found "${${var}}")
         set(_from "-D${var}")
-    elseif(NOT "$ENV{${env}}" STREQUAL "")
-        set(_given "$ENV{${env}}")
+    elseif(NOT "$ENV{${var}}" STREQUAL "" OR NOT "$ENV{CERES_PATH}" STREQUAL "")
+        if(NOT "$ENV{${var}}" STREQUAL "")
+            set(_from "${var}")
+            set(_given "$ENV{${var}}")
+        else()
+            set(_from "CERES_PATH")
+            set(_given "$ENV{CERES_PATH}")
+            if(EXISTS "${_given}" AND NOT IS_DIRECTORY "${_given}")
+                get_filename_component(_given "${_given}" DIRECTORY)
+            endif()
+        endif()
         if(IS_DIRECTORY "${_given}" AND EXISTS "${_given}/${name}${EXE}" AND NOT IS_DIRECTORY "${_given}/${name}${EXE}")
             set(_found "${_given}/${name}${EXE}")
-        elseif(EXISTS "${_given}" AND NOT IS_DIRECTORY "${_given}")
+        elseif(_from STREQUAL var AND EXISTS "${_given}" AND NOT IS_DIRECTORY "${_given}")
             set(_found "${_given}")
         else()
-            message(FATAL_ERROR "${env} names '${_given}', which is neither the ${name} executable nor a directory that holds it (unset it to look on PATH)")
+            message(FATAL_ERROR "${_from} names '$ENV{${_from}}', which holds no ${name} (unset it to look on PATH)")
         endif()
-        set(_from "${env}")
     else()
         find_program(_found NAMES ${name} NO_CACHE NO_PACKAGE_ROOT_PATH NO_CMAKE_PATH NO_CMAKE_ENVIRONMENT_PATH
             NO_CMAKE_SYSTEM_PATH NO_CMAKE_INSTALL_PREFIX)
         if(NOT _found)
-            message(FATAL_ERROR "cannot find ${name}: pass -D${var}=<file>, set ${env} to it or to its directory, or put its directory on PATH")
+            message(FATAL_ERROR "cannot find ${name}: pass -D${var}=<file>, set CERES_PATH to the directory Ceres is installed in, or put its directory on PATH")
         endif()
         set(_from "PATH")
     endif()
@@ -70,8 +87,8 @@ function(find_tool var name env)
     set(${var} "${_found}" PARENT_SCOPE)
     set(${var}_FROM "${_from}" PARENT_SCOPE)
 endfunction()
-find_tool(CERESC ceresc CERESC)
-find_tool(CERES ceres CERES_PATH)
+find_tool(CERESC ceresc)
+find_tool(CERES ceres)
 get_filename_component(CERES_DIR "${CERES}" DIRECTORY)
 
 find_program(NODE NAMES node nodejs DOC "Node.js, for the test runner and the documentation (optional)")
@@ -98,7 +115,7 @@ set(CERES_DEFINES "" CACHE STRING "more macros for every unit, NAME or NAME=VALU
 set(CERES_EXTRA_FLAGS "" CACHE STRING "anything else for ceresc, ;-separated")
 
 set(CERES_OPTIONAL_MODULES "irq;fault;mmu" CACHE STRING
-    "the optional modules to install as objects of their own: irq, fault, mmu (they bind interrupt vectors, so a program links them by name)")
+    "the optional modules put in stdlib/lib as objects of their own: irq, fault, mmu (they bind interrupt vectors, so a program links them by name)")
 
 # ceres/config.h: every `#ifndef NAME / #define NAME value` is a setting, a cache variable of the same name - empty
 # keeps the header's default. Read from the header itself, so a setting added there is one here too.
@@ -146,18 +163,10 @@ foreach(_define IN LISTS CERES_DEFINES)
 endforeach()
 list(APPEND CERESC_FLAGS ${CERES_EXTRA_FLAGS})
 
-set(CERES_LIBDIR "" CACHE STRING
-    "where the library goes under the install prefix; empty: lib (where ceresc -l looks)")
-if(CERES_LIBDIR)
-    set(LIBDIR "${CERES_LIBDIR}")
-else()
-    set(LIBDIR "lib")
-endif()
-
 # ---- the sources --------------------------------------------------------------------------------------------------
 
 # The modules that bind interrupt vectors: in the archive like everything else (a member is only linked when it
-# answers a name), and installed as objects of their own for a program to name (-lceres_irq, ...).
+# answers a name), and in stdlib/lib as objects of their own for a program to name (-lceres_irq, ...).
 set(MODULE_irq src/ceres/irq.c)
 set(MODULE_fault src/ceres/fault.c asm/optional/fault.casm)
 set(MODULE_mmu src/ceres/mmu_fault.c asm/optional/mmu_fault.casm)
@@ -266,17 +275,51 @@ add_custom_target(ceres_stdlib ALL DEPENDS libceres.car libceres.decls.casm)
 # archive's declarations, assembled, and linked with the archive. The archive changes with any header the shell
 # could see, so depending on it is enough.
 
-file(MAKE_DIRECTORY "${B}/bin" "${B}/shell")
+file(MAKE_DIRECTORY "${B}/programs" "${B}/shell")
 add_custom_command(
-    OUTPUT bin/shell.cres
-    COMMAND "${CERESC}" bin/shell/shell.c ${CERESC_FLAGS} --decls "${B}/libceres.decls.casm" -S -o "${B}/shell/shell.casm"
-    COMMAND "${CERES}" asm -c "${B}/shell/shell.casm" -o "${B}/shell/shell.cobj"
-    COMMAND "${CERES}" link "${B}/shell/shell.cobj" "${B}/libceres.car" -o "${B}/bin/shell.cres"
-    DEPENDS "${ROOT}/bin/shell/shell.c" libceres.car libceres.decls.casm
+    OUTPUT shell/shell.cres
+    COMMAND "${CERESC}" shell/shell.c ${CERESC_FLAGS} --decls "${B}/libceres.decls.casm" -S -o "${B}/programs/shell.casm"
+    COMMAND "${CERES}" asm -c "${B}/programs/shell.casm" -o "${B}/programs/shell.cobj"
+    COMMAND "${CERES}" link "${B}/programs/shell.cobj" "${B}/libceres.car" -o "${B}/shell/shell.cres"
+    DEPENDS "${ROOT}/shell/shell.c" libceres.car libceres.decls.casm
     WORKING_DIRECTORY "${ROOT}"
-    COMMENT "ceresc -O${CERES_OPT_LEVEL} bin/shell/shell.c"
+    COMMENT "ceresc -O${CERES_OPT_LEVEL} shell/shell.c"
     VERBATIM)
-add_custom_target(ceres_shell ALL DEPENDS bin/shell.cres)
+add_custom_target(ceres_shell ALL DEPENDS shell/shell.cres)
+
+# ---- 6. stdlib/: the library as it goes in the installation -------------------------------------------------------
+# The headers, the archive with its declarations, and each optional module under the name -l finds it by
+# (libceres_<m>.cobj, and libceres_<m>_asm.cobj for its assembly). Made again whole when any of it changes, so a
+# header that was removed does not stay behind.
+
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "${ROOT}/include/*")
+set(_module_objects "")
+set(_module_copies "")
+foreach(_module IN LISTS CERES_OPTIONAL_MODULES)
+    foreach(_file IN LISTS MODULE_${_module})
+        flat_name(_flat "${_file}")
+        if(_file MATCHES "\\.casm$")
+            set(_suffix "_asm")
+        else()
+            set(_suffix "")
+        endif()
+        list(APPEND _module_objects "obj/${_flat}.cobj")
+        list(APPEND _module_copies COMMAND "${CMAKE_COMMAND}" -E copy "obj/${_flat}.cobj" "stdlib/lib/libceres_${_module}${_suffix}.cobj")
+    endforeach()
+endforeach()
+add_custom_command(
+    OUTPUT stdlib.stamp
+    COMMAND "${CMAKE_COMMAND}" -E rm -rf stdlib
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory "${ROOT}/include" stdlib/include
+    COMMAND "${CMAKE_COMMAND}" -E make_directory stdlib/lib
+    COMMAND "${CMAKE_COMMAND}" -E copy libceres.car libceres.decls.casm stdlib/lib
+    ${_module_copies}
+    COMMAND "${CMAKE_COMMAND}" -E touch stdlib.stamp
+    DEPENDS libceres.car libceres.decls.casm ${_module_objects} ${HEADERS}
+    WORKING_DIRECTORY "${B}"
+    COMMENT "stdlib/: the headers, the archive and the optional modules"
+    VERBATIM)
+add_custom_target(ceres_stdlib_layout ALL DEPENDS stdlib.stamp)
 
 # ---- the documentation (node tools/gendocs.js) ---------------------------------------------------------------------
 
@@ -300,31 +343,9 @@ endforeach()
 if(NODE)
     add_test(NAME suite COMMAND "${NODE}" tools/runtests.js --library "${B}" --levels ${CERES_OPT_LEVEL}
         WORKING_DIRECTORY "${ROOT}")
-    set_tests_properties(suite PROPERTIES ENVIRONMENT "CERESC=${CERESC};CERES_PATH=${CERES_DIR}" LABELS suite
+    set_tests_properties(suite PROPERTIES ENVIRONMENT "CERESC=${CERESC};CERES=${CERES}" LABELS suite
         TIMEOUT 3600 RUN_SERIAL TRUE)
 endif()
-
-# ---- install: a sysroot, the layout ceresc --sysroot and -l expect ------------------------------------------------
-#   <prefix>/include/                           every header
-#   <prefix>/<lib>/libceres.car                 the archive, and libceres.decls.casm beside it
-#   <prefix>/<lib>/libceres_<m>.cobj            an optional module (-lceres_irq; -lceres_fault -lceres_fault_asm; ...)
-#   <prefix>/bin/shell.cres                     the shell: `ceres run --sysroot <prefix>` starts it
-# where <lib> is lib (CERES_LIBDIR says otherwise).
-
-install(DIRECTORY include/ DESTINATION include)
-install(FILES "${B}/bin/shell.cres" DESTINATION bin)
-install(FILES "${B}/libceres.car" "${B}/libceres.decls.casm" DESTINATION "${LIBDIR}")
-foreach(_module IN LISTS CERES_OPTIONAL_MODULES)
-    foreach(_file IN LISTS MODULE_${_module})
-        flat_name(_flat "${_file}")
-        if(_file MATCHES "\\.casm$")
-            set(_suffix "_asm")
-        else()
-            set(_suffix "")
-        endif()
-        install(FILES "${B}/obj/${_flat}.cobj" DESTINATION "${LIBDIR}" RENAME "libceres_${_module}${_suffix}.cobj")
-    endforeach()
-endforeach()
 
 # ---- what this configuration is ----------------------------------------------------------------------------------
 

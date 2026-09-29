@@ -5,13 +5,12 @@
 # is there): incremental and parallel - one unit per C file, a header change rebuilding only what includes it. The
 # tests are tools/runtests.js (Node 16+).
 #
-#   make                                      the library at -O2 (build/cmake/O2/libceres.car)
+#   make                                      the library at -O2 (build/cmake/O2/libceres.car), and the stdlib/ and
+#                                             shell/ that go in the directory Ceres is installed in (CERES_PATH)
 #   make OPT=s                                at -Os; OPT is 0, 1, 2, 3, s or g
 #   make levels LEVELS="0 1 2 s"              several levels, each in build/cmake/O<level>
 #   make FS_MAX_OPEN=4 TASK_MAX=32            any setting of include/ceres/config.h
 #   make FLAGS="-fno-inline -fno-cse"         optimizations one by one, on top of the level
-#   make install PREFIX=/opt/ceres            a sysroot: ceresc prog.c --sysroot /opt/ceres -lceres --run,
-#                                             and the shell: ceres run --sysroot /opt/ceres
 #   make test                                 every test, at every level in LEVELS, against what was built here
 #   make check                                ctest in the build directory: link programs against it and run them
 
@@ -21,7 +20,7 @@ endif
 
 # ---- a configuration of your own ----------------------------------------------------------------------------------
 # config.mk (or CONFIG_FILE=<file>), when there is one, sets any variable below once for every command - OPT = s,
-# FS_MAX_OPEN = 4, PREFIX = /opt/ceres - so a build, its install and its tests agree without repeating them. What
+# FS_MAX_OPEN = 4 - so a build and its tests agree without repeating them. What
 # the command line says still wins. It is not part of the repository (.gitignore).
 CONFIG_FILE ?= config.mk
 -include $(CONFIG_FILE)
@@ -32,13 +31,14 @@ CTEST ?= ctest
 NODE ?= node
 CERESC ?=
 CERES ?=
-# Without them, the tools are found the way ceresc finds ceres: the CERESC and CERES_PATH environment variables, then
-# PATH. The test runner finds them through the environment, so the ones given here go there too.
+# Without them, the tools are found the way ceresc finds ceres: in the directory the CERES_PATH environment variable
+# names (where Ceres is installed), then on PATH. The test runner finds them through the environment, so the ones
+# given here go there too.
 ifneq ($(strip $(CERESC)),)
 export CERESC
 endif
 ifneq ($(strip $(CERES)),)
-export CERES_PATH := $(CERES)
+export CERES
 endif
 
 # ---- what to build ------------------------------------------------------------------------------------------------
@@ -57,7 +57,6 @@ BUILD_DIR ?= $(BUILD_ROOT)/O$(OPT)
 NINJA_VERSION := $(shell ninja --version 2>&1)
 GENERATOR ?= $(if $(filter 1.%,$(NINJA_VERSION)),Ninja)
 JOBS ?=
-PREFIX ?=
 
 # ---- tests --------------------------------------------------------------------------------------------------------
 TEST ?=
@@ -97,7 +96,7 @@ TEST_ARGS = \
 	$(if $(call yes,$(GC)),--gc-sections) \
 	$(if $(TIMEOUT),--timeout $(TIMEOUT))
 
-.PHONY: all lib configure levels install check test headers docs config clean distclean help
+.PHONY: all lib configure levels check test headers docs config clean distclean help
 .DEFAULT_GOAL := all
 
 all: lib
@@ -112,10 +111,6 @@ lib: configure
 levels: $(addprefix lib-O,$(LEVELS))
 lib-O%:
 	$(MAKE) --no-print-directory lib OPT=$* BUILD_DIR=$(BUILD_ROOT)/O$*
-
-install: lib
-	$(if $(PREFIX),,$(error install needs PREFIX=<directory>: make install PREFIX=/opt/ceres))
-	$(CMAKE) --install "$(BUILD_DIR)" --prefix "$(PREFIX)"
 
 check: lib
 	$(CTEST) --test-dir "$(BUILD_DIR)" --output-on-failure $(JOBS_ARG)
@@ -163,9 +158,10 @@ define HELP_TEXT
 The Ceres standard library.
 
 Targets
-  make [lib]            build the library: $(BUILD_DIR)/libceres.car, libceres.decls.casm and obj/
+  make [lib]            build the library: $(BUILD_DIR)/libceres.car, libceres.decls.casm and obj/, and
+                        $(BUILD_DIR)/stdlib and shell as they go where Ceres is installed (CERES_PATH);
+                        the Ceres Binaries project packages them with ceres and ceresc
   make levels           one library per level in LEVELS, each in $(BUILD_ROOT)/O<level>
-  make install          install the library, and the shell, as a sysroot under PREFIX
   make check            ctest: link programs against this build and run them (and the suite)
   make test             every test at every level in LEVELS, against the libraries built here
   make test-NAME        one test: tests/NAME.c
@@ -182,14 +178,14 @@ What to build
   FLAGS=                optimizations one by one on top of the level: -fno-inline -fcse ... (ceresc --help)
   DEFINES=              more macros: NAME or NAME=VALUE ...
   CERESC_FLAGS=         anything else for ceresc
-  MODULES="irq fault mmu"  the optional modules install puts beside the archive
+  MODULES="irq fault mmu"  the optional modules put in stdlib/lib beside the archive
   $(foreach name,$(CONFIG_NAMES),$(name)= )
                         the settings of include/ceres/config.h, empty for their default
 
 Where, and with what
-  BUILD_DIR=$(BUILD_ROOT)/O<level>[-sd]   BUILD_ROOT=build/cmake   PREFIX=   (install)
+  BUILD_DIR=$(BUILD_ROOT)/O<level>[-sd]   BUILD_ROOT=build/cmake
   GENERATOR=$(if $(GENERATOR),$(GENERATOR),)   (Ninja when found; any CMake generator)   JOBS=   (parallel jobs)
-  CERESC=  CERES=  (else CERESC and CERES_PATH in the environment, then PATH)
+  CERESC=  CERES=  (else the directory CERES_PATH names, then PATH)
   CMAKE=cmake  CTEST=ctest  NODE=node
 
 Tests

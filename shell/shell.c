@@ -10,8 +10,8 @@
 // program in PWD, and finds there when it comes back. The screen and the line history are the terminal's, and it
 // keeps them from one program to the next.
 //
-// Built against the library and installed as <prefix>/bin/shell.cres (make install, tools/install.ps1); `ceres run
-// --sysroot <prefix>` finds it there.
+// Built against the library into <build>/shell/shell.cres, and installed as shell/shell.cres of the directory Ceres
+// is installed in (CERES_PATH), where `ceres run` finds it.
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"

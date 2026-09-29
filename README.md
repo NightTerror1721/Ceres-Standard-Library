@@ -6,7 +6,7 @@ rest - and, under `ceres/`, everything the machine has to offer a program: its d
 gamepad, GPU (text plane, bitmap, copy engine), blitter, audio, disk, peripheral ports, timer, MMU, interrupts), a file system,
 graphics, sprites, fonts, music, tasks and channels, and the pieces every program ends up writing (containers,
 arenas, hashing, JSON, INI, saved games, images, compression, resource packs). And the **Ceres shell**
-(`bin/shell/shell.c`), the prompt `ceres run` starts when it is given no program.
+(`shell/shell.c`), the prompt `ceres run` starts when it is given no program.
 
 Every header documents itself; [docs/reference](docs/reference/README.md) has them all as pages, generated from the
 headers by `node tools/gendocs.js`.
@@ -21,7 +21,6 @@ make OPT=s                                  # at -Os (OPT: 0, 1, 2, 3, s, g), in
 make -j levels LEVELS="0 1 2 s"             # several levels at once, one directory each
 make FS_MAX_OPEN=4 CERES_HEAP_DEBUG=1       # any setting of include/ceres/config.h
 make FLAGS="-fno-inline" DEFINES="NDEBUG"   # optimizations one by one, more macros
-make install PREFIX=<dir>                   # a sysroot: <dir>/include, <dir>/lib and the shell in <dir>/bin
 make help                                   # everything else
 ```
 
@@ -30,24 +29,30 @@ The build is `CMakeLists.txt`, and the Makefile only drives it; CMake works on i
 ```sh
 cmake --preset O2 && cmake --build --preset O2 && ctest --preset O2      # CMakePresets.json: O0 ... Og
 cmake -S . -B build/cmake/mine -G Ninja -DCERES_OPT_LEVEL=s -DFS_MAX_OPEN=4
-cmake --build build/cmake/mine -j && cmake --install build/cmake/mine --prefix <dir>
+cmake --build build/cmake/mine -j
 ```
 
 Every C file is compiled on its own and assembled against the library's merged declarations, so the build is
 parallel and incremental: a changed source rebuilds its unit, a changed header the units that include it. Its
 cache variables are the settings: `CERES_OPT_LEVEL`, `CERES_WERROR`, `CERES_OPT_FLAGS`,
-`CERES_DEFINES`, `CERES_EXTRA_FLAGS`, `CERES_OPTIONAL_MODULES`, `CERES_LIBDIR`, and one for every setting of
+`CERES_DEFINES`, `CERES_EXTRA_FLAGS`, `CERES_OPTIONAL_MODULES`, and one for every setting of
 `include/ceres/config.h` (read from the header, so a new one there is one here). `<build>/libceres.flags` records
 the flags a build was compiled with.
 
-`ceresc` and `ceres` are found the way `ceresc` finds `ceres`: the `CERESC` and `CERES_PATH` environment variables
-(the executable, or the directory that holds it), then `PATH`; `make CERESC=... CERES=...` (or `-DCERESC=`,
-`-DCERES=`) names them outright. A variable that is set decides - one that names no such tool is an error, not a
-reason to look elsewhere - and nothing is looked for next to this checkout. The scripts and the test runners find
-them the same way.
+A build also leaves, in its directory, what goes in the directory Ceres is installed in (`CERES_PATH`), laid out as
+it goes there: `stdlib/include` (the headers), `stdlib/lib` (`libceres.car`, `libceres.decls.casm` and the optional
+modules as `libceres_<module>.cobj`) and `shell/shell.cres`. There is nothing to install from here: the
+[Ceres Binaries](../../CeresBinaries) project builds `ceres`, `ceresc` and this library together and packages them,
+with an installer for each system.
 
-The PowerShell scripts of before still work on Windows: `tools/mklib.ps1` (build/lib/O<n>) and
-`tools/install.ps1 -Prefix <dir>`.
+`ceresc` and `ceres` are found the way `ceresc` finds `ceres`: `make CERESC=... CERES=...` (or `-DCERESC=`,
+`-DCERES=`, or the `CERESC` and `CERES` environment variables: the executable, or the directory that holds it)
+names them outright; without that, they are the ones in the directory the `CERES_PATH` environment variable names
+(where Ceres is installed), and then the ones on `PATH`. A variable that is set decides - one that names no such
+tool is an error, not a reason to look elsewhere - and nothing is looked for next to this checkout. The scripts and
+the test runners find them the same way.
+
+The PowerShell scripts of before still work on Windows: `tools/mklib.ps1` (build/lib/O<n>).
 
 ## The Makefile, target by target
 
@@ -58,7 +63,7 @@ goes back to its default. So
 
 ```sh
 make FS_MAX_OPEN=4
-make install PREFIX=/opt/ceres       # builds again with the default FS_MAX_OPEN, and installs THAT
+make check                           # builds again with the default FS_MAX_OPEN, and checks THAT
 ```
 
 A configuration other than the default is used by saying the same variables to every command - or by writing
@@ -69,7 +74,6 @@ every command reads. The command line still wins over it:
 # config.mk
 OPT = s
 FS_MAX_OPEN = 4
-PREFIX = /opt/ceres
 ```
 
 The build directory follows from the level: `build/cmake/O<OPT>` (`make OPT=s` builds in `build/cmake/Os`). Each level keeps its own; two configurations at one level share one, and
@@ -87,7 +91,7 @@ What to build:
 | `FLAGS` | | Optimizations one by one, on top of the level: `FLAGS="-fno-inline -fcse"`. `ceresc --help` lists them; anything not shaped `-f...`/`-fno-...` is refused. |
 | `DEFINES` | | More macros for every unit: `DEFINES="NDEBUG TRACE=2"`. |
 | `CERESC_FLAGS` | | Anything else for ceresc, separated by blanks. |
-| `MODULES` | `irq fault mmu` | The optional modules `install` puts beside the archive as objects of their own (`-lceres_irq`...). The archive holds all of them either way. |
+| `MODULES` | `irq fault mmu` | The optional modules put in `stdlib/lib` beside the archive as objects of their own (`-lceres_irq`...). The archive holds all of them either way. |
 
 The settings of `include/ceres/config.h` - numbers, empty for the header's default. They are taken from the
 command line or `config.mk`, never from the environment:
@@ -110,8 +114,7 @@ Where, and with what:
 | `BUILD_DIR` | `$(BUILD_ROOT)/O<OPT>` | A build directory of your own naming (`BUILD_DIR=build/mine`). |
 | `GENERATOR` | `Ninja`, when it is there | Any CMake generator (`"Unix Makefiles"`, `"MinGW Makefiles"`...). To change it in a directory that exists, `make clean` first. |
 | `JOBS` | | Parallel jobs for `cmake --build` and `ctest` (Ninja is parallel already). |
-| `PREFIX` | | Where `install` and `sysroot` put the library. **Required** by those two. |
-| `CERESC`, `CERES` | found | The tools. Without them: the `CERESC` and `CERES_PATH` environment variables, then `PATH`, looked up again on every configure. |
+| `CERESC`, `CERES` | found | The tools. Without them: the directory `CERES_PATH` names, then `PATH`, looked up again on every configure. |
 | `CMAKE`, `CTEST`, `NODE` | `cmake`, `ctest`, `node` | For tools that are not on `PATH`. |
 | `CONFIG_FILE` | `config.mk` | Another configuration file. |
 
@@ -122,7 +125,7 @@ take; 180 when not said).
 
 **`make`, `make lib`** - configures and builds the library in `BUILD_DIR`: `libceres.car` (the archive),
 `libceres.decls.casm` (its declarations), `obj/` (an object per unit) and `libceres.flags` (what it was compiled
-with). Incremental: with nothing changed it does nothing. Takes every build variable and the config.h settings,
+with), and `stdlib/` and `shell/shell.cres` as they go where Ceres is installed. Incremental: with nothing changed it does nothing. Takes every build variable and the config.h settings,
 `BUILD_DIR`, `GENERATOR`, `JOBS`, `CERESC`, `CERES`.
 
 ```sh
@@ -139,14 +142,6 @@ since each level needs its own. `make lib-O<level>` builds one level without tou
 ```sh
 make -j levels LEVELS="0 2 s"
 ```
-
-**`make install`** - builds, then installs the layout `ceresc --sysroot` expects:
-`PREFIX/include/` (every header), `PREFIX/lib/libceres.car` and `libceres.decls.casm`,
-`PREFIX/lib/libceres_<module>.cobj` for the modules in `MODULES`, and the shell, `PREFIX/bin/shell.cres`. A program
-then needs `ceresc prog.c --sysroot /opt/ceres -lceres --run` and nothing else, and `ceres run --sysroot /opt/ceres`
-starts the shell. `PREFIX` is required, and the build variables
-must be the ones the library was built with (or `config.mk`), or another configuration is what gets installed. It
-removes nothing an earlier install left: a module taken out of `MODULES` stays until you delete it.
 
 **`make check`** - builds, then runs `ctest` on that build:
 
@@ -197,35 +192,35 @@ make -j test                                   # build and test the default libr
 make OPT=g BUILD_DIR=build/debug DEFINES=TRACE # a debugging build of its own, beside the default ones
 ```
 
-A configuration of your own, checked and installed as a sysroot - `config.mk`:
+A configuration of your own, checked - `config.mk`:
 
 ```make
 OPT = s
 FS_MAX_OPEN = 4
 CERES_HEAP_DEBUG = 1
-PREFIX = /opt/ceres
 ```
 
-then `make check` and `make sysroot`. The same settings are CMake cache variables for a build without make
+then `make check`. The same settings are CMake cache variables for a build without make
 (`cmake -S . -B <dir> -DCERES_OPT_LEVEL=s -DFS_MAX_OPEN=4`), and `CMakePresets.json` has ready ones
 (`cmake --preset Os`, `cmake --build --preset Os`, `ctest --preset Os`).
 
 ## Using it
 
-With a sysroot installed, a program needs nothing else:
+With Ceres installed (the directory `CERES_PATH` names, or the one `ceresc` is in), `--stdlib` is all a program
+needs: the library's headers join the include search, and the archive is linked.
 
 ```sh
-ceresc prog.c --sysroot <dir> -lceres -O2 --run
-ceresc prog.c --sysroot <dir> -lceres -O2 --gc-sections --run      # leave out the functions nothing reaches
-ceresc prog.c --sysroot <dir> -lceres -O2 -fshort-double --run     # double as float: the float math under the standard names
+ceresc prog.c --stdlib -O2 --run
+ceresc prog.c --stdlib -O2 --gc-sections --run      # leave out the functions nothing reaches
+ceresc prog.c --stdlib -O2 -fshort-double --run     # double as float: the float math under the standard names
 ```
 
-Without one, name the archive and its declarations:
-`ceresc prog.c build/lib/O2/libceres.car --decls build/lib/O2/libceres.decls.casm -I include -O2 --run`.
+Against a library built here, name the archive and its declarations:
+`ceresc prog.c build/cmake/O2/libceres.car --decls build/cmake/O2/libceres.decls.casm -I include -O2 --run`.
 
 Three modules bind interrupt vectors, and a program gets them only by naming them, since a vector can be bound
 once in a program: `-lceres_irq` (`ceres/irq.h`), `-lceres_fault -lceres_fault_asm` (fault reports) and
-`-lceres_mmu -lceres_mmu_asm` (page faults, `ceres/mmu.h`).
+`-lceres_mmu -lceres_mmu_asm` (page faults, `ceres/mmu.h`), found in `stdlib/lib` with `--stdlib`.
 
 A few things this library is that a desktop libc is not:
 
@@ -244,13 +239,12 @@ A few things this library is that a desktop libc is not:
 
 ## The shell
 
-`bin/shell/shell.c` is the prompt of the machine: `ceres run` without a program starts
-`<sysroot>/bin/shell.cres`, from the sysroot of `--sysroot` or `CERES_SYSROOT` (CeresASM
-[docs/36](../../CeresASM/docs/36-Shell-and-Program-Loading.md)):
+`shell/shell.c` is the prompt of the machine: `ceres run` without a program starts `shell/shell.cres` of the
+directory Ceres is installed in - the one `CERES_PATH` names, or else the one `ceres` is in (CeresASM
+[docs/36](../../CeresASM/docs/36-Shell-and-Program-Loading.md)). A build leaves it in `<build>/shell/shell.cres`:
 
 ```sh
-make install PREFIX=C:/ceres               # or: powershell tools/install.ps1 -Prefix C:\ceres
-ceres run --sysroot C:/ceres               # the host directory is the current one; --host-dir names another
+ceres run                                  # the host directory is the current one; --host-dir names another
 ```
 
 ```
@@ -282,7 +276,7 @@ powershell tools/runtests.ps1           # the same runner in PowerShell (-Test, 
 `make test` runs the suite against the library as configured (`make test FS_MAX_OPEN=3` tests that one); what
 the tests must print was written for the defaults.
 
-The shell is tested by sessions: each `tests/shell/<session>.type` is typed on it (`ceres run --sysroot build/shell`,
+The shell is tested by sessions: each `tests/shell/<session>.type` is typed on it (`ceres run`, with `CERES_PATH=build/shell`,
 the host directory a copy of `tests/shell/files` with `tests/shell/*.c` built into its `games/`), and what it printed,
 its error stream and its exit status are compared with `<session>.expected`, `.stderr` and `.status`.
 
@@ -305,7 +299,6 @@ fails.
 | `Makefile`, `CMakeLists.txt`, `CMakePresets.json` | The build: `make help`. |
 | `tools/cmake/*.cmake` | The build's steps: header dependencies, merging the declarations, the verify tests. |
 | `tools/mklib.ps1` | Builds the library archives per optimization level, in PowerShell. |
-| `tools/install.ps1` | Lays out a sysroot for `ceresc --sysroot` (and the shell for `ceres run --sysroot`), in PowerShell. |
 | `tools/runtests.js`, `tools/runtests.ps1` | The test runner. |
 | `tools/gendocs.js` | Writes `docs/reference` from the headers. |
 | `tools/mkpack.js` | Builds a resource pack (`ceres/pack.h`) from host files, as a cartridge image. |
