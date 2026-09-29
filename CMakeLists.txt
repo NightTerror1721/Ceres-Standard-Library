@@ -15,6 +15,7 @@
 #                                 -lceres_fault_asm; -lceres_mmu -lceres_mmu_asm)
 #   <build>/shell/shell.cres      the Ceres shell (shell/shell.c), linked against the archive: what `ceres run`
 #                                 starts without a program
+#   <build>/shell/shell-small.cres  the same shell with SHELL_SMALL, for the machines the other does not fit (micro)
 #
 # The build is incremental and parallel: every C file is compiled on its own (the code ceresc generates for a
 # unit does not depend on the rest of the library - only the declarations it imports do), its declarations are
@@ -273,19 +274,27 @@ add_custom_target(ceres_stdlib ALL DEPENDS libceres.car libceres.decls.casm)
 # ---- 5. the shell -------------------------------------------------------------------------------------------------
 # What `ceres run` starts without a program (CeresASM plan/v2 F7): a program like any other, compiled against the
 # archive's declarations, assembled, and linked with the archive. The archive changes with any header the shell
-# could see, so depending on it is enough.
+# could see, so depending on it is enough. Built twice: shell.cres, and shell-small.cres with SHELL_SMALL (its own
+# small printf in place of the library's), which `ceres run` starts on a machine the first does not fit. Both are
+# linked with --gc-sections: what they need of the machine's RAM is what decides which one it gets.
 
 file(MAKE_DIRECTORY "${B}/programs" "${B}/shell")
-add_custom_command(
-    OUTPUT shell/shell.cres
-    COMMAND "${CERESC}" shell/shell.c ${CERESC_FLAGS} --decls "${B}/libceres.decls.casm" -S -o "${B}/programs/shell.casm"
-    COMMAND "${CERES}" asm -c "${B}/programs/shell.casm" -o "${B}/programs/shell.cobj"
-    COMMAND "${CERES}" link "${B}/programs/shell.cobj" "${B}/libceres.car" -o "${B}/shell/shell.cres"
-    DEPENDS "${ROOT}/shell/shell.c" libceres.car libceres.decls.casm
-    WORKING_DIRECTORY "${ROOT}"
-    COMMENT "ceresc -O${CERES_OPT_LEVEL} shell/shell.c"
-    VERBATIM)
-add_custom_target(ceres_shell ALL DEPENDS shell/shell.cres)
+foreach(_shell IN ITEMS shell shell-small)
+    set(_shell_defines)
+    if(_shell STREQUAL "shell-small")
+        set(_shell_defines -DSHELL_SMALL)
+    endif()
+    add_custom_command(
+        OUTPUT shell/${_shell}.cres
+        COMMAND "${CERESC}" shell/shell.c ${CERESC_FLAGS} ${_shell_defines} --decls "${B}/libceres.decls.casm" -S -o "${B}/programs/${_shell}.casm"
+        COMMAND "${CERES}" asm -c "${B}/programs/${_shell}.casm" -o "${B}/programs/${_shell}.cobj"
+        COMMAND "${CERES}" link "${B}/programs/${_shell}.cobj" "${B}/libceres.car" --gc-sections -o "${B}/shell/${_shell}.cres"
+        DEPENDS "${ROOT}/shell/shell.c" libceres.car libceres.decls.casm
+        WORKING_DIRECTORY "${ROOT}"
+        COMMENT "ceresc -O${CERES_OPT_LEVEL} shell/shell.c ${_shell_defines}"
+        VERBATIM)
+endforeach()
+add_custom_target(ceres_shell ALL DEPENDS shell/shell.cres shell/shell-small.cres)
 # The archive's rules belong to ceres_stdlib: a Makefile generator copies them into every target that names its files,
 # and targets built in parallel would run them at once. Built after it, this one finds them done.
 add_dependencies(ceres_shell ceres_stdlib)

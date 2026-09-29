@@ -114,11 +114,11 @@ function Invoke-Tool([string]$exe, [string]$argLine, [string]$outFile, [string]$
 
 # A program of one C file built against the archive at a level, the way a program is linked without --run: compiled to
 # CASM against the archive's declarations, assembled, and linked with the archive ($work names the files on the way).
-# $null when it built; otherwise what went wrong.
-function Build-Program([string]$source, [string]$cres, [string]$work, [int]$level = 2, [string]$linkFlags = '') {
+# $null when it built; otherwise what went wrong. $defines: more compiler flags (-DSHELL_SMALL).
+function Build-Program([string]$source, [string]$cres, [string]$work, [int]$level = 2, [string]$linkFlags = '', [string]$defines = '') {
     $dir = Get-LibraryDir $level
     $steps = @(
-        @($Ceresc, "$source --decls $dir/libceres.decls.casm -I include -O$level -Werror -S -o $work.casm"),
+        @($Ceresc, "$source $defines --decls $dir/libceres.decls.casm -I include -O$level -Werror -S -o $work.casm"),
         @($Ceres, "asm -c $work.casm -o $work.cobj"),
         @($Ceres, "link $work.cobj $dir/libceres.car -o $cres $linkFlags"))
     foreach ($step in $steps) {

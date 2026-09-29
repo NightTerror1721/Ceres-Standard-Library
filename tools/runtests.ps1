@@ -36,11 +36,13 @@
     A test that includes ceres/text.h or ceres/tui.h also has its screens compared: the text plane at every
     Present and at the end (--screen-log), with tests/expected/<name>.screen.
 
-    The shell (shell/shell.c) is built as `make` builds it, into build/shell/shell/shell.cres, and each
-    tests/shell/<session>.type is typed on it - `ceres run` with no program and CERES_PATH=build/shell, the host
-    directory a copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with
-    <session>.expected, what went to its error stream with <session>.stderr (else nothing) and its exit status with
-    <session>.status.
+    The shell (shell/shell.c) is built as `make` builds it, into build/shell/shell/shell.cres and (with SHELL_SMALL)
+    shell-small.cres, and each tests/shell/<session>.type is typed on it - `ceres run` with no program and
+    CERES_PATH=build/shell, the host directory a copy of tests/shell/files with tests/shell/*.c built into it, and
+    <session>.run more words for `ceres run` (--profile micro) - and what it printed compared with <session>.expected,
+    what went to its error stream with <session>.stderr (else nothing) and its exit status with <session>.status. Each
+    session is typed twice: then with CERES_PATH=build/shell/small, where the small shell is the only one, and must
+    print the same.
 
     An example (examples/<name>.c) with examples/expected/<name>.expected is run and its output compared the same
     way; examples/expected/<name>.flags holds compiler flags for it (-DDEMO_FRAMES=...), <name>.run more words for
@@ -344,12 +346,18 @@ function Test-Shell {
     $dir = 'build/shell'
     $hostDir = "$dir/host"
     if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
-    New-Item -ItemType Directory -Force "$dir/shell", "$hostDir/games" | Out-Null
+    New-Item -ItemType Directory -Force "$dir/shell", "$dir/small/shell", "$hostDir/games" | Out-Null
     Copy-Item tests/shell/files/* $hostDir -Recurse -Force
-    $problem = Build-Program 'shell/shell.c' "$dir/shell/shell.cres" "$dir/shell-program" 2 $LinkFlags
+    # Linked as the build links them, with --gc-sections: the room they take decides which one a machine starts. So
+    # are the sessions' programs, which a micro session runs too.
+    $problem = Build-Program 'shell/shell.c' "$dir/shell/shell.cres" "$dir/shell-program" 2 '--gc-sections'
+    if (-not $problem) {
+        $problem = Build-Program 'shell/shell.c' "$dir/shell/shell-small.cres" "$dir/shell-small-program" 2 '--gc-sections' '-DSHELL_SMALL'
+    }
+    if (-not $problem) { Copy-Item "$dir/shell/shell-small.cres" "$dir/small/shell" }
     foreach ($program in (Get-ChildItem tests/shell -Filter *.c | Sort-Object Name)) {
         if ($problem) { break }
-        $problem = Build-Program "tests/shell/$($program.Name)" "$hostDir/games/$($program.BaseName).cres" "$dir/$($program.BaseName)" 2 $LinkFlags
+        $problem = Build-Program "tests/shell/$($program.Name)" "$hostDir/games/$($program.BaseName).cres" "$dir/$($program.BaseName)" 2 '--gc-sections'
     }
     if ($problem) {
         [void]$failures.Add("shell (build)")
@@ -358,23 +366,28 @@ function Test-Shell {
     }
     $sessions = @(Get-ChildItem tests/shell -Filter *.type | Sort-Object Name)
     $bad = 0
-    # ceres finds the shell in <CERES_PATH>/shell/shell.cres: here, the one just built. The tools were found already.
+    # ceres finds the shell in <CERES_PATH>/shell: here, the ones just built - both, then the small one alone. The
+    # tools were found already.
     $savedCeresPath = $env:CERES_PATH
-    $env:CERES_PATH = Join-Path $Root $dir
     try {
+    foreach ($install in @('', 'small')) {
+    $env:CERES_PATH = Join-Path $Root "$dir/$install"
     foreach ($session in $sessions) {
-        $name = $session.BaseName
-        $base = "tests/shell/$name"
-        $transcript = "$dir/$name.transcript"
-        $cmd = "run --host-dir $hostDir --headless --speed max --gpu software --rtc 2026-09-28T12:00:00 --type $base.type --transcript $transcript"
-        $code = Invoke-Tool $Ceres $cmd "$dir/$name.out" "$dir/$name.err"
+        $base = "tests/shell/$($session.BaseName)"
+        $name = if ($install) { "$($session.BaseName) ($install shell)" } else { $session.BaseName }
+        $work = if ($install) { "$dir/$install/$($session.BaseName)" } else { "$dir/$($session.BaseName)" }
+        $transcript = "$work.transcript"
+        $more = if (Test-Path "$base.run") { ' ' + (Read-Text "$base.run").Trim() } else { '' }
+        $cmd = "run --host-dir $hostDir --headless --speed max --gpu software --rtc 2026-09-28T12:00:00 --type $base.type --transcript $transcript$more"
+        $code = Invoke-Tool $Ceres $cmd "$work.out" "$work.err"
         $wantStatus = if (Test-Path "$base.status") { [int]((Read-Text "$base.status").Trim()) } else { 0 }
         $raw = Read-Text $transcript
         $streams = Split-Transcript $(if ($null -eq $raw) { '' } else { $raw })
-        $errText = Read-Text "$dir/$name.err"
+        $errText = Read-Text "$work.err"
         if ($null -eq $errText) { $errText = '' }
         $errors = $streams.Err + (((Get-ProgramOutput $errText) -split "(?<=`n)" | Where-Object { $_ -notmatch '^(Wrote |  warning \[)' }) -join '')
         if ($Update) {
+            if ($install) { continue }            # the small shell must print what the whole one does
             [System.IO.File]::WriteAllBytes("$Root\$base.expected", $Latin1.GetBytes($streams.Out))
             if ($errors -ne '') { [System.IO.File]::WriteAllBytes("$Root\$base.stderr", $Latin1.GetBytes($errors)) }
             Write-Host "  wrote $base.expected ($($streams.Out.Length) bytes)" -ForegroundColor Yellow
@@ -388,7 +401,7 @@ function Test-Shell {
         if ($code -ne $wantStatus) { $problems += "exit $code, not $wantStatus" }
         if (-not (Same $streams.Out $expected)) { $problems += 'output' }
         if (-not (Same $errors $expectedErrors)) { $problems += 'error stream' }
-        if (-not (Same (Get-HostOutput "$dir/$name.out") '')) { $problems += 'host stdout' }
+        if (-not (Same (Get-HostOutput "$work.out") '')) { $problems += 'host stdout' }
         if ($problems.Count -gt 0) {
             $bad++
             [void]$failures.Add("shell $name ($($problems -join ', '))")
@@ -397,11 +410,12 @@ function Test-Shell {
             if ($problems -contains 'error stream') { Show-Difference $expectedErrors $errors }
         }
     }
+    }
     } finally {
         $env:CERES_PATH = $savedCeresPath
     }
     if ($bad -eq 0) {
-        Write-Host "  ok    the shell, $($sessions.Count) sessions" -ForegroundColor Green
+        Write-Host "  ok    the shell and the small shell, $($sessions.Count) sessions each" -ForegroundColor Green
         $script:passed++
     }
 }

@@ -39,10 +39,13 @@
 // tools/img2tiles.cases lists runs of tools/img2tiles.js and the file each must give, byte for byte: the tool's own
 // tests (tests/img2tiles) and the headers of the examples' pictures (examples/art).
 //
-// The shell (shell/shell.c) is built as `make` builds it, into build/shell/shell/shell.cres, and each
-// tests/shell/<session>.type is typed on it - `ceres run` with no program and CERES_PATH=build/shell, the host directory
-// a copy of tests/shell/files with tests/shell/*.c built into it - and what it printed compared with <session>.expected,
-// what went to its error stream with <session>.stderr (else nothing) and its exit status with <session>.status.
+// The shell (shell/shell.c) is built as `make` builds it, into build/shell/shell/shell.cres and (with SHELL_SMALL)
+// shell-small.cres, and each tests/shell/<session>.type is typed on it - `ceres run` with no program and
+// CERES_PATH=build/shell, the host directory a copy of tests/shell/files with tests/shell/*.c built into it, and
+// <session>.run more words for `ceres run` (--profile micro) - and what it printed compared with <session>.expected,
+// what went to its error stream with <session>.stderr (else nothing) and its exit status with <session>.status. Each
+// session is typed twice: then with CERES_PATH=build/shell/small, where the small shell is the only one, and must print
+// the same.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -418,14 +421,15 @@ function testImg2tiles() {
 }
 
 // A program of one C file, built against the archive at -O2 the way a program is linked without --run: compiled to
-// CASM against the archive's declarations, assembled, and linked with the archive.
-function buildProgram(source, cres, work) {
+// CASM against the archive's declarations, assembled, and linked with the archive. `defines`: more compiler flags
+// (-DSHELL_SMALL); `gc`: link with --gc-sections.
+function buildProgram(source, cres, work, defines = [], gc = opt.gc) {
     const dir = libraryDir("2");
     const casm = `${work}.casm`, cobj = `${work}.cobj`;
     const steps = [
-        [Ceresc, [source, "--decls", `${dir}/libceres.decls.casm`, "-I", "include", "-O2", "-Werror", "-S", "-o", casm]],
+        [Ceresc, [source, ...defines, "--decls", `${dir}/libceres.decls.casm`, "-I", "include", "-O2", "-Werror", "-S", "-o", casm]],
         [Ceres, ["asm", "-c", casm, "-o", cobj]],
-        [Ceres, ["link", cobj, `${dir}/libceres.car`, "-o", cres, ...(opt.gc ? ["--gc-sections"] : [])]],
+        [Ceres, ["link", cobj, `${dir}/libceres.car`, "-o", cres, ...(gc ? ["--gc-sections"] : [])]],
     ];
     for (const [tool, argv] of steps) {
         const code = run(tool, argv, `${work}.out`, `${work}.err`);
@@ -448,12 +452,17 @@ function testShell() {
     const dir = "build/shell", host = `${dir}/host`;
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(`${dir}/shell`, { recursive: true });
+    fs.mkdirSync(`${dir}/small/shell`, { recursive: true });
     copyTree("tests/shell/files", host);
-    let error = buildProgram("shell/shell.c", `${dir}/shell/shell.cres`, `${dir}/shell-program`);
+    // Linked as the build links them, with --gc-sections: the room they take decides which one a machine starts. So
+    // are the sessions' programs, which a micro session runs too.
+    let error = buildProgram("shell/shell.c", `${dir}/shell/shell.cres`, `${dir}/shell-program`, [], true) ||
+        buildProgram("shell/shell.c", `${dir}/shell/shell-small.cres`, `${dir}/shell-small-program`, ["-DSHELL_SMALL"], true);
+    if (!error) fs.copyFileSync(`${dir}/shell/shell-small.cres`, `${dir}/small/shell/shell-small.cres`);
     for (const program of fs.readdirSync("tests/shell").filter((f) => f.endsWith(".c")).sort()) {
         if (error) break;
         fs.mkdirSync(`${host}/games`, { recursive: true });
-        error = buildProgram(`tests/shell/${program}`, `${host}/games/${program.slice(0, -2)}.cres`, `${dir}/${program.slice(0, -2)}`);
+        error = buildProgram(`tests/shell/${program}`, `${host}/games/${program.slice(0, -2)}.cres`, `${dir}/${program.slice(0, -2)}`, [], true);
     }
     if (error) {
         failures.push("shell (build)");
@@ -462,18 +471,24 @@ function testShell() {
     }
     const sessions = fs.readdirSync("tests/shell").filter((f) => f.endsWith(".type")).map((f) => f.slice(0, -5)).sort();
     let bad = 0;
-    // ceres finds the shell in <CERES_PATH>/shell/shell.cres: here, the one just built. The tools were found already.
+    // ceres finds the shell in <CERES_PATH>/shell: here, the ones just built - both, then the small one alone. The tools
+    // were found already.
     const savedCeresPath = process.env.CERES_PATH;
-    process.env.CERES_PATH = path.resolve(dir);
     try {
-    for (const name of sessions) {
-        const base = `tests/shell/${name}`, transcript = `${dir}/${name}.transcript`;
+    for (const install of ["", "small"]) {
+    process.env.CERES_PATH = path.resolve(dir, install);
+    for (const session of sessions) {
+        const base = `tests/shell/${session}`;
+        const name = install ? `${session} (${install} shell)` : session;
+        const work = install ? `${dir}/${install}/${session}` : `${dir}/${session}`, transcript = `${work}.transcript`;
+        const more = fs.existsSync(`${base}.run`) ? splitWords(readText(`${base}.run`)) : [];
         const code = run(Ceres, ["run", "--host-dir", host, "--headless", "--speed", "max", "--gpu", "software",
-            "--rtc", "2026-09-28T12:00:00", "--type", `${base}.type`, "--transcript", transcript], `${dir}/${name}.out`, `${dir}/${name}.err`);
+            "--rtc", "2026-09-28T12:00:00", "--type", `${base}.type`, "--transcript", transcript, ...more], `${work}.out`, `${work}.err`);
         const wantStatus = fs.existsSync(`${base}.status`) ? Number(readText(`${base}.status`).trim()) : 0;
         const { out, err } = splitTranscript(readText(transcript) || "");
-        const errors = err + hostErrors(readText(`${dir}/${name}.err`) || "");
+        const errors = err + hostErrors(readText(`${work}.err`) || "");
         if (opt.update) {
+            if (install) continue;              // the small shell must print what the whole one does
             fs.writeFileSync(`${base}.expected`, Buffer.from(out, "latin1"));
             if (errors !== "") fs.writeFileSync(`${base}.stderr`, Buffer.from(errors, "latin1"));
             console.log(yellow(`  wrote ${base}.expected (${out.length} bytes)`));
@@ -483,7 +498,7 @@ function testShell() {
         if (code !== wantStatus) problems.push(`exit ${code}, not ${wantStatus}`);
         if (lf(readText(`${base}.expected`) || "") !== out) problems.push("output");
         if (lf(readText(`${base}.stderr`) || "") !== errors) problems.push("error stream");
-        if (hostOutput(readText(`${dir}/${name}.out`) || "") !== "") problems.push("host stdout");
+        if (hostOutput(readText(`${work}.out`) || "") !== "") problems.push("host stdout");
         if (problems.length) {
             bad++;
             failures.push(`shell ${name} (${problems.join(", ")})`);
@@ -492,12 +507,13 @@ function testShell() {
             if (problems.includes("error stream")) showDifference(lf(readText(`${base}.stderr`) || ""), errors);
         }
     }
+    }
     } finally {
         if (savedCeresPath === undefined) delete process.env.CERES_PATH;
         else process.env.CERES_PATH = savedCeresPath;
     }
     if (bad === 0) {
-        console.log(green(`  ok    the shell, ${sessions.length} sessions`));
+        console.log(green(`  ok    the shell and the small shell, ${sessions.length} sessions each`));
         passed++;
     }
 }

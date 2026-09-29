@@ -41,7 +41,7 @@ the flags a build was compiled with.
 
 A build also leaves, in its directory, what goes in the directory Ceres is installed in (`CERES_PATH`), laid out as
 it goes there: `stdlib/include` (the headers), `stdlib/lib` (`libceres.car`, `libceres.decls.casm` and the optional
-modules as `libceres_<module>.cobj`) and `shell/shell.cres`. There is nothing to install from here: the
+modules as `libceres_<module>.cobj`) and `shell/` (`shell.cres` and `shell-small.cres`). There is nothing to install from here: the
 [Ceres Binaries](../../CeresBinaries) project builds `ceres`, `ceresc` and this library together and packages them,
 with an installer for each system.
 
@@ -125,7 +125,7 @@ take; 180 when not said).
 
 **`make`, `make lib`** - configures and builds the library in `BUILD_DIR`: `libceres.car` (the archive),
 `libceres.decls.casm` (its declarations), `obj/` (an object per unit) and `libceres.flags` (what it was compiled
-with), and `stdlib/` and `shell/shell.cres` as they go where Ceres is installed. Incremental: with nothing changed it does nothing. Takes every build variable and the config.h settings,
+with), and `stdlib/` and `shell/` as they go where Ceres is installed. Incremental: with nothing changed it does nothing. Takes every build variable and the config.h settings,
 `BUILD_DIR`, `GENERATOR`, `JOBS`, `CERESC`, `CERES`.
 
 ```sh
@@ -241,7 +241,12 @@ A few things this library is that a desktop libc is not:
 
 `shell/shell.c` is the prompt of the machine: `ceres run` without a program starts `shell/shell.cres` of the
 directory Ceres is installed in - the one `CERES_PATH` names, or else the one `ceres` is in (CeresASM
-[docs/36](../../CeresASM/docs/36-Shell-and-Program-Loading.md)). A build leaves it in `<build>/shell/shell.cres`:
+[docs/36](../../CeresASM/docs/36-Shell-and-Program-Loading.md)). A build leaves it in `<build>/shell/shell.cres`, and
+again as `<build>/shell/shell-small.cres`: the same source built with `SHELL_SMALL`, which formats what it prints
+with a small `printf` of its own instead of the library's (whose floating point is most of the whole shell). The
+whole shell needs about 90 KB of RAM and the small one about 53 KB; `ceres run` starts the first that fits the
+machine, so `micro`, with 64 KiB, gets the small one and still has a shell. Both print the same: the runners type
+every session of `tests/shell` on each, and `tests/shell/micro` runs on a micro machine.
 
 ```sh
 ceres run                                  # the host directory is the current one; --host-dir names another

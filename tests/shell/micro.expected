@@ -1,0 +1,15 @@
+Ceres shell. Type 'help' for the commands.
+ceres:/> machine   micro, CPU 2 MHz
+memory    64 KiB of RAM, 32 KiB of VRAM
+video     V0, up to V2; 256x192 at 60 Hz
+terminal  32x12
+host      a directory is attached
+ceres:/> RAM   64 KiB, 11 KiB free
+VRAM  32 KiB
+ceres:/> docs/                       <dir>
+games/                      <dir>
+top.txt                         4
+ceres:/> greet: [games/greet.cres] [1] [small] PWD=/
+(exit status 1)
+ceres:/> 2026-09-28 12:00:00 UTC, up 0:00:00
+ceres:/> 

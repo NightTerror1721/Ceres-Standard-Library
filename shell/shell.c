@@ -11,7 +11,10 @@
 // keeps them from one program to the next.
 //
 // Built against the library into <build>/shell/shell.cres, and installed as shell/shell.cres of the directory Ceres
-// is installed in (CERES_PATH), where `ceres run` finds it.
+// is installed in (CERES_PATH), where `ceres run` finds it. Built again with SHELL_SMALL defined it is
+// shell/shell-small.cres, the same shell for the machines the whole one does not fit (micro's 64 KiB): `ceres run`
+// starts the first of the two that fits the machine's RAM.
+#include "stdarg.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
@@ -28,6 +31,122 @@
 #define MAX_WORDS  32
 #define MAX_PATH   256
 #define MAX_ENV    64
+
+#ifdef SHELL_SMALL
+// ---- the small shell's printf ---------------------------------------------------------------------------------
+
+// The library's printf, with the floating point it can print, is most of the whole shell. The small one formats
+// what the shell prints itself: %s, %d, %u, %c and %%, with '-', '0' and a width - the same text in far less code.
+// Into `stream`, or else into buffer[size] as snprintf does; the length the whole text has.
+static int small_format(FILE* stream, char* buffer, size_t size, const char* format, va_list ap)
+{
+    size_t at = 0;
+    for (const char* f = format; *f; f++)
+    {
+        char digits[12];
+        const char* text = f;
+        size_t length = 1;
+        int left = 0, zero = 0, width = 0;
+        if (*f == '%' && f[1])
+        {
+            f++;
+            for (; *f == '-' || *f == '0'; f++)
+            {
+                if (*f == '-')
+                    left = 1;
+                else
+                    zero = 1;
+            }
+            for (; *f >= '0' && *f <= '9'; f++)
+                width = width * 10 + (*f - '0');
+            if (*f == 's')
+            {
+                text = va_arg(ap, const char*);
+                length = strlen(text);
+            }
+            else if (*f == 'c')
+            {
+                digits[0] = (char)va_arg(ap, int);
+                text = digits;
+            }
+            else if (*f == 'd' || *f == 'u')
+            {
+                unsigned int value;
+                int negative = 0;
+                if (*f == 'd')
+                {
+                    int number = va_arg(ap, int);
+                    negative = number < 0;
+                    value = negative ? 0u - (unsigned int)number : (unsigned int)number;
+                }
+                else
+                    value = va_arg(ap, unsigned int);
+                char* p = digits + sizeof digits;
+                do
+                    *--p = (char)('0' + value % 10u);
+                while (value /= 10u);
+                if (negative)
+                    *--p = '-';
+                text = p;
+                length = (size_t)(digits + sizeof digits - p);
+            }
+            else if (*f == 0)
+                break;
+            else
+                text = f;                        // %% and anything else: the character itself
+        }
+        // The padding goes before the text, or after it with '-'.
+        size_t pad = (size_t)width > length ? (size_t)width - length : 0;
+        for (size_t i = 0; i < length + pad; i++)
+        {
+            char c;
+            if (left)
+                c = i < length ? text[i] : ' ';
+            else
+                c = i < pad ? (zero ? '0' : ' ') : text[i - pad];
+            if (stream)
+                fputc(c, stream);
+            else if (at + 1 < size)
+                buffer[at] = c;
+            at++;
+        }
+    }
+    if (!stream && size > 0)
+        buffer[at < size ? at : size - 1] = 0;
+    return (int)at;
+}
+
+static int small_printf(const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    int n = small_format(stdout, 0, 0, format, ap);
+    va_end(ap);
+    return n;
+}
+
+static int small_fprintf(FILE* stream, const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    int n = small_format(stream, 0, 0, format, ap);
+    va_end(ap);
+    return n;
+}
+
+static int small_snprintf(char* buffer, size_t size, const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    int n = small_format(0, buffer, size, format, ap);
+    va_end(ap);
+    return n;
+}
+
+#define printf   small_printf
+#define fprintf  small_fprintf
+#define snprintf small_snprintf
+#endif
 
 // The directory the shell is in: a host path, "" for the root and "games/levels" below it (no slash at either end).
 static char cwd[MAX_PATH];
@@ -380,10 +499,10 @@ static int cmd_time(int argc, char** argv)
     time_t now = time(0);
     struct tm tm;
     gmtime_r(&now, &tm);
-    char text[32];
-    strftime(text, sizeof text, "%Y-%m-%d %H:%M:%S", &tm);
     unsigned int up = timer_millis() / 1000u;
-    printf("%s UTC, up %u:%02u:%02u\n", text, up / 3600u, up / 60u % 60u, up % 60u);
+    // By hand rather than with strftime, which brings the whole printf with it.
+    printf("%d-%02d-%02d %02d:%02d:%02d UTC, up %u:%02u:%02u\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+        tm.tm_hour, tm.tm_min, tm.tm_sec, up / 3600u, up / 60u % 60u, up % 60u);
     return 0;
 }
 
