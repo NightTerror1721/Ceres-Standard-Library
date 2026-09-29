@@ -287,6 +287,14 @@ the library is then compiled with them too), `.run` (more for `ceres run`: `--en
 `-- arguments`) and `.ports` (sticks and cartridges to plug in). A `// USE: irq` line near the top links an
 optional module.
 
+An example, `examples/<name>.c`, is always compiled; with `examples/expected/<name>.expected` it is also run and its
+output compared. Beside it can be `.flags` (compiler options: `-DDEMO_FRAMES=...` for a demo that plays itself),
+`.stdin`, `.status`, `.run` (more for `ceres run`, as `--profile micro`) and `.frames`: the screens the example
+presents, recorded with `--frames`, one line each - the first 16 hex digits of the PNG's SHA-256. The retro examples
+(`maze.c` on `micro`, `platformer.c` on `retro`) are checked that way. The runners also make every run listed in
+`tools/img2tiles.cases` and compare it with the file it names: the tests of `tools/img2tiles.js` and the headers of
+the examples' pictures (`examples/art`).
+
 Every run is headless (`ceres run --headless`): what the program writes to its terminal is read back from
 `--transcript`, the `.stdin` file is typed with `--type` and the screens come from `--screen-log`. A program never
 writes to the host's terminal, so a run that leaves anything on the host's stdout (besides ceresc's `Wrote` lines)
@@ -301,6 +309,7 @@ fails.
 | `tools/mklib.ps1` | Builds the library archives per optimization level, in PowerShell. |
 | `tools/runtests.js`, `tools/runtests.ps1` | The test runner. |
 | `tools/gendocs.js` | Writes `docs/reference` from the headers. |
+| `tools/img2tiles.js` | A PNG into what the GPU's level V2 draws: a palette, tiles and a map for a tile layer (`ceres/tiles.h`), or sprite pictures (`ceres/sprite.h`), as C or CASM. `node tools/img2tiles.js --help`. |
 | `tools/mkpack.js` | Builds a resource pack (`ceres/pack.h`) from host files, as a cartridge image. |
 | `tools/gen_font.js` | Generates the 8x8 font (`src/ceres/font_data.inc`), and the VM's text-window font. |
 | `tools/gen_tables.js` | The constant tables the sources include (the sine of `ceres/fixed.h`, the CRC-32 table). |

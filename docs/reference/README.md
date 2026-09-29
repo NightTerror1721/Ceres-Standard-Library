@@ -106,13 +106,14 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/rand.h>`](ceres_rand.md) | Pseudo-random generators with explicit, reproducible state: two runs with the same seed give the same sequence (the VM is deterministic apart from where its... |
 | [`<ceres/save.h>`](ceres_save.md) | Saved games that survive the machine stopping half way through a save. |
 | [`<ceres/sort.h>`](ceres_sort.md) | A stable sort: elements that compare equal keep the order they had, which qsort does not promise. |
-| [`<ceres/sprite.h>`](ceres_sprite.md) | Sprites (images with one transparent colour), frame animation, tile maps with a camera, and the rectangle tests that games need for collisions. |
+| [`<ceres/sprite.h>`](ceres_sprite.md) | The GPU's sprites (level V2, CeresASM plan/v2 SPEC 7.5): 128 small pictures, 8 to 64 pixels a side, that the GPU draws over and under the tile layers... |
 | [`<ceres/string_fast.h>`](ceres_string_fast.md) | The word-at-a-time strcpy, strcmp, strchr and memchr (asm/string_fast.casm) ARE the standard functions now: every program gets them through <string.h>. |
 | [`<ceres/sys.h>`](ceres_sys.md) | The machine as a program sees it: how to stop it, and where its memory is. |
 | [`<ceres/task.h>`](ceres_task.md) | Tasks: coroutines with a scheduler, cooperative. |
 | [`<ceres/terminal.h>`](ceres_terminal.md) | The terminal (0xFF000000): the program's standard input, output and error. |
 | [`<ceres/test.h>`](ceres_test.md) | A minimal test framework. |
 | [`<ceres/text.h>`](ceres_text.md) | The GPU's text plane (level V0, CeresASM plan/v2 SPEC 7): a grid of 8x16 cells in video memory, drawn in front of everything else. |
+| [`<ceres/tiles.h>`](ceres_tiles.md) | The GPU's tile layers (level V2, CeresASM plan/v2 SPEC 7.5): the screen built from small pictures, as the 8- and 16-bit consoles did it. |
 | [`<ceres/timer.h>`](ceres_timer.md) | Timer device (0xFF010000). |
 | [`<ceres/tui.h>`](ceres_tui.md) | A small text user interface, drawn into the GPU's text plane (text.h): windows with a title, labels, buttons, a progress bar, a scrolling list and a menu... |
 | [`<ceres/utf8.h>`](ceres_utf8.md) | UTF-8, the encoding of every string in this library: source files, the terminal, the files a program writes, and the multibyte strings of <stdlib.h>,... |
