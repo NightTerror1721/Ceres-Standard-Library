@@ -309,7 +309,9 @@ function Test-Img2tiles {
         $expected = $words[0]
         $made = "build/img2tiles/$(Split-Path $expected -Leaf)"
         $count++
-        & node tools/img2tiles.js @($words[1..($words.Count - 1)]) -o $made 2> build/img2tiles/last.err
+        # (a line with no arguments would make 1..0 count down, so it has at least the picture)
+        $toolArgs = if ($words.Count -gt 1) { @($words[1..($words.Count - 1)]) } else { @() }
+        & node tools/img2tiles.js @toolArgs -o $made 2> build/img2tiles/last.err
         if ($LASTEXITCODE -ne 0) {
             $bad++
             [void]$failures.Add("img2tiles $expected (exit $LASTEXITCODE)")
