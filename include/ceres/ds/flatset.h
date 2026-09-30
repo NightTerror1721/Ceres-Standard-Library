@@ -5,7 +5,7 @@
 // A set kept as a sorted vector of keys, searched by bisection - ceres/ds/flatmap.h with no value,
 // for the same reason ceres/ds/hset.h exists next to ceres/ds/gmap.h.
 //
-//   struct flatset s;  fset_init(&s, sizeof(int), int_cmp);
+//   struct flatset s;  fset_init(&s, sizeof(int), ds_cmp_int);
 //   int k = 3;  fset_add(&s, &k);
 //   if (fset_has(&s, &k)) { ... }
 

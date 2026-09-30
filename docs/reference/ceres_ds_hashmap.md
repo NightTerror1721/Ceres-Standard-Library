@@ -1,21 +1,11 @@
 # `<ceres/ds/hashmap.h>`
 
-A hash map from strings to pointers: open addressing with linear probing, growing before it gets crowded. The map keeps its own copy of every key; the values are the caller's pointers and are never followed or freed. Removed entries leave a marker so a probe chain is not cut short.
+A hash map from strings to pointers: ceres/ds/gmap.h with the string key baked in. The map keeps its own copy of every key; the values are the caller's pointers and are never followed or freed. Built on gmap, so the open addressing, the tombstones and the growth are the same code as every other keyed map here; this header keeps the string-to-pointer shape its callers already use.
 
 ```c
-struct hashmap_slot
-{
-    char* key;                 // NULL: never used; the tombstone marker: removed; otherwise a copy owned by the map
-    void* value;
-    unsigned int hash;
-};
-
 struct hashmap
 {
-    struct hashmap_slot* slots;
-    unsigned int cap;          // a power of two
-    unsigned int len;          // entries stored
-    unsigned int used;         // slots that are not empty: entries plus tombstones
+    struct gmap m;             // key: char* (the owned copy), value: { char* owned; void* value }
 };
 
 int   hashmap_init(struct hashmap* m, unsigned int initial_cap);      // 0 ok, -1 when out of memory (cap is rounded up to a power of two, at least 8)
@@ -27,5 +17,5 @@ int   hashmap_remove(struct hashmap* m, const char* key);              // 1 when
 void  hashmap_clear(struct hashmap* m);                                // removes every entry, keeps the table
 void  hashmap_each(const struct hashmap* m, void (*fn)(const char* key, void* value, void* ctx), void* ctx);   // in no particular order
 
-static inline unsigned int hashmap_len(const struct hashmap* m) { return m->len; }
+static inline unsigned int hashmap_len(const struct hashmap* m) { return m->m.len; }
 ```

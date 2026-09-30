@@ -1,6 +1,7 @@
 // A binary heap with a stable handle per element. See ceres/ds/iheap.h.
 #include "ceres/ds/iheap.h"
 #include "string.h"
+#include "heap_priv.h"
 
 void ih_init(struct iheap* h, unsigned int elem_size, int (*cmp)(const void*, const void*))
 {
@@ -45,36 +46,14 @@ static void swap_heap(struct iheap* h, unsigned int i, unsigned int j)
     *(unsigned int*)vector_at(&h->pos, *b) = j;
 }
 
-static void sift_up(struct iheap* h, unsigned int i)
-{
-    while (i > 0)
-    {
-        unsigned int parent = (i - 1u) / 2u;
-        if (h->cmp(item_of(h, i), item_of(h, parent)) >= 0)
-            break;
-        swap_heap(h, i, parent);
-        i = parent;
-    }
-}
+#define IH_LESS(i, j) (h->cmp(item_of(h, (i)), item_of(h, (j))))
+#define IH_SWAP(i, j) swap_heap(h, (i), (j))
 
-static void sift_down(struct iheap* h, unsigned int i)
-{
-    unsigned int n = h->heap.len;
-    for (;;)
-    {
-        unsigned int left = 2u * i + 1u;
-        unsigned int right = left + 1u;
-        unsigned int best = i;
-        if (left < n && h->cmp(item_of(h, left), item_of(h, best)) < 0)
-            best = left;
-        if (right < n && h->cmp(item_of(h, right), item_of(h, best)) < 0)
-            best = right;
-        if (best == i)
-            return;
-        swap_heap(h, i, best);
-        i = best;
-    }
-}
+static void sift_up(struct iheap* h, unsigned int i)   { HEAP_SIFT_UP(i, IH_LESS, IH_SWAP); }
+static void sift_down(struct iheap* h, unsigned int i) { HEAP_SIFT_DOWN(i, h->heap.len, IH_LESS, IH_SWAP); }
+
+#undef IH_LESS
+#undef IH_SWAP
 
 unsigned int ih_push(struct iheap* h, const void* item)
 {

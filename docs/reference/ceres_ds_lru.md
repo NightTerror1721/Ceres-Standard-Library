@@ -3,7 +3,7 @@
 A cache of bounded size with least-recently-used eviction: ceres/ds/gmap.h for O(1) lookup by key, ceres/ds/list.h for O(1) "move to the front" and "the oldest is the back" - a texture, a decoded sprite, or a disk sector kept around only while it keeps getting used.
 
 ```c
-struct lru c;  lru_init(&c, sizeof(int), sizeof(struct texture), 64, hash_int, eq_int);
+struct lru c;  lru_init(&c, sizeof(int), sizeof(struct texture), 64, ds_hash_int, ds_eq_int);
 int k = 3;  struct texture t = { ... };
 lru_put(&c, &k, &t);
 struct texture* found = (struct texture*)lru_get(&c, &k);   // NULL if not cached; moves it to the front if it is

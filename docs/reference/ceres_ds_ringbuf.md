@@ -4,13 +4,12 @@ A first-in, first-out queue of bytes in a fixed buffer: the "input event buffer"
 
 It is safe for ONE producer and ONE consumer without masking interrupts, because each index has one writer: the producer writes only `head`, the consumer only `tail`. Both are volatile and run freely (they are masked on use, not on store), so the buffer holds all `size` bytes and full and empty are told apart without a spare slot. The size must be a power of two so that masking replaces a division.
 
+It is ceres/ds/cqueue.h with one-byte elements, so the index bookkeeping lives in one place; this keeps the byte-shaped name and the `int`-returning ring_get/ring_peek the callers already use.
+
 ```c
 struct ringbuf
 {
-    unsigned char* buf;
-    unsigned int mask;                  // size - 1
-    volatile unsigned int head;         // bytes ever put (written by the producer)
-    volatile unsigned int tail;         // bytes ever taken (written by the consumer)
+    struct cqueue q;                    // a queue of one-byte elements
 };
 
 // `storage` is at least `size` bytes and `size` a power of two (a size that is not one is rounded DOWN

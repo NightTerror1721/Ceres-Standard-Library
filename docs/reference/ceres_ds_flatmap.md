@@ -3,7 +3,7 @@
 A map kept as a vector of (key, value) pairs, sorted by key: for a few dozen to a few hundred entries - configuration, a lookup table built once and read many times - contiguous memory and a binary search beat a tree's pointer chasing in practice, and there are no nodes to allocate. The trade against ceres/ds/omap.h is explicit: fmap_get is O(log n) either way, but fmap_set is O(n) here (inserting in place shifts everything after it) against the tree's O(log n) - the right choice when writes are rare and reads or full-table walks are not.
 
 ```c
-struct flatmap m;  fmap_init(&m, sizeof(int), sizeof(int), int_cmp);
+struct flatmap m;  fmap_init(&m, sizeof(int), sizeof(int), ds_cmp_int);
 int k = 3, v = 30;  fmap_set(&m, &k, &v);
 int* found = fmap_get(&m, &k);
 fmap_free(&m);

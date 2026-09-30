@@ -6,7 +6,7 @@
 // _Generic sugar over ten of the eighteen collections (hset, gmap, multimap, lru, rbtree, skiplist,
 // omap, flatmap/flatset, iheap) that all take a hash/eq or a cmp function pointer at init time:
 // DS_DEFAULT_HASH(T)/DS_DEFAULT_EQ(T)/DS_DEFAULT_CMP(T) pick the right one for a handful of common
-// key types, so a call site does not have to name hash_int/eq_int/cmp_int by hand.
+// key types, so a call site does not have to name ds_hash_int/ds_eq_int/ds_cmp_int by hand.
 //
 //   struct hset s;  hset_init(&s, sizeof(int), 0, DS_DEFAULT_HASH(int), DS_DEFAULT_EQ(int));
 //   struct omap m;  omap_init(&m, sizeof(int), sizeof(int), DS_DEFAULT_CMP(int));

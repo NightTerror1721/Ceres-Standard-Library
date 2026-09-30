@@ -5,7 +5,7 @@ A binary heap like ceres/ds/pqueue.h, plus what pqueue.h cannot do: lower an ele
 A handle from ih_push stays valid until the element it names is popped or ih_remove'd - it never changes even as the heap itself reorders around it, because a second array (`pos`) tracks where each handle currently sits.
 
 ```c
-struct iheap h;  ih_init(&h, sizeof(float), cmp_float);
+struct iheap h;  ih_init(&h, sizeof(float), ds_cmp_float);
 float d = 5.0f;  unsigned int handle = ih_push(&h, &d);
 float better = 2.0f;  ih_decrease(&h, handle, &better);
 float out;  ih_pop(&h, &out);

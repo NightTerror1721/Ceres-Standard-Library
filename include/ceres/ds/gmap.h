@@ -11,7 +11,7 @@
 // to. hashmap.h stays the right choice when the key already is a string - one function pointer
 // fewer to carry around per probe.
 //
-//   struct gmap m;  gmap_init(&m, sizeof(int), sizeof(struct asset), 0, hash_int, eq_int);
+//   struct gmap m;  gmap_init(&m, sizeof(int), sizeof(struct asset), 0, ds_hash_int, ds_eq_int);
 //   int k = 3;  struct asset a = { ... };
 //   gmap_set(&m, &k, &a);
 //   struct asset* found = (struct asset*)gmap_get(&m, &k);

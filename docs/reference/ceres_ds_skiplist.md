@@ -3,7 +3,7 @@
 A skip list: an ordered map by coin flips instead of rotations, documented next to ceres/ds/rbtree.h as the alternative to reach for if a rotation/color bug ever turns up there - same O(log n) expected cost, far less code to have gotten wrong. Unlike rbtree.h (intrusive) and omap.h (copies), a skl_node holds POINTERS to the caller's own key and value - it neither copies them nor demands a field inside them, at the cost of one allocation per entry.
 
 ```c
-struct skiplist s;  skl_init(&s, cmp_cstr);
+struct skiplist s;  skl_init(&s, ds_cmp_cstr);
 char* k = "b";  int v = 2;
 skl_insert(&s, k, &v);
 int* found = (int*)skl_find(&s, "b");

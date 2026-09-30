@@ -3,7 +3,7 @@
 A set of keys of any fixed size - ceres/ds/gmap.h with no value, the hash-table counterpart to ceres/ds/flatset.h. "Have I already seen this (x, y)?", "is this entity already in this frame's collision list?" - anything whose key is not a string, which ceres/ds/hashmap.h cannot hold.
 
 ```c
-struct hset s;  hset_init(&s, sizeof(int), 0, hash_int, eq_int);
+struct hset s;  hset_init(&s, sizeof(int), 0, ds_hash_int, ds_eq_int);
 int k = 3;  hset_add(&s, &k);
 if (hset_has(&s, &k)) { ... }
 ```

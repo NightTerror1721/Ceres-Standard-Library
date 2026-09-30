@@ -10,7 +10,7 @@
 // here is not - the node-with-pointer style (see the collections research) with an ordinary
 // allocator behind it instead of a fixed arena.
 //
-//   struct multimap m;  mm_init(&m, sizeof(int), sizeof(int), hash_int, eq_int);
+//   struct multimap m;  mm_init(&m, sizeof(int), sizeof(int), ds_hash_int, ds_eq_int);
 //   int k = 1, a = 10, b = 20;
 //   mm_add(&m, &k, &a);  mm_add(&m, &k, &b);
 //   mm_each(&m, &k, print_value, NULL);         // sees 20 then 10 - most recent first

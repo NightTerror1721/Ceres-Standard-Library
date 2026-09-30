@@ -1,6 +1,7 @@
 // Binary heap. See ceres/ds/pqueue.h.
 #include "ceres/ds/pqueue.h"
 #include "string.h"
+#include "heap_priv.h"
 
 void pq_init(struct pqueue* q, unsigned int elem_size, int (*cmp)(const void*, const void*))
 {
@@ -16,11 +17,6 @@ void pq_free(struct pqueue* q)
 void pq_clear(struct pqueue* q)
 {
     vector_clear(&q->items);
-}
-
-unsigned int pq_len(const struct pqueue* q)
-{
-    return q->items.len;
 }
 
 const void* pq_peek(const struct pqueue* q)
@@ -40,36 +36,14 @@ static void swap_elems(struct pqueue* q, unsigned int i, unsigned int j)
     }
 }
 
-static void sift_up(struct pqueue* q, unsigned int i)
-{
-    while (i > 0)
-    {
-        unsigned int parent = (i - 1u) / 2u;
-        if (q->cmp(vector_at(&q->items, i), vector_at(&q->items, parent)) >= 0)
-            break;
-        swap_elems(q, i, parent);
-        i = parent;
-    }
-}
+#define PQ_LESS(i, j) (q->cmp(vector_at(&q->items, (i)), vector_at(&q->items, (j))))
+#define PQ_SWAP(i, j) swap_elems(q, (i), (j))
 
-static void sift_down(struct pqueue* q, unsigned int i)
-{
-    unsigned int n = q->items.len;
-    for (;;)
-    {
-        unsigned int left = 2u * i + 1u;
-        unsigned int right = left + 1u;
-        unsigned int best = i;
-        if (left < n && q->cmp(vector_at(&q->items, left), vector_at(&q->items, best)) < 0)
-            best = left;
-        if (right < n && q->cmp(vector_at(&q->items, right), vector_at(&q->items, best)) < 0)
-            best = right;
-        if (best == i)
-            return;
-        swap_elems(q, i, best);
-        i = best;
-    }
-}
+static void sift_up(struct pqueue* q, unsigned int i)   { HEAP_SIFT_UP(i, PQ_LESS, PQ_SWAP); }
+static void sift_down(struct pqueue* q, unsigned int i) { HEAP_SIFT_DOWN(i, q->items.len, PQ_LESS, PQ_SWAP); }
+
+#undef PQ_LESS
+#undef PQ_SWAP
 
 int pq_push(struct pqueue* q, const void* item)
 {

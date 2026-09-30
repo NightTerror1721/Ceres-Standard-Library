@@ -1,54 +1,29 @@
-// Byte FIFO with one writer per index. See ceres/ds/ringbuf.h.
+// Byte FIFO with one writer per index, over ceres/ds/cqueue.h (a queue of one-byte elements). See ringbuf.h.
 #include "ceres/ds/ringbuf.h"
-#include "ceres/bits.h"
 
 void ring_init(struct ringbuf* r, void* storage, unsigned int size)
 {
-    unsigned int pow2 = 1;
-    if (size > 1)
-        pow2 = 1u << bit_log2(size);                    // the largest power of two that fits
-    r->buf = (unsigned char*)storage;
-    r->mask = pow2 - 1u;
-    r->head = 0;
-    r->tail = 0;
+    cq_init(&r->q, storage, 1u, size);
 }
 
-unsigned int ring_count(const struct ringbuf* r)
-{
-    return r->head - r->tail;                           // wraps correctly: both run freely
-}
-
-unsigned int ring_space(const struct ringbuf* r)
-{
-    return r->mask + 1u - ring_count(r);
-}
+unsigned int ring_count(const struct ringbuf* r) { return cq_count(&r->q); }
+unsigned int ring_space(const struct ringbuf* r) { return cq_space(&r->q); }
 
 int ring_put(struct ringbuf* r, unsigned char b)
 {
-    unsigned int head = r->head;
-    if (head - r->tail > r->mask)                       // size bytes waiting: full
-        return -1;
-    r->buf[head & r->mask] = b;
-    r->head = head + 1u;                                // published only after the byte is in place
-    return 0;
+    return cq_put(&r->q, &b);
 }
 
 int ring_get(struct ringbuf* r)
 {
-    unsigned int tail = r->tail;
-    if (r->head == tail)
-        return -1;
-    unsigned char b = r->buf[tail & r->mask];
-    r->tail = tail + 1u;
-    return b;
+    unsigned char b;
+    return cq_get(&r->q, &b) == 0 ? (int)b : -1;
 }
 
 int ring_peek(const struct ringbuf* r)
 {
-    unsigned int tail = r->tail;
-    if (r->head == tail)
-        return -1;
-    return r->buf[tail & r->mask];
+    unsigned char b;
+    return cq_peek(&r->q, &b) == 0 ? (int)b : -1;
 }
 
 unsigned int ring_write(struct ringbuf* r, const void* data, unsigned int n)
@@ -76,5 +51,5 @@ unsigned int ring_read(struct ringbuf* r, void* out, unsigned int n)
 
 void ring_clear(struct ringbuf* r)
 {
-    r->tail = r->head;
+    cq_clear(&r->q);
 }

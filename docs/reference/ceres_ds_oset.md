@@ -3,7 +3,7 @@
 An ordered set of copies - ceres/ds/omap.h with no value, the tree-backed counterpart to ceres/ds/hset.h and ceres/ds/flatset.h.
 
 ```c
-struct oset s;  oset_init(&s, sizeof(int), cmp_int);
+struct oset s;  oset_init(&s, sizeof(int), ds_cmp_int);
 int k = 3;  oset_add(&s, &k);
 if (oset_has(&s, &k)) { ... }
 for (const void* k = oset_first(&s); k != NULL; k = oset_next(&s, k)) ...   // smallest first

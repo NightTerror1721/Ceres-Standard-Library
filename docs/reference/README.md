@@ -59,7 +59,7 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/ds/flatset.h>`](ceres_ds_flatset.md) | A set kept as a sorted vector of keys, searched by bisection - ceres/ds/flatmap.h with no value, for the same reason ceres/ds/hset.h exists next to... |
 | [`<ceres/ds/generic.h>`](ceres_ds_generic.md) | _Generic sugar over ten of the eighteen collections (hset, gmap, multimap, lru, rbtree, skiplist, omap, flatmap/flatset, iheap) that all take a hash/eq or a... |
 | [`<ceres/ds/gmap.h>`](ceres_ds_gmap.md) | A hash map from a key of any fixed size to a value of any fixed size - ceres/ds/hashmap.h widened past "string to pointer". |
-| [`<ceres/ds/hashmap.h>`](ceres_ds_hashmap.md) | A hash map from strings to pointers: open addressing with linear probing, growing before it gets crowded. |
+| [`<ceres/ds/hashmap.h>`](ceres_ds_hashmap.md) | A hash map from strings to pointers: ceres/ds/gmap.h with the string key baked in. |
 | [`<ceres/ds/hset.h>`](ceres_ds_hset.md) | A set of keys of any fixed size - ceres/ds/gmap.h with no value, the hash-table counterpart to ceres/ds/flatset.h. |
 | [`<ceres/ds/iheap.h>`](ceres_ds_iheap.md) | A binary heap like ceres/ds/pqueue.h, plus what pqueue.h cannot do: lower an element's priority after it is already inside, or take a specific element out... |
 | [`<ceres/ds/list.h>`](ceres_ds_list.md) | A doubly linked list whose node lives INSIDE the object it links: no allocation, and an object can sit on several lists at once by carrying several nodes. |

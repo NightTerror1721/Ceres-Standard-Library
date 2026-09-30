@@ -3,7 +3,7 @@
 An ordered map of copies, keyed and valued by anything of a fixed size: the convenience layer over ceres/ds/rbtree.h, the way ceres/ds/pqueue.h is the convenience layer over vector.h for a heap - no need to declare a struct with an rb_node embedded in it just to hold one int key.
 
 ```c
-struct omap m;  omap_init(&m, sizeof(int), sizeof(int), cmp_int);
+struct omap m;  omap_init(&m, sizeof(int), sizeof(int), ds_cmp_int);
 int k = 3, v = 30;  omap_set(&m, &k, &v);
 int* found = (int*)omap_get(&m, &k);
 omap_free(&m);

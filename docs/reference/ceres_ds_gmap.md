@@ -3,7 +3,7 @@
 A hash map from a key of any fixed size to a value of any fixed size - ceres/ds/hashmap.h widened past "string to pointer". Open addressing with linear probing, the same shape hashmap.c already uses (a tombstone for a removed slot, so a probe chain is never cut short), generalized: a slot's "used" state is a byte of its own instead of a magic key pointer, because the key here is bytes embedded in the table, not a pointer to something allocated separately. Both the key and the value are copied in and out; the map never follows or frees anything the caller gave it a pointer to. hashmap.h stays the right choice when the key already is a string - one function pointer fewer to carry around per probe.
 
 ```c
-struct gmap m;  gmap_init(&m, sizeof(int), sizeof(struct asset), 0, hash_int, eq_int);
+struct gmap m;  gmap_init(&m, sizeof(int), sizeof(struct asset), 0, ds_hash_int, ds_eq_int);
 int k = 3;  struct asset a = { ... };
 gmap_set(&m, &k, &a);
 struct asset* found = (struct asset*)gmap_get(&m, &k);

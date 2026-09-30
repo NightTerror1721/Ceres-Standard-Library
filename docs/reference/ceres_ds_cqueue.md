@@ -18,6 +18,7 @@ struct cqueue
 void cq_init(struct cqueue* q, void* storage, unsigned int elem_size, unsigned int count);
 int  cq_put(struct cqueue* q, const void* item);            // 0 ok, -1 when full (the item is not stored)
 int  cq_get(struct cqueue* q, void* out);                   // 0 ok, -1 when empty (*out untouched)
+int  cq_peek(const struct cqueue* q, void* out);            // as cq_get, without taking the element
 unsigned int cq_count(const struct cqueue* q);               // elements waiting
 unsigned int cq_space(const struct cqueue* q);                // elements that still fit
 void cq_clear(struct cqueue* q);                             // consumer side: drops what is waiting

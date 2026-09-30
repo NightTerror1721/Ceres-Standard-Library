@@ -21,4 +21,5 @@ void  pq_clear(struct pqueue* q);                       // empties it, keeps the
 int   pq_push(struct pqueue* q, const void* item);      // 0 ok, -1 when out of memory
 int   pq_pop(struct pqueue* q, void* out);              // copies the front element to *out (which may be NULL) and removes it; 0 ok, -1 when empty
 const void* pq_peek(const struct pqueue* q);            // the front element, or NULL when empty
-unsigned int pq_len(const struct pqueue* q);
+
+static inline unsigned int pq_len(const struct pqueue* q) { return q->items.len; }

@@ -394,7 +394,7 @@ static void maps(void)
 
     TEST_SECTION("map: basics");
     CHECK_EQ(hashmap_init(&m, 0), 0);
-    CHECK_EQ((int)m.cap, 8);
+    CHECK_EQ((int)m.m.cap, 8);
     CHECK_EQ((int)hashmap_len(&m), 0);
     CHECK(hashmap_get(&m, "nothing") == NULL);
     CHECK_EQ(hashmap_has(&m, "nothing"), 0);
@@ -435,7 +435,7 @@ static void maps(void)
     CHECK_EQ(hashmap_set(&m, "two", (void*)22), 0);      // and the key can come back
     CHECK_EQ((int)hashmap_get(&m, "two"), 22);
     hashmap_free(&m);
-    CHECK(m.slots == NULL);
+    CHECK(m.m.states == NULL);
     CHECK_EQ((int)hashmap_len(&m), 0);
     hashmap_free(&m);                                   // twice is fine
 
@@ -447,8 +447,8 @@ static void maps(void)
         CHECK_EQ(hashmap_set(&m, key, (void*)(i + 1)), 0);
     }
     CHECK_EQ((int)hashmap_len(&m), 1000);
-    CHECK(m.cap >= 1024);                               // never more than 70% full
-    CHECK((m.len * 10) <= m.cap * 7);
+    CHECK(m.m.cap >= 1024);                             // never more than 70% full
+    CHECK((m.m.len * 10) <= m.m.cap * 7);
     int found = 1;
     for (int i = 0; i < 1000; i++)
     {
@@ -498,7 +498,7 @@ static void maps(void)
         }
     }
     CHECK_EQ((int)hashmap_len(&m), 500);
-    CHECK(m.used * 10 <= m.cap * 8);                    // tombstones did not fill the table
+    CHECK(m.m.used * 10 <= m.m.cap * 8);                // tombstones did not fill the table
     CHECK_EQ((int)hashmap_get(&m, "key999"), 1000);
 
     TEST_SECTION("map: clear");

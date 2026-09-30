@@ -8,7 +8,7 @@
 // omap.h (copies), a skl_node holds POINTERS to the caller's own key and value - it neither copies
 // them nor demands a field inside them, at the cost of one allocation per entry.
 //
-//   struct skiplist s;  skl_init(&s, cmp_cstr);
+//   struct skiplist s;  skl_init(&s, ds_cmp_cstr);
 //   char* k = "b";  int v = 2;
 //   skl_insert(&s, k, &v);
 //   int* found = (int*)skl_find(&s, "b");

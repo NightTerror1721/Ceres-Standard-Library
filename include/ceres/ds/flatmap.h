@@ -9,7 +9,7 @@
 // O(n) here (inserting in place shifts everything after it) against the tree's O(log n) - the right
 // choice when writes are rare and reads or full-table walks are not.
 //
-//   struct flatmap m;  fmap_init(&m, sizeof(int), sizeof(int), int_cmp);
+//   struct flatmap m;  fmap_init(&m, sizeof(int), sizeof(int), ds_cmp_int);
 //   int k = 3, v = 30;  fmap_set(&m, &k, &v);
 //   int* found = fmap_get(&m, &k);
 //   fmap_free(&m);

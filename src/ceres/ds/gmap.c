@@ -178,7 +178,8 @@ int gmap_remove(struct gmap* m, const void* key)
 
 void gmap_clear(struct gmap* m)
 {
-    memset(m->states, SLOT_EMPTY, m->cap);
+    if (m->states != NULL)
+        memset(m->states, SLOT_EMPTY, m->cap);
     m->len = 0;
     m->used = 0;
 }

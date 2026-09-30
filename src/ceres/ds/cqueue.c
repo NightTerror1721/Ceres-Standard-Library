@@ -46,6 +46,16 @@ int cq_get(struct cqueue* q, void* out)
     return 0;
 }
 
+int cq_peek(const struct cqueue* q, void* out)
+{
+    unsigned int tail = q->tail;
+    if (q->head == tail)
+        return -1;
+    if (out != NULL)
+        memcpy(out, q->buf + (size_t)(tail & q->mask) * q->elem, q->elem);
+    return 0;
+}
+
 void cq_clear(struct cqueue* q)
 {
     q->tail = q->head;

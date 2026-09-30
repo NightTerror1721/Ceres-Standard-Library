@@ -3,7 +3,7 @@
 A map from one key to any number of values - an event's list of listeners, a name's list of adjacent nodes - which neither ceres/ds/hashmap.h nor ceres/ds/gmap.h can hold (one key, one value each). Each key in the underlying gmap points at the head of a chain of value nodes instead of at a value directly; a node is reserved with plain malloc/free rather than ceres/pool.h, because pool.h needs its total block count known up front and a chain's length here is not - the node-with-pointer style (see the collections research) with an ordinary allocator behind it instead of a fixed arena.
 
 ```c
-struct multimap m;  mm_init(&m, sizeof(int), sizeof(int), hash_int, eq_int);
+struct multimap m;  mm_init(&m, sizeof(int), sizeof(int), ds_hash_int, ds_eq_int);
 int k = 1, a = 10, b = 20;
 mm_add(&m, &k, &a);  mm_add(&m, &k, &b);
 mm_each(&m, &k, print_value, NULL);         // sees 20 then 10 - most recent first
