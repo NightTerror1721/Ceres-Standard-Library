@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stddef.h"
+#include "../stddef.h"
 
 // Dynamic memory. The heap is the ground between the end of the image (__heap_start) and the
 // stack; it grows upward on demand and stops `heap_set_stack_reserve()` bytes short of sp.

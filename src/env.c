@@ -15,7 +15,7 @@
 
 static unsigned int read_register(unsigned int address)
 {
-    unsigned int value = *(volatile unsigned int*)address;
+    unsigned int value = mmio_r32(address);
     return value == 0xFFFFFFFFu ? 0u : value;            // a machine without the registers
 }
 

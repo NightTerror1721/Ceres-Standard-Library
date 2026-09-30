@@ -37,10 +37,8 @@ Ceres reaches its devices through memory-mapped I/O at the top of the address sp
 #define irq_disable()       __builtin_cli()
 #define wait_irq()          __builtin_halt()
 
-// Kept for existing code (terminal.c and friends); new code should use mmio_*.
-#define read_port(port)            mmio_r32(port)
-#define write_port(port, value)     mmio_w32(port, value)
-
+// The three that stop the machine never return. On a machine without the system-control device they halt with
+// interrupts masked instead, which is as stopped as a program can make itself.
 void sys_exit(void) __attribute__((__noreturn__));      // halt the VM with status 0 (write 1 to the system-control device)
 void sys_exit_status(int status) __attribute__((__noreturn__));   // halt it; the low eight bits of status are the exit status of `ceres run`
 void sys_reset(void) __attribute__((__noreturn__));     // start the program again (write 2 to the system-control device)

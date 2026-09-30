@@ -5,8 +5,8 @@
 #include "ceres/timer.h"
 #include "string.h"
 
-static unsigned char buf[PERIPH_SECTOR_SIZE];
-static unsigned char pattern[PERIPH_SECTOR_SIZE];
+static unsigned char buf[BLOCKDEV_SECTOR];
+static unsigned char pattern[BLOCKDEV_SECTOR];
 
 int main(void)
 {
@@ -43,25 +43,25 @@ int main(void)
     CHECK_EQ((int)periph_id(3), 0);
 
     TEST_SECTION("a sector written to a stick comes back the same");
-    for (int i = 0; i < PERIPH_SECTOR_SIZE; i++)
+    for (int i = 0; i < BLOCKDEV_SECTOR; i++)
         pattern[i] = (unsigned char)(i * 7 + 3);
     CHECK_EQ(periph_write(0, 5, pattern), 0);
     memset(buf, 0, sizeof buf);
     CHECK_EQ(periph_read(0, 5, buf), 0);
-    CHECK_EQ(memcmp(buf, pattern, PERIPH_SECTOR_SIZE), 0);
+    CHECK_EQ(memcmp(buf, pattern, BLOCKDEV_SECTOR), 0);
     CHECK_EQ(periph_read(0, 4, buf), 0);                    // the neighbour was left alone
     CHECK_EQ(buf[0], 0);
     CHECK_EQ(periph_read(1, 5, buf), 0);                    // and so is the other stick
     CHECK_EQ(buf[0], 0);
 
     TEST_SECTION("several sectors at once");
-    unsigned char two[2 * PERIPH_SECTOR_SIZE];
+    unsigned char two[2 * BLOCKDEV_SECTOR];
     memset(two, 0xAB, sizeof two);
     CHECK_EQ(periph_write_n(1, 10, two, 2), 0);
     memset(two, 0, sizeof two);
     CHECK_EQ(periph_read_n(1, 10, two, 2), 0);
     CHECK_EQ(two[0], 0xAB);
-    CHECK_EQ(two[2 * PERIPH_SECTOR_SIZE - 1], 0xAB);
+    CHECK_EQ(two[2 * BLOCKDEV_SECTOR - 1], 0xAB);
     CHECK_EQ(periph_write_n(1, 63, two, 2), -1);            // the second one would be past the end
 
     TEST_SECTION("the cartridge can be read and never written");

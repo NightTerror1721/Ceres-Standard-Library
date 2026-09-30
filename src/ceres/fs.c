@@ -5,13 +5,13 @@
 // cluster. A version 1 volume is the flat directory of old; a version 2 volume walks paths through directories
 // that are cluster chains of 64-byte entries.
 #include "ceres/fs.h"
+#include "ceres/endian.h"
 #include "ceres/timer.h"
 #include "ceres/periph.h"
 #include "errno.h"
 #include "string.h"
 #include "stdlib.h"
 
-#define SECTOR 512
 #define FAT_FREE 0
 #define FAT_END 0xFFFFu
 #define MAX_CLUSTERS 65534u
@@ -102,19 +102,6 @@ static int done(struct volume* v, int result)
     return result;
 }
 
-static unsigned int get32(const unsigned char* p)
-{
-    return (unsigned int)p[0] | ((unsigned int)p[1] << 8) | ((unsigned int)p[2] << 16) | ((unsigned int)p[3] << 24);
-}
-
-static void put32(unsigned char* p, unsigned int x)
-{
-    p[0] = (unsigned char)x;
-    p[1] = (unsigned char)(x >> 8);
-    p[2] = (unsigned char)(x >> 16);
-    p[3] = (unsigned char)(x >> 24);
-}
-
 static unsigned int now(void)
 {
     return timer_clock();
@@ -140,17 +127,17 @@ static void fat_load(struct volume* v, unsigned int sec)
 
 static unsigned int fat_get(struct volume* v, unsigned int c)
 {
-    fat_load(v, c * 2u / SECTOR);
+    fat_load(v, c * 2u / BLOCKDEV_SECTOR);
     const unsigned char* b = (const unsigned char*)v->fat_buf;
-    unsigned int at = c * 2u % SECTOR;
+    unsigned int at = c * 2u % BLOCKDEV_SECTOR;
     return (unsigned int)b[at] | ((unsigned int)b[at + 1] << 8);
 }
 
 static void fat_set(struct volume* v, unsigned int c, unsigned int value)
 {
-    fat_load(v, c * 2u / SECTOR);
+    fat_load(v, c * 2u / BLOCKDEV_SECTOR);
     unsigned char* b = (unsigned char*)v->fat_buf;
-    unsigned int at = c * 2u % SECTOR;
+    unsigned int at = c * 2u % BLOCKDEV_SECTOR;
     b[at] = (unsigned char)(value & 255u);
     b[at + 1] = (unsigned char)(value >> 8);
     v->fat_dirty = 1;
@@ -200,7 +187,7 @@ static unsigned int cluster_sector(struct volume* v, unsigned int c)
 // ---- directories ----
 
 static unsigned int entry_size(struct volume* v) { return v->version == 1 ? 32u : 64u; }
-static unsigned int per_sector(struct volume* v) { return SECTOR / entry_size(v); }
+static unsigned int per_sector(struct volume* v) { return BLOCKDEV_SECTOR / entry_size(v); }
 
 static void dir_flush(struct volume* v)
 {
@@ -271,16 +258,16 @@ static void entry_decode(struct volume* v, const unsigned char* raw, struct entr
         e->name[23] = 0;
         e->first = (unsigned int)raw[24] | ((unsigned int)raw[25] << 8);
         e->flags = ((unsigned int)raw[26] | ((unsigned int)raw[27] << 8)) & E_USED;
-        e->size = get32(raw + 28);
+        e->size = le32(raw + 28);
     }
     else
     {
         memcpy(e->name, raw, 48);
         e->name[47] = 0;
-        e->first = get32(raw + 48);
-        e->size = get32(raw + 52);
-        e->mtime = get32(raw + 56);
-        e->flags = get32(raw + 60);
+        e->first = le32(raw + 48);
+        e->size = le32(raw + 52);
+        e->mtime = le32(raw + 56);
+        e->flags = le32(raw + 60);
     }
 }
 
@@ -295,17 +282,17 @@ static void entry_encode(struct volume* v, const struct entry* e, unsigned char*
         raw[25] = (unsigned char)(e->first >> 8);
         raw[26] = (unsigned char)(e->flags & E_USED);
         raw[27] = 0;
-        put32(raw + 28, e->size);
+        put_le32(raw + 28, e->size);
     }
     else
     {
         memset(raw, 0, 64);
         memcpy(raw, e->name, 48);
         raw[47] = 0;
-        put32(raw + 48, e->first);
-        put32(raw + 52, e->size);
-        put32(raw + 56, e->mtime);
-        put32(raw + 60, e->flags);
+        put_le32(raw + 48, e->first);
+        put_le32(raw + 52, e->size);
+        put_le32(raw + 56, e->mtime);
+        put_le32(raw + 60, e->flags);
     }
 }
 
@@ -617,7 +604,7 @@ static int mount_into(struct volume* v, const char* point, const struct blockdev
     unsigned int version = sb[0] == MAGIC_V1 ? 1u : sb[0] == MAGIC_V2 ? 2u : 0u;
     if (version == 0 || sb[1] != version || sb[2] > total || sb[3] != 1u ||
         sb[4] == 0 || sb[6] == 0 || sb[5] != sb[3] + sb[4] || sb[7] != sb[5] + sb[6] ||
-        sb[8] == 0 || sb[8] > MAX_CLUSTERS || sb[7] + sb[8] > sb[2] || (sb[8] + 1u) * 2u > sb[4] * SECTOR)
+        sb[8] == 0 || sb[8] > MAX_CLUSTERS || sb[7] + sb[8] > sb[2] || (sb[8] + 1u) * 2u > sb[4] * BLOCKDEV_SECTOR)
     {
         errno = ENODEV;
         return -1;
@@ -748,7 +735,7 @@ int fs_format_device(struct blockdev* dev, int version)
     {
         n = total - 1u - fats - dirs;
         if (n > MAX_CLUSTERS) n = MAX_CLUSTERS;
-        unsigned int need = ((n + 1u) * 2u + SECTOR - 1u) / SECTOR;
+        unsigned int need = ((n + 1u) * 2u + BLOCKDEV_SECTOR - 1u) / BLOCKDEV_SECTOR;
         if (need <= fats)
             break;
         fats = need;
@@ -816,9 +803,9 @@ void fs_sync(void)
 static int space_of(struct volume* v, unsigned int* total, unsigned int* free_bytes)
 {
     if (total != 0)
-        *total = v != 0 ? v->clusters * SECTOR : 0u;
+        *total = v != 0 ? v->clusters * BLOCKDEV_SECTOR : 0u;
     if (free_bytes != 0)
-        *free_bytes = v != 0 ? count_free(v) * SECTOR : 0u;
+        *free_bytes = v != 0 ? count_free(v) * BLOCKDEV_SECTOR : 0u;
     return v != 0 ? 0 : -1;
 }
 
@@ -832,12 +819,12 @@ int fs_space(const char* point, unsigned int* total, unsigned int* free_bytes)
 
 unsigned int fs_total_bytes(void)
 {
-    return volumes[0].mounted ? volumes[0].clusters * SECTOR : 0u;
+    return volumes[0].mounted ? volumes[0].clusters * BLOCKDEV_SECTOR : 0u;
 }
 
 unsigned int fs_free_bytes(void)
 {
-    return volumes[0].mounted ? count_free(&volumes[0]) * SECTOR : 0u;
+    return volumes[0].mounted ? count_free(&volumes[0]) * BLOCKDEV_SECTOR : 0u;
 }
 
 // ---- open files ----
@@ -1078,12 +1065,12 @@ int fs_read(int fd, void* buf, unsigned int n)
         n = 0;
     while (n > 0)
     {
-        unsigned int index = f->pos / SECTOR, off = f->pos % SECTOR;
+        unsigned int index = f->pos / BLOCKDEV_SECTOR, off = f->pos % BLOCKDEV_SECTOR;
         unsigned int c = locate(f, index, 0);
         if (c == 0)
             break;
         buf_load(f, c, 0);
-        unsigned int chunk = SECTOR - off;
+        unsigned int chunk = BLOCKDEV_SECTOR - off;
         if (chunk > n)
             chunk = n;
         memcpy(out + done_bytes, (const unsigned char*)f->buf + off, chunk);
@@ -1110,12 +1097,12 @@ int fs_write(int fd, const void* buf, unsigned int n)
     unsigned int written = 0;
     while (n > 0)
     {
-        unsigned int index = f->pos / SECTOR, off = f->pos % SECTOR;
+        unsigned int index = f->pos / BLOCKDEV_SECTOR, off = f->pos % BLOCKDEV_SECTOR;
         unsigned int c = locate(f, index, 1);
         if (c == 0)
             break;                                       // no room (errno says so) or a broken chain
-        buf_load(f, c, index * SECTOR >= f->size);        // a cluster past the old end has no data worth reading
-        unsigned int chunk = SECTOR - off;
+        buf_load(f, c, index * BLOCKDEV_SECTOR >= f->size);        // a cluster past the old end has no data worth reading
+        unsigned int chunk = BLOCKDEV_SECTOR - off;
         if (chunk > n)
             chunk = n;
         memcpy((unsigned char*)f->buf + off, in + written, chunk);
@@ -1535,13 +1522,13 @@ static void check_dir(struct checker* k, unsigned int dir, int depth)
         else
         {
             k->report->files++;
-            unsigned int need = (e.size + SECTOR - 1u) / SECTOR;
+            unsigned int need = (e.size + BLOCKDEV_SECTOR - 1u) / BLOCKDEV_SECTOR;
             if (count < need)
             {
                 k->report->bad_sizes++;
                 if (k->repair)
                 {
-                    e.size = count * SECTOR;
+                    e.size = count * BLOCKDEV_SECTOR;
                     changed = 1;
                 }
             }

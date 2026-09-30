@@ -17,7 +17,7 @@ static int transfer(unsigned int sector, void* buf, unsigned int command)
     if (buf == 0 || select_sector(sector) != 0)
         return -1;
     mmio_w32(DISK_BLOCK_ADDR, (unsigned int)buf);
-    mmio_w32(DISK_BLOCK_LEN, DISK_SECTOR_SIZE);
+    mmio_w32(DISK_BLOCK_LEN, BLOCKDEV_SECTOR);
     mmio_w32(DISK_BLOCK_CMD, command);
     return (mmio_r32(DISK_STATUS_REG) & DISK_ERROR) ? -1 : 0;
 }
@@ -37,7 +37,7 @@ int disk_read_n(unsigned int sector, void* buf, unsigned int count)
     unsigned char* p = (unsigned char*)buf;
     for (unsigned int i = 0; i < count; i++)
     {
-        if (disk_read(sector + i, p + i * DISK_SECTOR_SIZE) != 0)
+        if (disk_read(sector + i, p + i * BLOCKDEV_SECTOR) != 0)
             return -1;
     }
     return 0;
@@ -48,7 +48,7 @@ int disk_write_n(unsigned int sector, const void* buf, unsigned int count)
     const unsigned char* p = (const unsigned char*)buf;
     for (unsigned int i = 0; i < count; i++)
     {
-        if (disk_write(sector + i, p + i * DISK_SECTOR_SIZE) != 0)
+        if (disk_write(sector + i, p + i * BLOCKDEV_SECTOR) != 0)
             return -1;
     }
     return 0;

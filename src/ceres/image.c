@@ -1,18 +1,12 @@
 // QOI and BMP images. See ceres/image.h.
 #include "ceres/image.h"
+#include "ceres/endian.h"
 #include "stdlib.h"
 #include "string.h"
 #include "stdio.h"
 #include "errno.h"
 
 typedef unsigned char u8;
-
-static unsigned int le16(const u8* p) { return (unsigned int)p[0] | ((unsigned int)p[1] << 8); }
-static unsigned int le32(const u8* p) { return le16(p) | (le16(p + 2) << 16); }
-static unsigned int be32(const u8* p)
-{
-    return ((unsigned int)p[0] << 24) | ((unsigned int)p[1] << 16) | ((unsigned int)p[2] << 8) | (unsigned int)p[3];
-}
 
 static unsigned int pixel(unsigned int r, unsigned int g, unsigned int b, unsigned int a, unsigned int transparent)
 {

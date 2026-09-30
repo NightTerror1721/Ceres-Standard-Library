@@ -1,6 +1,7 @@
 #pragma once
 
-#include "stddef.h"
+#include "../ceres.h"
+#include "../stddef.h"
 
 // The machine as a program sees it: how to stop it, and where its memory is.
 
@@ -38,11 +39,9 @@
 #define SYS_FEATURE_DIV_FAULT 0x01                     // a division by zero raises interrupt 4 instead of only setting Trap
 #define SYS_FEATURE_IEEE_DIVIDE 0x02                   // a float division by zero gives +-inf or NaN, as IEEE 754 (CeresASM ad9c95a)
 
-// The three that stop the machine never return. On a machine without the system-control device they
-// halt with interrupts masked instead, which is as stopped as a program can make itself.
-void sys_exit(void) __attribute__((__noreturn__));                // shut the VM down with status 0
-void sys_exit_status(int status) __attribute__((__noreturn__));   // shut it down; the low eight bits of `status` become the exit status of `ceres run`
-void sys_reset(void) __attribute__((__noreturn__));               // start the program again from its image (writes 2)
+// The three that stop the machine never return: sys_exit, sys_exit_status and sys_reset (declared in ceres.h,
+// included above). On a machine without the system-control device they halt with interrupts masked instead,
+// which is as stopped as a program can make itself.
 unsigned int sys_memory_size(void);  // how many bytes of RAM the machine has
 unsigned int sys_vram_size(void);    // how many bytes of VRAM it has (at 0xA0000000)
 unsigned int sys_profile(void);      // which machine it is: SYS_PROFILE_*
@@ -65,8 +64,10 @@ int    sys_argc(void);
 char** sys_argv(void);
 char** sys_envp(void);
 
-unsigned int sys_sp(void);           // the stack pointer, as seen by this call (asm/sys.casm) ...
-#define sys_sp() ((unsigned int)__builtin_stack_pointer())   // ... read in place, with no call
+// The stack pointer, as seen by this call: read in place with the builtin, with no call. asm/sys.casm's sys_sp
+// remains for whoever takes its address, as the irq module does with irq_save.
+unsigned int sys_sp(void);
+#define sys_sp() ((unsigned int)__builtin_stack_pointer())
 unsigned int sys_heap_start(void);   // the linker's __heap_start: first free byte above the image
 unsigned int sys_stack_free(void);   // bytes between the top of the heap and sp
 

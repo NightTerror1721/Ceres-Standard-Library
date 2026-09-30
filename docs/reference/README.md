@@ -48,7 +48,7 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/color.h>`](ceres_color.md) | Colours are 0x00RRGGBB in an unsigned int, the format of the bitmap plane (ceres/fb.h). |
 | [`<ceres/config.h>`](ceres_config.md) | Compile-time configuration. |
 | [`<ceres/debug.h>`](ceres_debug.md) | Logging and inspection for programs under development. |
-| [`<ceres/disk.h>`](ceres_disk.md) | Disk (0xFF300000): sectors of 512 bytes. |
+| [`<ceres/disk.h>`](ceres_disk.md) | Disk (0xFF300000): sectors of BLOCKDEV_SECTOR bytes. |
 | [`<ceres/dma.h>`](ceres_dma.md) | DMA controller (0xFF020000): copies memory to memory without the program moving it word by word. |
 | [`<ceres/ds/bitset.h>`](ceres_ds_bitset.md) | A set of small integers 0 .. nbits-1 as one bit each, over words the caller provides: occupancy maps, tile flags, "which of these are used". |
 | [`<ceres/ds/bloom.h>`](ceres_ds_bloom.md) | A Bloom filter: approximate set membership in a fraction of a real set's memory, at the cost of occasional false positives (never false negatives) - "have I... |
@@ -77,6 +77,7 @@ Generated from the headers by `node tools/gendocs.js` - one page each, their own
 | [`<ceres/ds/strbuf.h>`](ceres_ds_strbuf.md) | A string that grows as text is appended, so a message can be built piece by piece without strcat's repeated scans or a buffer size guessed in advance. |
 | [`<ceres/ds/trie.h>`](ceres_ds_trie.md) | A trie over ASCII strings: "every word starting with this prefix" is a query neither ceres/ds/hashmap.h nor ceres/ds/omap.h answers well - the tree would... |
 | [`<ceres/ds/vector.h>`](ceres_ds_vector.md) | A growable array of fixed-size elements. |
+| [`<ceres/endian.h>`](ceres_endian.md) | Little- and big-endian loads and stores over a byte buffer, so the on-disk formats (CeresFS, resource packs, saved games, LZ4 frames, QOI and BMP) read the... |
 | [`<ceres/fb.h>`](ceres_fb.md) | The GPU's bitmap plane (level V1, CeresASM plan/v2 SPEC 7): a picture in video memory, behind the text plane, that the screen shows at every vertical blank. |
 | [`<ceres/fixed.h>`](ceres_fixed.md) | 16.16 fixed-point arithmetic, for games that want exact, repeatable numbers without the float unit. |
 | [`<ceres/font.h>`](ceres_font.md) | An 8x8 bitmap font for the pixel surfaces: printable ASCII (32..126) and Latin-1 (0xA0..0xFF, the code points U+00A0..U+00FF: accented letters, the Spanish... |

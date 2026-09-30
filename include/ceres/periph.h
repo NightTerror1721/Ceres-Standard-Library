@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ceres.h"
+#include "blockdev.h"
 
 // Peripheral ports (0xFF320000): media that a person plugs in while the program runs - a memory stick, a game
 // cartridge. See CeresASM docs/07-IO-Devices-and-Ports.md. The disk (ceres/disk.h) is the machine's own internal
@@ -36,7 +37,6 @@
 #define PERIPH_BLOCK_CMD    (PERIPH_BASE + 0xF8)   // 1 reads the selected sector into RAM, 2 writes it
 
 #define PERIPH_PORTS        4
-#define PERIPH_SECTOR_SIZE  512
 
 // what a port holds
 #define PERIPH_NONE         0

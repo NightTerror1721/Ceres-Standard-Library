@@ -12,12 +12,12 @@
 // Is `needle` in any sector of the disk?
 static int on_disk(const char* needle)
 {
-    static char sector[DISK_SECTOR_SIZE];
+    static char sector[BLOCKDEV_SECTOR];
     size_t n = strlen(needle);
     for (unsigned int s = 0; s < disk_sectors(); s++)
     {
         disk_read(s, sector);
-        for (size_t i = 0; i + n <= DISK_SECTOR_SIZE; i++)
+        for (size_t i = 0; i + n <= BLOCKDEV_SECTOR; i++)
             if (memcmp(sector + i, needle, n) == 0)
                 return 1;
     }

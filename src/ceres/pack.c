@@ -2,6 +2,7 @@
 #include "ceres/pack.h"
 #include "ceres/lz.h"
 #include "ceres/hash.h"
+#include "ceres/endian.h"
 #include "stdlib.h"
 #include "string.h"
 #include "errno.h"
@@ -16,9 +17,6 @@ static int fail(int e)
     errno = e;
     return -1;
 }
-
-static unsigned int le16(const unsigned char* p) { return (unsigned int)p[0] | ((unsigned int)p[1] << 8); }
-static unsigned int le32(const unsigned char* p) { return le16(p) | (le16(p + 2) << 16); }
 
 // n bytes at `offset` of the pack into dst: 0, or -1.
 static int fetch(struct pack* p, unsigned int offset, void* dst, size_t n)

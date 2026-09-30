@@ -57,7 +57,7 @@ static int transfer(int port, unsigned int sector, void* buf, unsigned int comma
         return -1;
     mmio_w32(PERIPH_SECTOR_REG, sector);
     mmio_w32(PERIPH_BLOCK_ADDR, (unsigned int)buf);
-    mmio_w32(PERIPH_BLOCK_LEN, PERIPH_SECTOR_SIZE);
+    mmio_w32(PERIPH_BLOCK_LEN, BLOCKDEV_SECTOR);
     mmio_w32(PERIPH_BLOCK_CMD, command);
     return (mmio_r32(PERIPH_STATUS_REG) & 4u) ? -1 : 0;
 }
@@ -77,7 +77,7 @@ int periph_read_n(int port, unsigned int sector, void* buf, unsigned int count)
     unsigned char* p = (unsigned char*)buf;
     for (unsigned int i = 0; i < count; i++)
     {
-        if (periph_read(port, sector + i, p + i * PERIPH_SECTOR_SIZE) != 0)
+        if (periph_read(port, sector + i, p + i * BLOCKDEV_SECTOR) != 0)
             return -1;
     }
     return 0;
@@ -88,7 +88,7 @@ int periph_write_n(int port, unsigned int sector, const void* buf, unsigned int 
     const unsigned char* p = (const unsigned char*)buf;
     for (unsigned int i = 0; i < count; i++)
     {
-        if (periph_write(port, sector + i, p + i * PERIPH_SECTOR_SIZE) != 0)
+        if (periph_write(port, sector + i, p + i * BLOCKDEV_SECTOR) != 0)
             return -1;
     }
     return 0;

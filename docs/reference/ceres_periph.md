@@ -29,7 +29,6 @@ The functions return -1 for a port that does not exist, an empty one, a sector p
 #define PERIPH_BLOCK_CMD    (PERIPH_BASE + 0xF8)   // 1 reads the selected sector into RAM, 2 writes it
 
 #define PERIPH_PORTS        4
-#define PERIPH_SECTOR_SIZE  512
 
 // what a port holds
 #define PERIPH_NONE         0

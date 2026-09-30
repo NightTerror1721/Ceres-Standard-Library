@@ -1,6 +1,6 @@
 # `<ceres/disk.h>`
 
-Disk (0xFF300000): sectors of 512 bytes. See CeresASM docs/07-IO-Devices-and-Ports.md.
+Disk (0xFF300000): sectors of BLOCKDEV_SECTOR bytes. See CeresASM docs/07-IO-Devices-and-Ports.md.
 
 One sector moves at a time. Without `--disk image.img` the disk still exists (64 sectors, 32 KiB) but lives only as long as the machine does; with it, a host file is behind it and writes are saved when the machine stops (disk_flush() saves them earlier). Selecting a sector past the end sets the ERROR bit, and every function below reports it as -1.
 
@@ -15,7 +15,6 @@ disk_sectors() reads the device's sector-count register.
 #define DISK_BLOCK_LEN  (DISK_BASE + 0xF4)
 #define DISK_BLOCK_CMD  (DISK_BASE + 0xF8)   // 1 reads the selected sector into RAM, 2 writes it
 
-#define DISK_SECTOR_SIZE 512
 #define DISK_READY       1
 #define DISK_ERROR       2
 

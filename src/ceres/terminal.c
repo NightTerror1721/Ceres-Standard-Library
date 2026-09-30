@@ -2,7 +2,7 @@
 #include "ceres/irq.h"
 #include "signal.h"
 
-#define check_status() (read_port(TERM_STATUS) & TERM_INPUT_READY)
+#define check_status() (mmio_r32(TERM_STATUS) & TERM_INPUT_READY)
 
 int term_read_ready(void)
 {
@@ -11,19 +11,19 @@ int term_read_ready(void)
 
 int term_eof(void)
 {
-    return (read_port(TERM_STATUS) & TERM_INPUT_EOF) != 0;
+    return (mmio_r32(TERM_STATUS) & TERM_INPUT_EOF) != 0;
 }
 
 int term_interrupted(void)
 {
-    return (read_port(TERM_STATUS) & TERM_INTERRUPT) != 0;
+    return (mmio_r32(TERM_STATUS) & TERM_INTERRUPT) != 0;
 }
 
 void term_check_interrupt(void)
 {
     if (term_interrupted())
     {
-        write_port(TERM_INT_ACK, 1u);
+        mmio_w32(TERM_INT_ACK, 1u);
         raise(SIGINT);
     }
 }
@@ -40,7 +40,7 @@ static int wait_for_input(enum term_read_mode_t mode)
     int ready;
     for (;;)
     {
-        unsigned int status = read_port(TERM_STATUS);
+        unsigned int status = mmio_r32(TERM_STATUS);
         if (status & TERM_INTERRUPT)
         {
             if (mode == TERM_READ_UNTIL_ISR)
@@ -75,12 +75,12 @@ static int wait_for_input(enum term_read_mode_t mode)
 
 int term_mode(void)
 {
-    return (int)read_port(TERM_MODE);
+    return (int)mmio_r32(TERM_MODE);
 }
 
 void term_set_mode(int mode)
 {
-    write_port(TERM_MODE, (unsigned int)mode);
+    mmio_w32(TERM_MODE, (unsigned int)mode);
 }
 
 int term_set_raw(int on)
@@ -91,35 +91,35 @@ int term_set_raw(int on)
 
 int term_bytes_available(void)
 {
-    return (int)read_port(TERM_AVAILABLE);
+    return (int)mmio_r32(TERM_AVAILABLE);
 }
 
-int term_cols(void) { return (int)read_port(TERM_COLS); }
-int term_rows(void) { return (int)read_port(TERM_ROWS); }
+int term_cols(void) { return (int)mmio_r32(TERM_COLS); }
+int term_rows(void) { return (int)mmio_r32(TERM_ROWS); }
 
 void term_cursor(int* x, int* y)
 {
     if (x)
-        *x = (int)read_port(TERM_CURSOR_X);
+        *x = (int)mmio_r32(TERM_CURSOR_X);
     if (y)
-        *y = (int)read_port(TERM_CURSOR_Y);
+        *y = (int)mmio_r32(TERM_CURSOR_Y);
 }
 
 void term_set_cursor(int x, int y)
 {
-    write_port(TERM_CURSOR_X, (unsigned int)(x < 0 ? 0 : x));
-    write_port(TERM_CURSOR_Y, (unsigned int)(y < 0 ? 0 : y));
+    mmio_w32(TERM_CURSOR_X, (unsigned int)(x < 0 ? 0 : x));
+    mmio_w32(TERM_CURSOR_Y, (unsigned int)(y < 0 ? 0 : y));
 }
 
 void term_show_cursor(int on)
 {
-    unsigned int control = read_port(TERM_CONTROL);
-    write_port(TERM_CONTROL, on ? (control | TERM_CONTROL_CURSOR) : (control & ~(unsigned int)TERM_CONTROL_CURSOR));
+    unsigned int control = mmio_r32(TERM_CONTROL);
+    mmio_w32(TERM_CONTROL, on ? (control | TERM_CONTROL_CURSOR) : (control & ~(unsigned int)TERM_CONTROL_CURSOR));
 }
 
 void term_write_char(int ch)
 {
-    write_port(TERM_OUT, (unsigned int)ch);
+    mmio_w32(TERM_OUT, (unsigned int)ch);
 }
 
 int term_read_char(enum term_read_mode_t mode)
@@ -135,25 +135,25 @@ int term_read_char(enum term_read_mode_t mode)
         if (!check_status())
             return -1;   // nothing available, and we must not block
     }
-    return (int)read_port(TERM_IN);
+    return (int)mmio_r32(TERM_IN);
 }
 
 void term_write(const char* restrict buf, int len)
 {
     if (!buf || len <= 0)
         return;
-    write_port(TERM_BLOCK_ADDR, (unsigned int)buf);
-    write_port(TERM_BLOCK_LEN, (unsigned int)len);
-    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_WRITE);
+    mmio_w32(TERM_BLOCK_ADDR, (unsigned int)buf);
+    mmio_w32(TERM_BLOCK_LEN, (unsigned int)len);
+    mmio_w32(TERM_BLOCK_CMD, TERM_BLOCK_CMD_WRITE);
 }
 
 void term_write_error(const char* restrict buf, int len)
 {
     if (!buf || len <= 0)
         return;
-    write_port(TERM_BLOCK_ADDR, (unsigned int)buf);
-    write_port(TERM_BLOCK_LEN, (unsigned int)len);
-    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_WRITE_ERR);
+    mmio_w32(TERM_BLOCK_ADDR, (unsigned int)buf);
+    mmio_w32(TERM_BLOCK_LEN, (unsigned int)len);
+    mmio_w32(TERM_BLOCK_CMD, TERM_BLOCK_CMD_WRITE_ERR);
 }
 
 int term_read(char* buf, int max, enum term_read_mode_t mode)
@@ -171,8 +171,8 @@ int term_read(char* buf, int max, enum term_read_mode_t mode)
 
     // Block-transfer up to `max` bytes. The device moves whatever is available
     // and reports the exact count, so a short read is observable (0 when empty).
-    write_port(TERM_BLOCK_ADDR, (unsigned int)buf);
-    write_port(TERM_BLOCK_LEN, (unsigned int)max);
-    write_port(TERM_BLOCK_CMD, TERM_BLOCK_CMD_READ);
-    return (int)read_port(TERM_BLOCK_COUNT);
+    mmio_w32(TERM_BLOCK_ADDR, (unsigned int)buf);
+    mmio_w32(TERM_BLOCK_LEN, (unsigned int)max);
+    mmio_w32(TERM_BLOCK_CMD, TERM_BLOCK_CMD_READ);
+    return (int)mmio_r32(TERM_BLOCK_COUNT);
 }

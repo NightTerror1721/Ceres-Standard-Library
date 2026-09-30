@@ -1,5 +1,6 @@
 // LZ4 blocks and frames. See ceres/lz.h.
 #include "ceres/lz.h"
+#include "ceres/endian.h"
 #include "string.h"
 #include "errno.h"
 
@@ -82,11 +83,6 @@ static int decode(const u8* ip, size_t n, u8* base, size_t pos, size_t cap)
 int lz4_decompress(const void* src, size_t n, void* dst, size_t cap)
 {
     return decode((const u8*)src, n, (u8*)dst, 0, cap);
-}
-
-static unsigned int le32(const u8* p)
-{
-    return (unsigned int)p[0] | ((unsigned int)p[1] << 8) | ((unsigned int)p[2] << 16) | ((unsigned int)p[3] << 24);
 }
 
 #define FRAME_MAGIC      0x184D2204u

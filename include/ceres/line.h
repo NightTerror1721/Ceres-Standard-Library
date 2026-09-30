@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stddef.h"
+#include "../stddef.h"
 
 // Text input for terminal programs: a whole line, a number, a yes/no, a numbered choice.
 //

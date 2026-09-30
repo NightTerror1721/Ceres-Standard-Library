@@ -1,6 +1,7 @@
 // Saved games in two alternating copies. See ceres/save.h.
 #include "ceres/save.h"
 #include "ceres/hash.h"
+#include "ceres/endian.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
@@ -15,17 +16,6 @@ struct header
 {
     unsigned int version, sequence, size, crc;
 };
-
-static void put32(unsigned char* p, unsigned int v)
-{
-    for (int i = 0; i < 4; i++)
-        p[i] = (unsigned char)(v >> (8 * i));
-}
-
-static unsigned int get32(const unsigned char* p)
-{
-    return (unsigned int)p[0] | ((unsigned int)p[1] << 8) | ((unsigned int)p[2] << 16) | ((unsigned int)p[3] << 24);
-}
 
 // "<path>.a" or ".b" into name: 0, or -1 (ENAMETOOLONG).
 static int name_of(char* name, const char* path, int which)
@@ -56,15 +46,15 @@ static int open_copy(const char* path, int which, struct header* h, FILE** out)
     if (f == 0)
         return errno == ENOENT ? 0 : -1;
     unsigned char raw[HEADER];
-    if (fread(raw, 1, HEADER, f) != HEADER || get32(raw) != MAGIC || get32(raw + 20) != hash_crc32(raw, 20))
+    if (fread(raw, 1, HEADER, f) != HEADER || le32(raw) != MAGIC || le32(raw + 20) != hash_crc32(raw, 20))
     {
         fclose(f);
         return 0;
     }
-    h->version = get32(raw + 4);
-    h->sequence = get32(raw + 8);
-    h->size = get32(raw + 12);
-    h->crc = get32(raw + 16);
+    h->version = le32(raw + 4);
+    h->sequence = le32(raw + 8);
+    h->size = le32(raw + 12);
+    h->crc = le32(raw + 16);
     *out = f;
     return 1;
 }
@@ -160,12 +150,12 @@ int save_write(const char* path, unsigned int version, const void* data, size_t 
     if (name_of(name, path, which) != 0)
         return -1;
     unsigned char raw[HEADER];
-    put32(raw, MAGIC);
-    put32(raw + 4, version);
-    put32(raw + 8, sequence);
-    put32(raw + 12, (unsigned int)size);
-    put32(raw + 16, hash_crc32(data, size));
-    put32(raw + 20, hash_crc32(raw, 20));
+    put_le32(raw, MAGIC);
+    put_le32(raw + 4, version);
+    put_le32(raw + 8, sequence);
+    put_le32(raw + 12, (unsigned int)size);
+    put_le32(raw + 16, hash_crc32(data, size));
+    put_le32(raw + 20, hash_crc32(raw, 20));
     FILE* f = fopen(name, "wb");
     if (f == 0)
         return -1;

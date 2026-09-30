@@ -19,7 +19,7 @@ enum IRQ
     IRQ_PAGEFAULT   = 7,
     IRQ_SYSCALL     = 15,
     // The devices', by group (CeresASM docs/08-Interrupts-and-Exceptions.md). The numbers between are
-    // reserved: 23, 24 and 25 for the disk and the host files, which raise nothing yet, 27, 29-33, 35-63.
+    // reserved: 23, 24 and 25 for the disk and the host files, which raise nothing yet, 27, 29-31, 36-63.
     IRQ_TIMER       = 16,   // UserInterrupt0: the timer's countdown has run out
     IRQ_ALARM       = 17,   // UserInterrupt1: the timer's alarm instant has come (ceres/timer.h)
     IRQ_DMA         = 18,   // UserInterrupt2: a transfer has landed
@@ -32,7 +32,6 @@ enum IRQ
     IRQ_VBLANK      = 32,   // UserInterrupt16: the GPU's vertical blank (ceres/video.h)
     IRQ_LINE        = 33,   // UserInterrupt17: the GPU's scan has reached its LineCompare line
     IRQ_BLITTER     = 34,   // UserInterrupt18: a blitter operation, or the GPU's copy engine, is done (ceres/blitter.h)
-    IRQ_GPU_COPY    = 34,   // the same number: the GPU's copy engine
     IRQ_GPU_FAULT   = 35    // UserInterrupt19: the GPU was given an address outside the RAM and the VRAM
 };
 
