@@ -5,6 +5,7 @@
 // through the stream, in order with fputc and fprintf(stdout). A program that never touches stdout's settings
 // does not link the FILE layer for it.
 #include "stdio.h"
+#include "string.h"
 #include "ceres/terminal.h"
 
 void (*__stdout_write_hook)(const char* s, int n) = 0;
@@ -26,10 +27,8 @@ int putchar(int c)
 
 int putstr(const char* s)
 {
-    int n = 0;
-    while (s[n] != 0)
-        n++;
-    __stdout_write(s, n);   // one block transfer, not a byte loop
+    int n = (int)strlen(s);                 // word at a time (asm/memory.casm), not a byte loop
+    __stdout_write(s, n);                   // one block transfer
     return n;
 }
 
@@ -42,19 +41,15 @@ int puts(const char* s)
 
 int putuint(unsigned int v)
 {
-    char digits[10];                         // 4294967295 has ten
-    int n = 0;
+    char text[10];                           // 4294967295 has ten
+    int i = 10;
     do
     {
-        digits[n] = (char)('0' + v % 10u);
-        n++;
+        text[--i] = (char)('0' + v % 10u);   // filled from the end: no reversed copy
         v /= 10u;
     } while (v != 0);
-    char text[10];
-    for (int i = 0; i < n; i++)
-        text[i] = digits[n - 1 - i];
-    __stdout_write(text, n);
-    return n;
+    __stdout_write(text + i, 10 - i);
+    return 10 - i;
 }
 
 int putint(int v)

@@ -44,6 +44,8 @@ struct volume
     unsigned int dir_sec;                    // the absolute sector dir_buf holds, 0 for none
     int dir_dirty;
     unsigned int free_hint;                  // where the next search for a free cluster starts
+    unsigned int free_cache;                 // count_free()'s last answer ...
+    int free_cache_valid;                    // ... still valid for the FAT as it stands now
     int io_bad;                              // a device transfer failed since the last check
 };
 
@@ -141,6 +143,7 @@ static void fat_set(struct volume* v, unsigned int c, unsigned int value)
     b[at] = (unsigned char)(value & 255u);
     b[at + 1] = (unsigned char)(value >> 8);
     v->fat_dirty = 1;
+    v->free_cache_valid = 0;                 // the free-cluster count just went stale
 }
 
 // A free cluster, taken and marked as the end of a chain; 0 when there is none.
@@ -170,12 +173,18 @@ static void free_chain(struct volume* v, unsigned int first)
     }
 }
 
+// Free clusters in the volume. The scan is cached: alloc_cluster and free_chain go through fat_set, which
+// drops the cache, so a program that polls fs_free_bytes() between changes scans the FAT only once.
 static unsigned int count_free(struct volume* v)
 {
+    if (v->free_cache_valid)
+        return v->free_cache;
     unsigned int n = 0;
     for (unsigned int c = 1; c <= v->clusters; c++)
         if (fat_get(v, c) == FAT_FREE)
             n++;
+    v->free_cache = n;
+    v->free_cache_valid = 1;
     return n;
 }
 
@@ -616,6 +625,7 @@ static int mount_into(struct volume* v, const char* point, const struct blockdev
     v->dir_sectors = sb[6];
     v->data_start = sb[7];
     v->clusters = sb[8];
+    v->free_cache_valid = 0;                 // a fresh mount: nothing counted yet
     strcpy(v->point, point);
     v->mounted = 1;
     return 0;

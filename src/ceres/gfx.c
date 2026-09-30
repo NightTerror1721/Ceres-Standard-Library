@@ -182,24 +182,30 @@ void gfx_vline(int x, int y, int len, unsigned int c)
     int y0 = y, y1 = y + len;
     if (y0 < clip_y0) y0 = clip_y0;
     if (y1 > clip_y1) y1 = clip_y1;
-    for (int yy = y0; yy < y1; yy++)
-        t->px[yy * t->w + x] = c;
+    unsigned int* p = t->px + (size_t)y0 * t->w + x;     // the row pointer walks down the surface
+    for (int yy = y0; yy < y1; yy++, p += t->w)
+        *p = c;
 }
 
 void gfx_rect_fill(int x, int y, int w, int h, unsigned int c)
 {
     if (w <= 0 || h <= 0)
         return;
+    struct gfx_surface* t = current();
+    if (t == NULL)
+        return;
     int y0 = y < clip_y0 ? clip_y0 : y;
     int y1 = y + h > clip_y1 ? clip_y1 : y + h;
     int x0 = x < clip_x0 ? clip_x0 : x;
     int x1 = x + w > clip_x1 ? clip_x1 : x + w;
-    struct gfx_surface* t = current();
-    if (t != NULL && x1 > x0 && y1 > y0 && blitter() &&
-        blitter_fill(t->px + y0 * t->w + x0, t->w * 4, x1 - x0, y1 - y0, c) == 0)
+    if (x1 <= x0 || y1 <= y0)
         return;
-    for (int yy = y0; yy < y1; yy++)
-        gfx_hline(x, yy, w, c);
+    if (blitter() && blitter_fill(t->px + y0 * t->w + x0, t->w * 4, x1 - x0, y1 - y0, c) == 0)
+        return;
+    unsigned int* p = t->px + y0 * t->w + x0;            // one row a time, clipped once
+    size_t run = (size_t)(x1 - x0);
+    for (int yy = y0; yy < y1; yy++, p += t->w)
+        memset32(p, c, run);
 }
 
 void gfx_rect(int x, int y, int w, int h, unsigned int c)

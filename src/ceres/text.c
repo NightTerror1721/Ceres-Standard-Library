@@ -91,8 +91,20 @@ void text_present(void)
     {
         const unsigned short* from = grid + y * cols;
         unsigned short* to = base + y * stride;
-        for (int x = 0; x < cols; x++)
-            to[x] = (from[x] >> 8) != 0 ? from[x] : (unsigned short)(from[x] | (NORMAL_CELL_ATTR << 8));
+        int x = 0;
+        for (; x + 1 < cols && (((unsigned int)(to + x) & 3u) == 0); x += 2)
+        {
+            unsigned int a = from[x], b = from[x + 1];   // two cells in one 32-bit VRAM store
+            if ((a >> 8) == 0) a |= (unsigned int)NORMAL_CELL_ATTR << 8;
+            if ((b >> 8) == 0) b |= (unsigned int)NORMAL_CELL_ATTR << 8;
+            *(unsigned int*)(to + x) = a | (b << 16);
+        }
+        for (; x < cols; x++)
+        {
+            unsigned int a = from[x];
+            if ((a >> 8) == 0) a |= (unsigned int)NORMAL_CELL_ATTR << 8;
+            to[x] = (unsigned short)a;
+        }
     }
     video_present();
     video_wait_present();

@@ -438,15 +438,40 @@ char* ini_write(const struct ini* d, size_t* size)
 {
     struct text t = { 0, 0, 0, 0 };
     add(&t, "", 0);
+
+    // The distinct sections, in first-appearance order, with the entry each one starts at. Sections are
+    // usually few, so collecting them once keeps this O(entries x sections) instead of rescanning the
+    // earlier entries (and every entry of a section) once per entry.
+    int cap = d->count > 0 ? d->count : 1;
+    const char** sections = (const char**)malloc((size_t)cap * sizeof(char*));
+    int* starts = (int*)malloc((size_t)cap * sizeof(int));
+    if (sections == NULL || starts == NULL)
+    {
+        free(sections);
+        free(starts);
+        free(t.s);
+        errno = ENOMEM;
+        return 0;
+    }
+    int nsections = 0;
     for (int i = 0; i < d->count; i++)
     {
         const char* section = d->entries[i].section;
         int seen = 0;
-        for (int j = 0; j < i && !seen; j++)
-            seen = strcasecmp(d->entries[j].section, section) == 0;
-        if (seen)
-            continue;                                // written with the first of its section
-        if (section[0] != 0 || i > 0)
+        for (int k = 0; k < nsections && !seen; k++)
+            seen = strcasecmp(sections[k], section) == 0;
+        if (!seen)
+        {
+            sections[nsections] = section;
+            starts[nsections] = i;
+            nsections++;
+        }
+    }
+
+    for (int k = 0; k < nsections; k++)
+    {
+        const char* section = sections[k];
+        if (section[0] != 0 || starts[k] > 0)
         {
             if (t.n > 0)
                 add_str(&t, "\n");
@@ -454,7 +479,7 @@ char* ini_write(const struct ini* d, size_t* size)
             add_str(&t, section);
             add_str(&t, "]\n");
         }
-        for (int j = i; j < d->count; j++)
+        for (int j = starts[k]; j < d->count; j++)
         {
             const struct ini_entry* e = &d->entries[j];
             if (strcasecmp(e->section, section) != 0)
@@ -482,6 +507,9 @@ char* ini_write(const struct ini* d, size_t* size)
             add_str(&t, "\n");
         }
     }
+
+    free(sections);
+    free(starts);
     if (t.failed)
     {
         free(t.s);

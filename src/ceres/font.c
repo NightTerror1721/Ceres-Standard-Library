@@ -27,6 +27,7 @@ static void leave(const struct saved* v, struct gfx_surface* s)
 }
 
 // A glyph onto the current target: a code point up to U+00FF is its own, anything above is the box of 127.
+// Each row's set bits are drawn as runs: one filled rectangle a run, not one a pixel.
 static void glyph_at(int x, int y, unsigned int cp, unsigned int fg, int scale)
 {
     const unsigned char* glyph = font8x8[cp <= 255u ? cp : 127u];
@@ -35,9 +36,18 @@ static void glyph_at(int x, int y, unsigned int cp, unsigned int fg, int scale)
         unsigned int bits = glyph[row];
         if (bits == 0)
             continue;
-        for (int col = 0; col < 8; col++)
+        for (int col = 0; col < 8; )
+        {
             if ((bits >> col) & 1u)
-                gfx_rect_fill(x + col * scale, y + row * scale, scale, scale, fg);
+            {
+                int start = col;
+                while (col < 8 && ((bits >> col) & 1u))
+                    col++;
+                gfx_rect_fill(x + start * scale, y + row * scale, (col - start) * scale, scale, fg);
+            }
+            else
+                col++;
+        }
     }
 }
 

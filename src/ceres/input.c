@@ -110,7 +110,29 @@ int key_to_ascii(int scancode, int shift)
     return 0;
 }
 
-// The key that types `c`, and whether it needs shift; 0 when there is none.
+// The key that types `c`, and whether it needs shift; 0 when there is none. Built once from key_to_ascii
+// into a 128-entry table, so a typed byte costs a lookup and not a scan of every scancode.
+static signed char char_key[128];           // the scancode that types the char unshifted, 0 when none
+static signed char char_key_shift[128];     // ... with shift
+static int char_key_built;
+
+static void build_char_key(void)
+{
+    for (int sc = KEY_A; sc <= KEY_KP_PERIOD; sc++)
+    {
+        int c = key_to_ascii(sc, 0);
+        if (c > 0 && c < 128 && char_key[c] == 0)
+            char_key[c] = (signed char)sc;
+    }
+    for (int sc = KEY_A; sc <= KEY_SLASH; sc++)
+    {
+        int c = key_to_ascii(sc, 1);
+        if (c > 0 && c < 128 && char_key_shift[c] == 0)
+            char_key_shift[c] = (signed char)sc;
+    }
+    char_key_built = 1;
+}
+
 static int key_from_char(int c, int* needs_shift)
 {
     *needs_shift = 0;
@@ -118,18 +140,16 @@ static int key_from_char(int c, int* needs_shift)
         c = '\n';
     if (c == 127)
         c = 8;
-    for (int sc = KEY_A; sc <= KEY_KP_PERIOD; sc++)
+    if (!char_key_built)
+        build_char_key();
+    if (c < 0 || c >= 128)
+        return 0;
+    if (char_key[c] != 0)
+        return char_key[c];
+    if (char_key_shift[c] != 0)
     {
-        if (key_to_ascii(sc, 0) == c)
-            return sc;
-    }
-    for (int sc = KEY_A; sc <= KEY_SLASH; sc++)
-    {
-        if (key_to_ascii(sc, 1) == c)
-        {
-            *needs_shift = 1;
-            return sc;
-        }
+        *needs_shift = 1;
+        return char_key_shift[c];
     }
     return 0;
 }

@@ -4,7 +4,7 @@ memory    64 KiB of RAM, 32 KiB of VRAM
 video     V0, up to V2; 256x192 at 60 Hz
 terminal  32x12
 host      a directory is attached
-ceres:/> RAM   64 KiB, 11 KiB free
+ceres:/> RAM   64 KiB, 12 KiB free
 VRAM  32 KiB
 ceres:/> docs/                       <dir>
 games/                      <dir>

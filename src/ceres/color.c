@@ -6,10 +6,18 @@ const unsigned int PALETTE16[16] = {
     0x555555, 0x5555FF, 0x55FF55, 0x55FFFF, 0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF
 };
 
+// x / 255, rounded to nearest, for x in 0..65025 - the widest a*255 + b*255 gets. An arithmetic identity
+// (no division): floor(t / 255) is (t + (t >> 8) + 1) >> 8 for t below 65536, and t = x + 127 stays below it.
+static int div255r(int x)
+{
+    unsigned int t = (unsigned int)x + 127u;
+    return (int)((t + (t >> 8) + 1u) >> 8);
+}
+
 // a * b / 255, rounded to nearest, for a and b in 0..255
 static int mul255(int a, int b)
 {
-    return (a * b + 127) / 255;
+    return div255r(a * b);
 }
 
 static int clamp255(int v)
@@ -45,9 +53,9 @@ unsigned int color_hsv(int h, int s, int v)
 unsigned int color_lerp(unsigned int a, unsigned int b, int t)
 {
     t = clamp255(t);
-    int r = (COL_R(a) * (255 - t) + COL_R(b) * t + 127) / 255;
-    int g = (COL_G(a) * (255 - t) + COL_G(b) * t + 127) / 255;
-    int bl = (COL_B(a) * (255 - t) + COL_B(b) * t + 127) / 255;
+    int r = div255r(COL_R(a) * (255 - t) + COL_R(b) * t);
+    int g = div255r(COL_G(a) * (255 - t) + COL_G(b) * t);
+    int bl = div255r(COL_B(a) * (255 - t) + COL_B(b) * t);
     return RGB(r, g, bl);
 }
 
@@ -60,8 +68,8 @@ unsigned int color_scale(unsigned int c, int factor)
 {
     if (factor < 0)
         factor = 0;
-    int r = COL_R(c) * factor / 256;
-    int g = COL_G(c) * factor / 256;
-    int b = COL_B(c) * factor / 256;
+    int r = (COL_R(c) * factor) >> 8;                   // / 256, the documented 8.8 factor
+    int g = (COL_G(c) * factor) >> 8;
+    int b = (COL_B(c) * factor) >> 8;
     return RGB(clamp255(r), clamp255(g), clamp255(b));
 }

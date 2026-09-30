@@ -12,6 +12,10 @@ enum { FROM_MEMORY = 1, FROM_FILE = 2, FROM_DEVICE = 3 };
 #define HEADER 16
 #define ENTRY  48
 
+// A sector address and an in-sector offset without a division: BLOCKDEV_SECTOR is 512 here.
+#define PACK_SECTOR_SHIFT 9
+_Static_assert((1u << PACK_SECTOR_SHIFT) == BLOCKDEV_SECTOR, "pack.c assumes 512-byte sectors");
+
 static int fail(int e)
 {
     errno = e;
@@ -37,8 +41,8 @@ static int fetch(struct pack* p, unsigned int offset, void* dst, size_t n)
     }
     while (n > 0)
     {
-        unsigned int sector = offset / BLOCKDEV_SECTOR;
-        unsigned int within = offset % BLOCKDEV_SECTOR;
+        unsigned int sector = offset >> PACK_SECTOR_SHIFT;
+        unsigned int within = offset & (BLOCKDEV_SECTOR - 1u);
         size_t piece = BLOCKDEV_SECTOR - within;
         if (piece > n)
             piece = n;
