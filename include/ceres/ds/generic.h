@@ -57,10 +57,25 @@ static inline int ds_cmp_uint(const void* a, const void* b)
     unsigned int x = *(const unsigned int*)a, y = *(const unsigned int*)b;
     return x < y ? -1 : (x > y ? 1 : 0);
 }
+// The machine's `fcmp` sets its greater flag for an unordered (NaN) comparison, so `x > y` is not a safe
+// NaN test: the bits are looked at instead (IEEE binary32: all-ones exponent, nonzero mantissa).
+static inline int ds_is_nan(float x)
+{
+    _Static_assert(sizeof(float) == sizeof(unsigned int), "ds_is_nan reads the float's bits as a 32-bit word");
+    unsigned int bits;
+    memcpy(&bits, &x, sizeof bits);
+    return (bits & 0x7F800000u) == 0x7F800000u && (bits & 0x007FFFFFu) != 0;
+}
+
 static inline int ds_cmp_float(const void* a, const void* b)
 {
     float x = *(const float*)a, y = *(const float*)b;
-    return x < y ? -1 : (x > y ? 1 : 0);
+    int xn = ds_is_nan(x), yn = ds_is_nan(y);
+    if (xn || yn)
+        return xn && yn ? 0 : (xn ? 1 : -1);         // NaN sorts after every number; two NaNs are equal
+    if (x < y) return -1;
+    if (x > y) return 1;
+    return 0;
 }
 static inline int ds_cmp_cstr(const void* a, const void* b) { return strcmp(*(const char* const*)a, *(const char* const*)b); }
 

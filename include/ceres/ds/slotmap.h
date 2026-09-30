@@ -71,15 +71,25 @@ static inline struct sm_handle sm_insert(struct slotmap* m, const void* item)
         memcpy(vector_at(&m->slots, h.index), item, m->slots.elem);
         return h;
     }
-    if (vector_push_copy(&m->slots, item) != 0)
+    // When the arrays are full, grow them geometrically and reserve both first: once each has room neither
+    // push can fail, so a failed push never leaves slots and gens out of step (which would make sm_valid()
+    // dereference a NULL slot). When they are not full the pushes already have room and cannot fail.
+    if (m->slots.len == m->slots.cap)
     {
-        h.index = 0xFFFFFFFFu;
-        h.gen = 0;
-        return h;
+        unsigned int want = m->slots.cap == 0 ? 4u : m->slots.cap * 2u;
+        if (want < m->slots.cap ||                          // doubled past 2^32
+            vector_reserve(&m->slots, want) != 0 ||
+            vector_reserve(&m->gens, want) != 0)
+        {
+            h.index = 0xFFFFFFFFu;
+            h.gen = 0;
+            return h;
+        }
     }
-    h.index = m->slots.len - 1u;
+    h.index = m->slots.len;
     h.gen = 0;
-    vector_push_copy(&m->gens, &h.gen);          // slots and gens always grow together: this cannot be the one to fail alone in practice, and if it were, the slot is simply never reachable by a valid handle
+    vector_push_copy(&m->slots, item);
+    vector_push_copy(&m->gens, &h.gen);
     return h;
 }
 

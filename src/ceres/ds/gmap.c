@@ -13,6 +13,11 @@ static void* pair_at(const struct gmap* m, unsigned int i)
 
 static int table_alloc(struct gmap* m, unsigned int cap)
 {
+    // The byte counts must fit a 32-bit size_t: a cap or an element size that overflows is refused.
+    unsigned long long elem = (unsigned long long)m->key_size + m->value_size;
+    if ((unsigned long long)cap * elem > (unsigned long long)(size_t)-1 ||
+        (unsigned long long)cap * sizeof(unsigned int) > (unsigned long long)(size_t)-1)
+        return -1;
     unsigned char* states = (unsigned char*)calloc(cap, 1);                        // SLOT_EMPTY == 0
     unsigned int* hashes = (unsigned int*)malloc((size_t)cap * sizeof(unsigned int));
     void* pairs = malloc((size_t)cap * (m->key_size + m->value_size));
@@ -45,6 +50,8 @@ int gmap_init(struct gmap* m, unsigned int key_size, unsigned int value_size, un
     m->pairs = NULL;
     m->cap = 0;
     m->used = 0;
+    if (key_size > 0xFFFFFFFFu - value_size)               // the pair size alone would not fit a size_t
+        return -1;
     unsigned int cap = initial_cap < 8u ? 8u : bit_next_pow2(initial_cap);
     return table_alloc(m, cap);
 }
@@ -121,12 +128,12 @@ int gmap_set(struct gmap* m, const void* key, const void* value)
 
     // Grow at 70% full, counting tombstones the same way hashmap.c does - they lengthen a probe
     // chain exactly as much as a live entry does.
-    if (m->cap == 0 || (m->used + 1u) * 10u > m->cap * 7u)
+    if (m->cap == 0 || ((unsigned long long)m->used + 1u) * 10u > (unsigned long long)m->cap * 7u)
     {
         unsigned int cap = m->cap == 0 ? 8u : m->cap;
-        if ((m->len + 1u) * 10u > cap * 35u / 10u)
+        if (((unsigned long long)m->len + 1u) * 10u > (unsigned long long)cap * 35u / 10u)
             cap *= 2u;
-        if (rebuild(m, cap) != 0)
+        if (cap == 0 || rebuild(m, cap) != 0)           // cap == 0: doubling past 2^31
             return -1;
     }
 

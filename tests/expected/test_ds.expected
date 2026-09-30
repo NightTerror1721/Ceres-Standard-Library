@@ -57,6 +57,7 @@
 -- bloom: a never-added key is reported absent
 -- bloom: an added key is always reported present
 -- bloom: clear forgets everything
+-- bloom: a filter of no bits holds nothing
 -- gmap: empty
 -- gmap: set, get, replace
 -- gmap: remove, growing back and forth
@@ -107,5 +108,6 @@
 -- generic: DS_DEFAULT_HASH/EQ with gmap - string and float keys
 -- generic: DS_DEFAULT_CMP with omap and flatmap - int and string keys
 -- generic: DS_DEFAULT_CMP with iheap - float priorities
+-- generic: ds_cmp_float orders NaN after every number
 -- nothing leaked
-ALL PASSED 4288/4288
+ALL PASSED 4295/4295

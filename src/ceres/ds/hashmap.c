@@ -106,12 +106,12 @@ int hashmap_set(struct hashmap* m, const char* key, void* value)
 
     // Grow at 70% full, counting tombstones: they lengthen probes as much as live entries do. When
     // most of that is tombstones a rebuild at the same size is enough.
-    if (m->cap == 0 || (m->used + 1u) * 10u > m->cap * 7u)
+    if (m->cap == 0 || ((unsigned long long)m->used + 1u) * 10u > (unsigned long long)m->cap * 7u)
     {
         unsigned int cap = m->cap == 0 ? 8u : m->cap;
-        if ((m->len + 1u) * 10u > cap * 35u / 10u)      // more than 35% live: a bigger table
+        if (((unsigned long long)m->len + 1u) * 10u > (unsigned long long)cap * 35u / 10u)   // more than 35% live: a bigger table
             cap *= 2u;
-        if (rebuild(m, cap) != 0)
+        if (cap == 0 || rebuild(m, cap) != 0)           // cap == 0: doubling past 2^31
             return -1;
     }
 

@@ -16,7 +16,8 @@ struct bloom
     unsigned int k;       // how many bits each item sets - 3 to 7 is enough for most sizes
 };
 
-// `words` needs bitset_words(nbits) words, every bit clear.
+// `words` needs bitset_words(nbits) words, every bit clear. An nbits of 0 makes a filter that holds
+// nothing: bloom_add does nothing and bloom_maybe_has says no (the modulo would otherwise divide by zero).
 void bloom_init(struct bloom* b, unsigned int* words, unsigned int nbits, unsigned int k);
 void bloom_clear(struct bloom* b);                                                    // every bit clear again
 void bloom_add(struct bloom* b, const void* item, unsigned int len);

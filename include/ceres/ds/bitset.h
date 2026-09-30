@@ -12,7 +12,7 @@ struct bitset
     unsigned int nbits;
 };
 
-static inline unsigned int bitset_words(unsigned int nbits) { return (nbits + 31u) >> 5; }
+static inline unsigned int bitset_words(unsigned int nbits) { return nbits / 32u + (nbits % 32u != 0u); }
 
 void bitset_init(struct bitset* s, unsigned int* words, unsigned int nbits);   // every bit clear
 void bitset_clear_all(struct bitset* s);

@@ -12,8 +12,9 @@ struct cqueue
     volatile unsigned int tail;         // elements ever taken (written by the consumer)
 };
 
-// `storage` is at least elem_size * count bytes; count (a number of elements, not bytes) is rounded
-// DOWN to a power of two, at least 1.
+// `storage` is at least elem_size * count bytes, with `count` at least 1; count (a number of elements,
+// not bytes) is rounded DOWN to a power of two, and a count below 1 is taken as 1 (so `storage` must
+// hold one element even then).
 void cq_init(struct cqueue* q, void* storage, unsigned int elem_size, unsigned int count);
 int  cq_put(struct cqueue* q, const void* item);            // 0 ok, -1 when full (the item is not stored)
 int  cq_get(struct cqueue* q, void* out);                   // 0 ok, -1 when empty (*out untouched)

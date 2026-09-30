@@ -23,7 +23,7 @@ int skl_init(struct skiplist* s, int (*cmp)(const void*, const void*))
     s->count = 0;
     s->level = 1;
     s->cmp = cmp;
-    rng_seed(&s->rng, 0x5eed5eedu);          // deterministic by default - only balance depends on it, never correctness
+    rng_seed(&s->rng, 0x5eed5eedu ^ (unsigned int)(size_t)s);   // per instance: only balance depends on it, never correctness
     return 0;
 }
 

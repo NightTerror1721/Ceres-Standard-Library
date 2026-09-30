@@ -15,6 +15,8 @@ void trie_clear(struct trie* t)
 {
     pool_clear(&t->nodes);
     slist_init(&t->root.children);
+    t->root.value = NULL;
+    t->root.is_word = 0;
 }
 
 static struct trie_node* find_child(struct trie_node* parent, char ch)
@@ -146,6 +148,8 @@ void trie_each_prefix(const struct trie* t, const char* prefix, void (*fn)(const
         if (len + 1u < TRIE_WALK_BUF)
             wc.buf[len] = *p;
         len++;
+        if (len >= TRIE_WALK_BUF)
+            return;                     // the prefix alone fills the buffer: no word can be built
     }
     walk(node, len, &wc);
 }

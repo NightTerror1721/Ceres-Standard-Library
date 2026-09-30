@@ -25,6 +25,8 @@ static void two_hashes(const void* item, unsigned int len, unsigned int* h1, uns
 
 void bloom_add(struct bloom* b, const void* item, unsigned int len)
 {
+    if (b->bits.nbits == 0)
+        return;                                             // a filter of no bits holds nothing
     unsigned int h1, h2;
     two_hashes(item, len, &h1, &h2);
     for (unsigned int i = 0; i < b->k; i++)
@@ -33,6 +35,8 @@ void bloom_add(struct bloom* b, const void* item, unsigned int len)
 
 int bloom_maybe_has(const struct bloom* b, const void* item, unsigned int len)
 {
+    if (b->bits.nbits == 0)
+        return 0;
     unsigned int h1, h2;
     two_hashes(item, len, &h1, &h2);
     for (unsigned int i = 0; i < b->k; i++)

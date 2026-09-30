@@ -32,6 +32,7 @@
 #include "ceres/ds/trie.h"
 #include "ceres/ds/generic.h"
 #include "ceres/hash.h"
+#include "math.h"
 
 // ---- list ----
 
@@ -1034,6 +1035,11 @@ static void blooms(void)
     bloom_clear(&b);
     for (int i = 0; i < 5; i++)
         CHECK(!bloom_maybe_has(&b, keys[i], (unsigned int)strlen(keys[i])));
+
+    TEST_SECTION("bloom: a filter of no bits holds nothing");
+    bloom_init(&b, words, 0, 5);
+    bloom_add(&b, "anything", 8);                        // no crash, no divide by zero
+    CHECK(!bloom_maybe_has(&b, "anything", 8));
 }
 
 // ---- gmap / hset ----
@@ -1658,8 +1664,11 @@ static void tries(void)
     CHECK_EQ(log.count, 0);
 
     TEST_SECTION("trie: clear resets everything, and the pool is reusable afterward");
+    CHECK_EQ(trie_insert(&t, "", &cat_v), 0);            // the empty key is a word on the root itself
+    CHECK(trie_find(&t, "") == &cat_v);
     trie_clear(&t);
     CHECK(trie_find(&t, "cat") == NULL);
+    CHECK(trie_find(&t, "") == NULL);                    // clear forgets the root word too
     CHECK(!trie_has_prefix(&t, "c"));
     CHECK_EQ(trie_insert(&t, "new", &cat_v), 0);
     CHECK(trie_find(&t, "new") != NULL);
@@ -1734,6 +1743,12 @@ static void generics(void)
     ih_push(&ih, &f2);
     CHECK(*(const float*)ih_peek(&ih) < 2.0f);          // 1.5 sorts first
     ih_free(&ih);
+
+    TEST_SECTION("generic: ds_cmp_float orders NaN after every number");
+    float nan = NAN, num = 1.0f;
+    CHECK_EQ(ds_cmp_float(&nan, &num), 1);
+    CHECK_EQ(ds_cmp_float(&num, &nan), -1);
+    CHECK_EQ(ds_cmp_float(&nan, &nan), 0);
 }
 
 int main(void)

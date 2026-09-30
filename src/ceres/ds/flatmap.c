@@ -49,8 +49,12 @@ int fmap_set(struct flatmap* m, const void* key, const void* value)
     }
     // Not found: insert at `at`. Grown and shifted here rather than through vector_insert, which
     // wants key and value already adjacent in one blob - this way neither has to be.
-    if (m->pairs.len == m->pairs.cap && vector_reserve(&m->pairs, m->pairs.cap == 0 ? 4u : m->pairs.cap * 2u) != 0)
-        return -1;
+    if (m->pairs.len == m->pairs.cap)
+    {
+        unsigned int want = m->pairs.cap == 0 ? 4u : m->pairs.cap * 2u;
+        if (want < m->pairs.cap || vector_reserve(&m->pairs, want) != 0)
+            return -1;                                  // doubled past 2^32, or out of memory
+    }
     char* base = (char*)m->pairs.data;
     unsigned int elem = m->pairs.elem;
     memmove(base + (size_t)(at + 1u) * elem, base + (size_t)at * elem, (size_t)(m->pairs.len - at) * elem);

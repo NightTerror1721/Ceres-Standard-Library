@@ -66,22 +66,33 @@ void omap_free(struct omap* m)
 // A throwaway node built only to search by key - never inserted, never read back through rb_entry
 // by anything but node_cmp. malloc'd rather than stack-allocated because key_size is a run-time
 // value: a fixed-size stack buffer would cap how wide a key omap could hold.
-static struct omap_node* find_node(const struct omap* m, const void* key)
+// Returns 0 with *out set when the key is there, 1 when it is not, and -1 when the probe could not be
+// allocated - which the caller must NOT read as "not found", or omap_set would insert a duplicate key.
+static int find_node(const struct omap* m, const void* key, struct omap_node** out)
 {
     struct omap_node* probe = (struct omap_node*)malloc(offsetof(struct omap_node, data) + m->key_size);
     if (probe == NULL)
-        return NULL;                                  // a lookup this starved reports "not found"
+        return -1;
     memcpy(probe->data, key, m->key_size);
     g_active_cmp = m->cmp;
     struct rb_node* found = rb_find(&m->tree, &probe->rb);
     free(probe);
-    return found == NULL ? NULL : rb_entry(found, struct omap_node, rb);
+    if (found == NULL)
+    {
+        *out = NULL;
+        return 1;
+    }
+    *out = rb_entry(found, struct omap_node, rb);
+    return 0;
 }
 
 int omap_set(struct omap* m, const void* key, const void* value)
 {
-    struct omap_node* existing = find_node(m, key);
-    if (existing != NULL)
+    struct omap_node* existing;
+    int found = find_node(m, key, &existing);
+    if (found < 0)
+        return -1;
+    if (found == 0)
     {
         if (m->value_size)
             memcpy(existing->data + m->key_size, value, m->value_size);
@@ -101,20 +112,22 @@ int omap_set(struct omap* m, const void* key, const void* value)
 
 void* omap_get(const struct omap* m, const void* key)
 {
-    struct omap_node* n = find_node(m, key);
-    return n == NULL ? NULL : n->data + m->key_size;
+    struct omap_node* n;
+    if (find_node(m, key, &n) != 0)
+        return NULL;
+    return n->data + m->key_size;
 }
 
 int omap_has(const struct omap* m, const void* key)
 {
-    struct omap_node* n = find_node(m, key);
-    return n != NULL;
+    struct omap_node* n;
+    return find_node(m, key, &n) == 0;
 }
 
 int omap_remove(struct omap* m, const void* key)
 {
-    struct omap_node* n = find_node(m, key);
-    if (n == NULL)
+    struct omap_node* n;
+    if (find_node(m, key, &n) != 0)     // not found, or (on out of memory) nothing to remove
         return 0;
     rb_remove(&m->tree, &n->rb);
     free(n);

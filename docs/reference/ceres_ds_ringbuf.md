@@ -13,7 +13,8 @@ struct ringbuf
     volatile unsigned int tail;         // bytes ever taken (written by the consumer)
 };
 
-// `storage` is `size` bytes and `size` a power of two (a size that is not one is rounded DOWN to one).
+// `storage` is at least `size` bytes and `size` a power of two (a size that is not one is rounded DOWN
+// to one; a size of 0 is taken as 1, so `storage` must hold one byte even then).
 void ring_init(struct ringbuf* r, void* storage, unsigned int size);
 int  ring_put(struct ringbuf* r, unsigned char b);          // 0 ok, -1 when full (the byte is not stored)
 int  ring_get(struct ringbuf* r);                           // the next byte, or -1 when empty

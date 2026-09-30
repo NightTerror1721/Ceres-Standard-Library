@@ -79,13 +79,16 @@ static void sift_down(struct iheap* h, unsigned int i)
 unsigned int ih_push(struct iheap* h, const void* item)
 {
     unsigned int handle = h->items.len;
-    if (vector_push_copy(&h->items, item) != 0)
-        return IH_NOT_IN_HEAP;
     unsigned int heap_pos = h->heap.len;
-    if (vector_push_copy(&h->heap, &handle) != 0)
-        return IH_NOT_IN_HEAP;             // items and pos stay one entry ahead; harmless, never reached again
-    if (vector_push_copy(&h->pos, &heap_pos) != 0)
+    // Reserve every vector first: once each has room the three pushes below cannot fail, so a failed push
+    // never leaves items, heap and pos out of step (which would dereference a NULL slot later).
+    if (vector_reserve(&h->items, handle + 1u) != 0 ||
+        vector_reserve(&h->heap, heap_pos + 1u) != 0 ||
+        vector_reserve(&h->pos, handle + 1u) != 0)
         return IH_NOT_IN_HEAP;
+    vector_push_copy(&h->items, item);
+    vector_push_copy(&h->heap, &handle);
+    vector_push_copy(&h->pos, &heap_pos);
     sift_up(h, heap_pos);
     return handle;
 }
