@@ -14,7 +14,7 @@ void blockdev_disk(struct blockdev* out)
     out->write = disk_wr;
     out->sectors = disk_count;
     out->flush = disk_fl;
-    out->ctx = 0;
+    out->ctx = NULL;
     out->read_only = 0;
 }
 

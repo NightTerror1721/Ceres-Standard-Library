@@ -114,10 +114,10 @@ void* image_encode_qoi(const struct gfx_surface* s, size_t* size)
 {
     size_t total = (size_t)s->w * (size_t)s->h;
     u8* out = (u8*)malloc(QOI_HEADER + total * 4 + 8);
-    if (out == 0)
+    if (out == NULL)
     {
         errno = ENOMEM;
-        return 0;
+        return NULL;
     }
     memcpy(out, "qoif", 4);
     unsigned int dims[2] = { (unsigned int)s->w, (unsigned int)s->h };
@@ -341,10 +341,10 @@ void* image_encode_bmp(const struct gfx_surface* s, size_t* size)
     size_t stride = ((size_t)s->w * 3 + 3) & ~(size_t)3;
     size_t total = 54 + stride * (size_t)s->h;
     u8* out = (u8*)calloc(total, 1);
-    if (out == 0)
+    if (out == NULL)
     {
         errno = ENOMEM;
-        return 0;
+        return NULL;
     }
     unsigned int fields[][2] = {
         { 2, (unsigned int)total }, { 10, 54 }, { 14, 40 }, { 18, (unsigned int)s->w }, { 22, (unsigned int)s->h },
@@ -379,16 +379,16 @@ enum image_format image_info(const void* data, size_t size, int* w, int* h)
     int iw = 0, ih = 0;
     enum image_format format = IMAGE_UNKNOWN;
     struct bmp b;
-    if (p != 0 && qoi_header(p, size, &iw, &ih) == 0)
+    if (p != NULL && qoi_header(p, size, &iw, &ih) == 0)
         format = IMAGE_QOI;
-    else if (p != 0 && bmp_header(p, size, &b) == 0)
+    else if (p != NULL && bmp_header(p, size, &b) == 0)
     {
         format = IMAGE_BMP;
         iw = b.w;
         ih = b.h;
     }
-    if (w != 0) *w = iw;
-    if (h != 0) *h = ih;
+    if (w != NULL) *w = iw;
+    if (h != NULL) *h = ih;
     return format;
 }
 
@@ -397,7 +397,7 @@ int image_decode_into(const void* data, size_t size, struct gfx_surface* dst, un
     const u8* p = (const u8*)data;
     int w, h;
     enum image_format format = image_info(data, size, &w, &h);
-    if (format == IMAGE_UNKNOWN || dst == 0 || dst->w != w || dst->h != h)
+    if (format == IMAGE_UNKNOWN || dst == NULL || dst->w != w || dst->h != h)
     {
         errno = EINVAL;
         return -1;
@@ -422,13 +422,13 @@ struct gfx_surface* image_decode(const void* data, size_t size, unsigned int tra
     if (image_info(data, size, &w, &h) == IMAGE_UNKNOWN)
     {
         errno = EINVAL;
-        return 0;
+        return NULL;
     }
     struct gfx_surface* s = (struct gfx_surface*)malloc(sizeof(struct gfx_surface) + (size_t)w * (size_t)h * 4u);
-    if (s == 0)
+    if (s == NULL)
     {
         errno = ENOMEM;
-        return 0;
+        return NULL;
     }
     s->px = (unsigned int*)(s + 1);
     s->w = w;
@@ -436,7 +436,7 @@ struct gfx_surface* image_decode(const void* data, size_t size, unsigned int tra
     if (image_decode_into(data, size, s, transparent) != 0)
     {
         free(s);
-        return 0;
+        return NULL;
     }
     return s;
 }
@@ -450,19 +450,19 @@ void image_free(struct gfx_surface* s)
 static u8* read_all(const char* path, size_t* size)
 {
     FILE* f = fopen(path, "rb");
-    if (f == 0)
-        return 0;
+    if (f == NULL)
+        return NULL;
     size_t cap = 4096, n = 0;
     u8* buf = (u8*)malloc(cap);
-    while (buf != 0)
+    while (buf != NULL)
     {
         if (n == cap)
         {
             u8* bigger = (u8*)realloc(buf, cap * 2);
-            if (bigger == 0)
+            if (bigger == NULL)
             {
                 free(buf);
-                buf = 0;
+                buf = NULL;
                 break;
             }
             buf = bigger;
@@ -473,18 +473,18 @@ static u8* read_all(const char* path, size_t* size)
         if (got == 0)
             break;
     }
-    int bad = buf != 0 && ferror(f);
+    int bad = buf != NULL && ferror(f);
     fclose(f);
-    if (buf == 0)
+    if (buf == NULL)
     {
         errno = ENOMEM;
-        return 0;
+        return NULL;
     }
     if (bad)
     {
         free(buf);
         errno = EIO;
-        return 0;
+        return NULL;
     }
     *size = n;
     return buf;
@@ -494,8 +494,8 @@ struct gfx_surface* image_load(const char* path, unsigned int transparent)
 {
     size_t size;
     u8* data = read_all(path, &size);
-    if (data == 0)
-        return 0;
+    if (data == NULL)
+        return NULL;
     struct gfx_surface* s = image_decode(data, size, transparent);
     int e = errno;
     free(data);
@@ -509,11 +509,11 @@ int image_save(const struct gfx_surface* s, const char* path)
     int bmp = length >= 4 && (strcmp(path + length - 4, ".bmp") == 0 || strcmp(path + length - 4, ".BMP") == 0);
     size_t size;
     void* data = bmp ? image_encode_bmp(s, &size) : image_encode_qoi(s, &size);
-    if (data == 0)
+    if (data == NULL)
         return -1;
     FILE* f = fopen(path, "wb");
-    int ok = f != 0 && fwrite(data, 1, size, f) == size;
-    if (f != 0 && fclose(f) != 0)
+    int ok = f != NULL && fwrite(data, 1, size, f) == size;
+    if (f != NULL && fclose(f) != 0)
         ok = 0;
     free(data);
     return ok ? 0 : -1;

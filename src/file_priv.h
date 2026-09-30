@@ -22,8 +22,8 @@ struct __file_ops
 {
     int (*read)(struct __file* f, void* buf, unsigned int n);          // bytes read, 0 at the end, -1 on an error
     int (*write)(struct __file* f, const void* buf, unsigned int n);   // bytes written (fewer when full), -1 on an error
-    int (*seek)(struct __file* f, int offset, int whence);             // 0, or -1 with errno set
-    int (*tell)(struct __file* f);
+    int (*seek)(struct __file* f, int offset, int whence);             // 0, or -1 with errno set (int == long here)
+    int (*tell)(struct __file* f);                                     // ... so fseek/ftell widen to long without loss
     int (*close)(struct __file* f);
     int (*flush)(struct __file* f);                                     // what the medium still holds back, out
 };

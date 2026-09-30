@@ -29,6 +29,8 @@ Ceres is a 32-bit machine: `long` is `int` (32 bits). `long long` is a real 8-by
 #define LLONG_MIN   (-9223372036854775807LL - 1)
 #define ULLONG_MAX  18446744073709551615ULL
 
+#ifndef SIZE_MAX
 #define SIZE_MAX    UINT_MAX
+#endif
 #define MB_LEN_MAX  4                  // a UTF-8 character
 ```

@@ -53,7 +53,7 @@ static int current = 0;
 static int started = 0;
 static int alive = 1;                // main
 static unsigned int main_limit;      // main's stack limit: the heap's top
-static unsigned char* to_free = 0;   // a finished task's stack, freed once we are off it
+static unsigned char* to_free = NULL;   // a finished task's stack, freed once we are off it
 static int to_free_guarded = 0;
 
 static unsigned int limit_of(int i)
@@ -102,12 +102,12 @@ static int slot_of(int id)
 
 static void release_finished(void)
 {
-    if (to_free != 0)
+    if (to_free != NULL)
     {
-        if (to_free_guarded && __task_stack_guard != 0)
+        if (to_free_guarded && __task_stack_guard != NULL)
             __task_stack_guard(to_free, 0);           // mapped again before the heap hands it out
         free(to_free);
-        to_free = 0;
+        to_free = NULL;
         to_free_guarded = 0;
     }
 }
@@ -195,7 +195,7 @@ static int wait_on(const void* object)
     t->waiting_on = object;
     t->deadlocked = 0;
     int ran = schedule();
-    t->waiting_on = 0;
+    t->waiting_on = NULL;
     if (!ran || t->deadlocked)
     {
         t->state = T_READY;
@@ -222,7 +222,7 @@ void __task_finish(void)
     alive--;
     to_free = t->stack;                               // freed by whoever runs next, off this stack
     to_free_guarded = t->guarded;
-    t->stack = 0;
+    t->stack = NULL;
     wake(t);
     schedule();                                       // never comes back: nothing makes a DONE task ready
     for (;;)
@@ -232,7 +232,7 @@ void __task_finish(void)
 int task_spawn(task_fn fn, void* arg, unsigned int stack_size)
 {
     start();
-    if (fn == 0)
+    if (fn == NULL)
     {
         errno = EINVAL;
         return -1;
@@ -256,10 +256,10 @@ int task_spawn(task_fn fn, void* arg, unsigned int stack_size)
     stack_size = (stack_size + 7u) & ~7u;
     if (stack_size < 512u)
         stack_size = 512u;
-    int guarded = __task_stack_guard != 0;
+    int guarded = __task_stack_guard != NULL;
     unsigned char* stack = guarded ? (unsigned char*)aligned_alloc(GUARD, stack_size + GUARD)
                                    : (unsigned char*)malloc(stack_size);
-    if (stack == 0)
+    if (stack == NULL)
     {
         errno = ENOMEM;
         return -1;
@@ -355,14 +355,14 @@ int task_alive(int id)
 
 int chan_init(struct chan* c, unsigned int elem_size, unsigned int capacity)
 {
-    if (c == 0 || elem_size == 0 || capacity == 0 || capacity > 0x7FFFFFFFu / elem_size)
+    if (c == NULL || elem_size == 0 || capacity == 0 || capacity > 0x7FFFFFFFu / elem_size)
     {
         errno = EINVAL;
         return -1;
     }
     memset(c, 0, sizeof *c);
     c->buf = (unsigned char*)malloc(elem_size * capacity);
-    if (c->buf == 0)
+    if (c->buf == NULL)
     {
         errno = ENOMEM;
         return -1;
@@ -374,10 +374,10 @@ int chan_init(struct chan* c, unsigned int elem_size, unsigned int capacity)
 
 void chan_free(struct chan* c)
 {
-    if (c == 0)
+    if (c == NULL)
         return;
     free(c->buf);
-    c->buf = 0;
+    c->buf = NULL;
     c->count = 0;                                    // nothing left to receive: a receiver gets EPIPE
     c->head = 0;
     c->closed = 1;

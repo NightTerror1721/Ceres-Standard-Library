@@ -24,7 +24,7 @@ static struct __file stdin_file  = { .kind = FILE_TERM_IN,  .readable = 1, .unge
 static struct __file stdout_file = { .kind = FILE_TERM_OUT, .writable = 1, .unget = -1, .buf_mode = _IONBF };
 static struct __file stderr_file = { .kind = FILE_TERM_ERR, .writable = 1, .unget = -1, .buf_mode = _IONBF };
 
-void (*__file_flush_all_hook)(void) = 0;
+void (*__file_flush_all_hook)(void) = NULL;
 
 FILE* stdin = &stdin_file;
 FILE* stdout = &stdout_file;
@@ -37,12 +37,12 @@ static int has_ops(struct __file* f)
 
 // ---- the list of streams exit() flushes ----
 
-static struct __file* open_streams = 0;
+static struct __file* open_streams = NULL;
 static int exit_registered = 0;
 
 static void flush_everything(void)
 {
-    fflush(0);
+    fflush(NULL);
 }
 
 void __file_list(struct __file* f)
@@ -63,7 +63,7 @@ void __file_forget(struct __file* f)
 {
     if (!f->listed)
         return;
-    for (struct __file** at = &open_streams; *at != 0; at = &(*at)->next_open)
+    for (struct __file** at = &open_streams; *at != NULL; at = &(*at)->next_open)
     {
         if (*at == f)
         {
@@ -72,7 +72,7 @@ void __file_forget(struct __file* f)
         }
     }
     f->listed = 0;
-    f->next_open = 0;
+    f->next_open = NULL;
 }
 
 // ---- moving bytes, below the buffer ----
@@ -140,16 +140,16 @@ static void drop_read_ahead(struct __file* f)
 static unsigned char* buffer_of(struct __file* f)
 {
     if (f->buf_mode == _IONBF)
-        return 0;
-    if (f->buf == 0)
+        return NULL;
+    if (f->buf == NULL)
     {
         if (f->buf_size == 0)
             f->buf_size = FILE_BUFSIZ;
         f->buf = (unsigned char*)malloc(f->buf_size);
-        if (f->buf == 0)
+        if (f->buf == NULL)
         {
             f->buf_mode = _IONBF;
-            return 0;
+            return NULL;
         }
         f->buf_owned = 1;
         __file_list(f);
@@ -163,7 +163,7 @@ void __file_release_buffer(struct __file* f)
     drop_read_ahead(f);
     if (f->buf_owned)
         free(f->buf);
-    f->buf = 0;
+    f->buf = NULL;
     f->buf_owned = 0;
     f->buf_size = 0;
 }
@@ -173,7 +173,7 @@ void __file_release_buffer(struct __file* f)
 // Parses "r", "w", "a", each with an optional '+' and 'b' in either order after the letter.
 int __file_parse_mode(const char* mode, int* readable, int* writable, int* truncate, int* append)
 {
-    if (mode == 0)
+    if (mode == NULL)
         return -1;
     int plus = 0;
     for (int i = 1; mode[i] != 0; i++)
@@ -196,16 +196,16 @@ int __file_parse_mode(const char* mode, int* readable, int* writable, int* trunc
 FILE* fmemopen(void* buf, size_t size, const char* mode)
 {
     int readable, writable, truncate, append;
-    if (buf == 0 || size == 0 || __file_parse_mode(mode, &readable, &writable, &truncate, &append) != 0)
+    if (buf == NULL || size == 0 || __file_parse_mode(mode, &readable, &writable, &truncate, &append) != 0)
     {
         errno = EINVAL;
-        return 0;
+        return NULL;
     }
     struct __file* f = (struct __file*)malloc(sizeof(struct __file));
-    if (f == 0)
+    if (f == NULL)
     {
         errno = ENOMEM;
-        return 0;
+        return NULL;
     }
     memset(f, 0, sizeof(struct __file));
     f->kind = FILE_MEMORY;
@@ -236,7 +236,7 @@ FILE* fmemopen(void* buf, size_t size, const char* mode)
 
 int fclose(FILE* f)
 {
-    if (f == 0)
+    if (f == NULL)
         return EOF;
     int result = __file_flush(f) == 0 ? 0 : -1;
     drop_read_ahead(f);
@@ -244,7 +244,7 @@ int fclose(FILE* f)
         result = -1;
     if (f->buf_owned)
         free(f->buf);
-    f->buf = 0;
+    f->buf = NULL;
     f->buf_owned = 0;
     __file_forget(f);
     if (f->owned)
@@ -254,13 +254,13 @@ int fclose(FILE* f)
 
 int fflush(FILE* f)
 {
-    if (f == 0)
+    if (f == NULL)
     {
         int result = 0;
-        for (struct __file* s = open_streams; s != 0; s = s->next_open)
+        for (struct __file* s = open_streams; s != NULL; s = s->next_open)
             if (__file_flush(s) != 0)
                 result = EOF;
-        if (__file_flush_all_hook != 0)
+        if (__file_flush_all_hook != NULL)
             __file_flush_all_hook();                     // every open disk file, to the disk
         return result;
     }
@@ -273,7 +273,7 @@ int fflush(FILE* f)
 
 int setvbuf(FILE* f, char* buf, int mode, size_t size)
 {
-    if (f == 0 || (mode != _IOFBF && mode != _IOLBF && mode != _IONBF) || (buf != 0 && size == 0))
+    if (f == NULL || (mode != _IOFBF && mode != _IOLBF && mode != _IONBF) || (buf != NULL && size == 0))
     {
         errno = EINVAL;
         return -1;
@@ -285,8 +285,8 @@ int setvbuf(FILE* f, char* buf, int mode, size_t size)
     if (mode != _IONBF)
     {
         f->buf = (unsigned char*)buf;                    // 0: allocated at the first write
-        f->buf_size = buf != 0 ? size : size != 0 ? size : FILE_BUFSIZ;
-        if (buf != 0)
+        f->buf_size = buf != NULL ? size : size != 0 ? size : FILE_BUFSIZ;
+        if (buf != NULL)
             __file_list(f);
     }
     if (f == stdout)
@@ -296,7 +296,7 @@ int setvbuf(FILE* f, char* buf, int mode, size_t size)
 
 void setbuf(FILE* f, char* buf)
 {
-    setvbuf(f, buf, buf != 0 ? _IOFBF : _IONBF, BUFSIZ);
+    setvbuf(f, buf, buf != NULL ? _IOFBF : _IONBF, BUFSIZ);
 }
 
 // ---- stdout, as printf and putchar reach it ----
@@ -313,7 +313,7 @@ static void write_to_stdout(const char* s, int n)
 void __file_stdout_changed(void)
 {
     int plain = stdout->kind == FILE_TERM_OUT && stdout->buf_mode == _IONBF;
-    __stdout_write_hook = plain ? 0 : write_to_stdout;
+    __stdout_write_hook = plain ? NULL : write_to_stdout;
 }
 
 // ---- writing ----
@@ -345,14 +345,14 @@ static int memory_putc(struct __file* f, int c)
 
 int __file_putc(struct __file* f, int c)
 {
-    if (f == 0 || !f->writable)
+    if (f == NULL || !f->writable)
         return EOF;
     if (f->kind == FILE_MEMORY)
         return memory_putc(f, c);
     drop_read_ahead(f);
     unsigned char byte = (unsigned char)c;
     unsigned char* buf = buffer_of(f);
-    if (buf == 0)
+    if (buf == NULL)
         return raw_write(f, &byte, 1) == 1 ? c & 0xFF : EOF;
     buf[f->buf_len++] = byte;
     f->buf_state = BUF_WRITING;
@@ -393,7 +393,7 @@ static size_t write_bytes(struct __file* f, const unsigned char* p, size_t n)
 {
     drop_read_ahead(f);
     unsigned char* buf = buffer_of(f);
-    if (buf == 0)
+    if (buf == NULL)
         return raw_write(f, p, n);
     int failed_before = f->error;
     f->error = 0;
@@ -423,7 +423,7 @@ static size_t write_bytes(struct __file* f, const unsigned char* p, size_t n)
 
 int fputs(const char* s, FILE* f)
 {
-    if (f == 0 || !f->writable)
+    if (f == NULL || !f->writable)
         return EOF;
     size_t n = strlen(s);
     if (f->kind == FILE_MEMORY)
@@ -438,7 +438,7 @@ int fputs(const char* s, FILE* f)
 
 size_t fwrite(const void* buf, size_t size, size_t count, FILE* f)
 {
-    if (f == 0 || !f->writable || size == 0 || count == 0)
+    if (f == NULL || !f->writable || size == 0 || count == 0)
         return 0;
     size_t total = byte_total(f, size, count);
     if (total == 0)
@@ -482,7 +482,7 @@ static int ops_getc(struct __file* f)
     if (f->buf_state == BUF_READING && f->buf_pos < f->buf_len)
         return f->buf[f->buf_pos++];
     unsigned char* buf = buffer_of(f);
-    if (buf == 0)
+    if (buf == NULL)
     {
         unsigned char c;
         int n = f->ops->read(f, &c, 1);
@@ -508,7 +508,7 @@ static int ops_getc(struct __file* f)
 
 int fgetc(FILE* f)
 {
-    if (f == 0 || !f->readable)
+    if (f == NULL || !f->readable)
         return EOF;
     if (f->unget >= 0)
     {
@@ -553,7 +553,7 @@ int getc(FILE* f)
 
 int ungetc(int c, FILE* f)
 {
-    if (f == 0 || !f->readable || c == EOF || f->unget >= 0)
+    if (f == NULL || !f->readable || c == EOF || f->unget >= 0)
         return EOF;                                      // one character of pushback, and EOF cannot be pushed
     f->unget = c & 0xFF;
     f->eof = 0;
@@ -562,7 +562,7 @@ int ungetc(int c, FILE* f)
 
 char* fgets(char* buf, int n, FILE* f)
 {
-    if (buf == 0 || n < 1 || f == 0 || !f->readable)
+    if (buf == NULL || n < 1 || f == NULL || !f->readable)
         return 0;
     int i = 0;
     while (i < n - 1)
@@ -576,7 +576,7 @@ char* fgets(char* buf, int n, FILE* f)
             break;
     }
     buf[i] = 0;
-    return i == 0 ? 0 : buf;                             // nothing read: EOF, and the buffer holds just a NUL
+    return i == 0 ? NULL : buf;                          // nothing read: EOF, and the buffer holds just a NUL
 }
 
 // n bytes from a disk or host stream: what the buffer holds first, then a block straight into `p` when what is
@@ -605,7 +605,7 @@ static size_t ops_read(struct __file* f, unsigned char* p, size_t n)
         f->buf_len = 0;
         f->buf_pos = 0;
         unsigned char* buf = buffer_of(f);
-        if (buf == 0 || n - done >= f->buf_size)
+        if (buf == NULL || n - done >= f->buf_size)
         {
             unsigned int part = n - done > 0x40000000u ? 0x40000000u : (unsigned int)(n - done);
             int got = f->ops->read(f, p + done, part);
@@ -633,7 +633,7 @@ static size_t ops_read(struct __file* f, unsigned char* p, size_t n)
 
 size_t fread(void* buf, size_t size, size_t count, FILE* f)
 {
-    if (f == 0 || !f->readable || size == 0 || count == 0)
+    if (f == NULL || !f->readable || size == 0 || count == 0)
         return 0;
     size_t total = byte_total(f, size, count);
     unsigned char* p = (unsigned char*)buf;
@@ -654,16 +654,16 @@ size_t fread(void* buf, size_t size, size_t count, FILE* f)
 // POSIX getline: reads through the newline into a malloc'd buffer that grows as needed.
 int getline(char** line, size_t* cap, FILE* f)
 {
-    if (line == 0 || cap == 0 || f == 0)
+    if (line == NULL || cap == NULL || f == NULL)
     {
         errno = EINVAL;
         return -1;
     }
-    if (*line == 0 || *cap == 0)
+    if (*line == NULL || *cap == 0)
     {
         *cap = 64;
         *line = (char*)malloc(*cap);
-        if (*line == 0)
+        if (*line == NULL)
         {
             errno = ENOMEM;
             return -1;
@@ -679,7 +679,7 @@ int getline(char** line, size_t* cap, FILE* f)
         {
             size_t bigger = *cap * 2;
             char* grown = (char*)realloc(*line, bigger);
-            if (grown == 0)
+            if (grown == NULL)
             {
                 errno = ENOMEM;
                 return -1;
@@ -700,9 +700,9 @@ int getline(char** line, size_t* cap, FILE* f)
 
 // ---- position and state ----
 
-int fseek(FILE* f, int offset, int whence)
+int fseek(FILE* f, long offset, int whence)
 {
-    if (f != 0 && has_ops(f))
+    if (f != NULL && has_ops(f))
     {
         if (__file_flush(f) != 0)
             return -1;
@@ -711,18 +711,19 @@ int fseek(FILE* f, int offset, int whence)
             if (f->unget >= 0)
                 offset--;                                // the pushed-back character has been read already
             if (f->buf_state == BUF_READING)
-                offset -= (int)(f->buf_len - f->buf_pos);   // and the medium is ahead by the read-ahead
+                offset -= (long)(f->buf_len - f->buf_pos);   // and the medium is ahead by the read-ahead
         }
         f->unget = -1;
         f->buf_state = BUF_EMPTY;
         f->buf_len = 0;
         f->buf_pos = 0;
-        if (f->ops->seek(f, offset, whence) != 0)
+        // The backend's offset is an int: int == long here, so the long the API takes fits without loss.
+        if (f->ops->seek(f, (int)offset, whence) != 0)
             return -1;
         f->eof = 0;
         return 0;
     }
-    if (f == 0 || f->kind != FILE_MEMORY)
+    if (f == NULL || f->kind != FILE_MEMORY)
     {
         errno = ESPIPE;                                  // a terminal cannot be sought
         return -1;
@@ -748,54 +749,54 @@ int fseek(FILE* f, int offset, int whence)
     return 0;
 }
 
-int ftell(FILE* f)
+long ftell(FILE* f)
 {
-    if (f != 0 && has_ops(f))
+    if (f != NULL && has_ops(f))
     {
-        int at = f->ops->tell(f);
+        int at = f->ops->tell(f);                    // int == long here: the backend's position is 32-bit
         if (at < 0)
             return -1;
         if (f->buf_state == BUF_READING)
             at -= (int)(f->buf_len - f->buf_pos);
         else if (f->buf_state == BUF_WRITING)
             at += (int)f->buf_len;
-        return at - (f->unget >= 0 ? 1 : 0);
+        return (long)at - (f->unget >= 0 ? 1 : 0);
     }
-    if (f == 0 || f->kind != FILE_MEMORY)
+    if (f == NULL || f->kind != FILE_MEMORY)
     {
         errno = ESPIPE;
         return -1;
     }
-    return (int)f->pos - (f->unget >= 0 ? 1 : 0);
+    return (long)f->pos - (f->unget >= 0 ? 1 : 0);
 }
 
 void rewind(FILE* f)
 {
     fseek(f, 0, SEEK_SET);
-    if (f != 0)
+    if (f != NULL)
         f->error = 0;
 }
 
 int fgetpos(FILE* f, fpos_t* p)
 {
-    int at = ftell(f);
+    long at = ftell(f);
     if (at < 0)
         return -1;
-    *p = at;
+    *p = (fpos_t)at;
     return 0;
 }
 
 int fsetpos(FILE* f, const fpos_t* p)
 {
-    return fseek(f, *p, SEEK_SET);
+    return fseek(f, (long)*p, SEEK_SET);
 }
 
-int feof(FILE* f)     { return f != 0 && f->eof; }
-int ferror(FILE* f)   { return f != 0 && f->error; }
+int feof(FILE* f)     { return f != NULL && f->eof; }
+int ferror(FILE* f)   { return f != NULL && f->error; }
 
 void clearerr(FILE* f)
 {
-    if (f != 0)
+    if (f != NULL)
     {
         f->eof = 0;
         f->error = 0;
@@ -804,7 +805,7 @@ void clearerr(FILE* f)
 
 void perror(const char* msg)
 {
-    if (msg != 0 && msg[0] != 0)
+    if (msg != NULL && msg[0] != 0)
     {
         fputs(msg, stderr);
         fputs(": ", stderr);

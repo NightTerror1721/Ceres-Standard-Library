@@ -27,7 +27,7 @@ static int surfaces(const void* dst, int dst_stride, const void* src, int src_st
 
 int blitter_fill(unsigned int* dst, int dst_stride, int w, int h, unsigned int color)
 {
-    if (surfaces(dst, dst_stride, 0, 0, w, h) != 0)
+    if (surfaces(dst, dst_stride, NULL, 0, w, h) != 0)
         return -1;
     mmio_w32(BLIT_COLOR, color);
     return run(BLIT_FILL);
@@ -59,7 +59,7 @@ int blitter_copy_scaled(unsigned int* dst, int dst_stride, const unsigned int* s
 int blitter_copy_indexed(unsigned int* dst, int dst_stride, const unsigned char* src, int src_stride, int w, int h,
                          const unsigned int* palette, int key)
 {
-    if (palette == 0 || surfaces(dst, dst_stride, src, src_stride, w, h) != 0)
+    if (palette == NULL || surfaces(dst, dst_stride, src, src_stride, w, h) != 0)
         return -1;
     mmio_w32(BLIT_PALETTE, (unsigned int)palette);
     if (key >= 0)

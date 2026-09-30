@@ -313,7 +313,7 @@ int json_equals(const char* text, const struct json_token* t, int i, const char*
     int n;
     while ((n = unescape_next(text, &pos, t[i].end, unit)) > 0)
     {
-        if (strncmp(s, unit, (size_t)n) != 0 || memchr(s, 0, (size_t)n) != 0)
+        if (strncmp(s, unit, (size_t)n) != 0 || memchr(s, 0, (size_t)n) != NULL)
             return 0;
         s += n;
     }
@@ -357,7 +357,7 @@ static int number_text(const char* text, const struct json_token* t, int i, char
 long long json_get_int64(const char* text, const struct json_token* t, int i, long long fallback)
 {
     char buf[32];
-    if (number_text(text, t, i, buf, sizeof buf) != 0 || strpbrk(buf, ".eE") != 0)
+    if (number_text(text, t, i, buf, sizeof buf) != 0 || strpbrk(buf, ".eE") != NULL)
         return fallback;
     char* end;
     errno = 0;
@@ -376,7 +376,7 @@ float json_get_float(const char* text, const struct json_token* t, int i, float 
     char buf[64];
     if (number_text(text, t, i, buf, sizeof buf) != 0)
         return fallback;
-    return strtof(buf, 0);                           // the grammar was checked: it all is the number
+    return strtof(buf, NULL);                        // the grammar was checked: it all is the number
 }
 
 int json_get_bool(const struct json_token* t, int i, int fallback)

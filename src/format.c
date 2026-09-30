@@ -495,7 +495,7 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
             // A wide string as UTF-8. The precision counts bytes, and a character that would not fit whole is
             // left out; the width counts bytes too, as it does for %s.
             const wchar_t* w = va_arg(ap, const wchar_t*);
-            if (w == 0)
+            if (w == NULL)
             {
                 put_field(s, "", "(null)", prec >= 0 && prec < 6 ? prec : 6, 0, width, flags & ~F_ZERO, 0);
             }
@@ -527,7 +527,7 @@ static int vformat(struct __sink* s, const char* fmt, va_list ap)
         else if (c == 's')
         {
             const char* str = va_arg(ap, const char*);
-            if (str == 0) str = "(null)";
+            if (str == NULL) str = "(null)";
             int n = 0;
             while (str[n] != 0 && (prec < 0 || n < prec)) n++;
             put_field(s, "", str, n, 0, width, flags & ~F_ZERO, 0);
@@ -625,7 +625,7 @@ int sprintf(char* buf, const char* fmt, ...)
 int vprintf(const char* fmt, va_list ap)
 {
     struct __sink s;
-    s.put = sink_term; s.buf = 0; s.cap = 0; s.len = 0; s.used = 0;
+    s.put = sink_term; s.buf = NULL; s.cap = 0; s.len = 0; s.used = 0;
     int r = vformat(&s, fmt, ap);
     term_flush_chunk(&s);
     return r;
@@ -635,7 +635,7 @@ int vprintf(const char* fmt, va_list ap)
 int __vformat_ext(void (*put)(void*, int), void* ctx, const char* fmt, va_list ap)
 {
     struct __sink s;
-    s.put = sink_ext; s.buf = 0; s.cap = 0; s.len = 0; s.used = 0; s.ext = put; s.ext_ctx = ctx;
+    s.put = sink_ext; s.buf = NULL; s.cap = 0; s.len = 0; s.used = 0; s.ext = put; s.ext_ctx = ctx;
     return vformat(&s, fmt, ap);
 }
 

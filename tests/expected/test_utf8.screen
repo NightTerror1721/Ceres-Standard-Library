@@ -4,10 +4,10 @@
 -- to and from Latin-1
 -- uchar.h
 -- wchar.h and stdlib.h
+-- wcsto*
 -- printf and scanf
 printed: ¿Qué año? ¡Sí!
 -- the text plane
-
 
 
 
@@ -35,12 +35,12 @@ printed: ¿Qué año? ¡Sí!
 -- to and from Latin-1
 -- uchar.h
 -- wchar.h and stdlib.h
+-- wcsto*
 -- printf and scanf
 printed: ¿Qué año? ¡Sí!
 -- the text plane
 -- the pixel font
-ALL PASSED 139/139
-
+ALL PASSED 151/151
 
 
 

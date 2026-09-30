@@ -83,7 +83,7 @@ static int load_directory(struct pack* p)
     if ((unsigned long long)directory + (unsigned long long)count * ENTRY > p->length)
         return fail(EINVAL);                         // the directory runs off the end
     p->entries = (struct pack_entry*)malloc((size_t)count * sizeof(struct pack_entry));
-    if (p->entries == 0)
+    if (p->entries == NULL)
         return fail(ENOMEM);
     for (int i = 0; i < count; i++)
     {
@@ -92,7 +92,7 @@ static int load_directory(struct pack* p)
         {
             int e = errno;
             free(p->entries);
-            p->entries = 0;
+            p->entries = NULL;
             return fail(e == EIO ? EIO : EINVAL);
         }
         struct pack_entry* e = &p->entries[i];
@@ -119,7 +119,7 @@ int pack_open_memory(struct pack* p, const void* data, size_t size)
 int pack_open(struct pack* p, const struct blockdev* dev)
 {
     memset(p, 0, sizeof *p);
-    if (dev == 0 || dev->read == 0 || dev->sectors == 0)
+    if (dev == NULL || dev->read == NULL || dev->sectors == NULL)
         return fail(EINVAL);
     p->kind = FROM_DEVICE;
     p->device = *dev;
@@ -143,7 +143,7 @@ int pack_open_file(struct pack* p, const char* path)
 {
     memset(p, 0, sizeof *p);
     FILE* f = fopen(path, "rb");
-    if (f == 0)
+    if (f == NULL)
         return -1;
     long end = -1;
     if (fseek(f, 0, SEEK_END) == 0)
@@ -160,7 +160,7 @@ int pack_open_file(struct pack* p, const char* path)
     {
         int e = errno;
         fclose(f);
-        p->file = 0;
+        p->file = NULL;
         return fail(e);
     }
     return 0;
@@ -168,10 +168,10 @@ int pack_open_file(struct pack* p, const char* path)
 
 void pack_close(struct pack* p)
 {
-    if (p == 0)
+    if (p == NULL)
         return;
     free(p->entries);
-    if (p->file != 0)
+    if (p->file != NULL)
         fclose(p->file);
     memset(p, 0, sizeof *p);
 }
@@ -188,7 +188,7 @@ const struct pack_entry* pack_entry_at(const struct pack* p, int i)
 
 const struct pack_entry* pack_find(const struct pack* p, const char* name)
 {
-    for (int i = 0; p != 0 && name != 0 && i < p->count; i++)
+    for (int i = 0; p != NULL && name != NULL && i < p->count; i++)
         if (strcmp(p->entries[i].name, name) == 0)
             return &p->entries[i];
     errno = ENOENT;
@@ -197,7 +197,7 @@ const struct pack_entry* pack_find(const struct pack* p, const char* name)
 
 long pack_read(struct pack* p, const struct pack_entry* e, void* dst, size_t cap)
 {
-    if (p == 0 || e == 0 || e->stored > e->size || (e->size > 0 && e->stored == 0))
+    if (p == NULL || e == NULL || e->stored > e->size || (e->size > 0 && e->stored == 0))
         return fail(EINVAL);
     if (e->size > cap)
         return fail(ENOSPC);
@@ -209,7 +209,7 @@ long pack_read(struct pack* p, const struct pack_entry* e, void* dst, size_t cap
     else
     {
         void* packed = malloc(e->stored);
-        if (packed == 0)
+        if (packed == NULL)
             return fail(ENOMEM);
         int ok = fetch(p, e->offset, packed, e->stored) == 0;
         int e_saved = errno;
@@ -228,28 +228,28 @@ long pack_read(struct pack* p, const struct pack_entry* e, void* dst, size_t cap
 void* pack_load(struct pack* p, const char* name, size_t* size)
 {
     const struct pack_entry* e = pack_find(p, name);
-    if (e == 0)
-        return 0;
+    if (e == NULL)
+        return NULL;
     if (e->size == 0xFFFFFFFFu)
     {
         errno = ENOMEM;                              // the NUL after it would not fit in a size_t
-        return 0;
+        return NULL;
     }
     char* data = (char*)malloc((size_t)e->size + 1u);
-    if (data == 0)
+    if (data == NULL)
     {
         errno = ENOMEM;
-        return 0;
+        return NULL;
     }
     if (pack_read(p, e, data, e->size) < 0)
     {
         int saved = errno;
         free(data);
         errno = saved;
-        return 0;
+        return NULL;
     }
     data[e->size] = 0;                               // text can be used as a string
-    if (size != 0)
+    if (size != NULL)
         *size = e->size;
     return data;
 }

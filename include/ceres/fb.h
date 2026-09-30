@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../stddef.h"
 #include "video.h"
 #include "color.h"
 

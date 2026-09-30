@@ -13,18 +13,18 @@ void* memrchr(const void* p, int c, size_t n)
         n--;
         if (s[n] == (unsigned char)c) return (void*)(s + n);
     }
-    return 0;
+    return NULL;
 }
 
 void* memmem(const void* hay, size_t hl, const void* needle, size_t nl)
 {
     if (nl == 0) return (void*)hay;
-    if (hl < nl) return 0;
+    if (hl < nl) return NULL;
     const unsigned char* h = (const unsigned char*)hay;
     const unsigned char* nd = (const unsigned char*)needle;
     for (size_t i = 0; i + nl <= hl; i++)
         if (h[i] == nd[0] && memcmp(h + i, nd, nl) == 0) return (void*)(h + i);
-    return 0;
+    return NULL;
 }
 
 size_t strnlen(const char* s, size_t max)
@@ -80,7 +80,7 @@ size_t strxfrm(char* dst, const char* src, size_t n)
 
 char* strrchr(const char* s, int c)
 {
-    const char* last = 0;
+    const char* last = NULL;
     for (size_t i = 0; ; i++)
     {
         if (s[i] == (char)c) last = s + i;
@@ -94,51 +94,51 @@ char* strstr(const char* hay, const char* needle)
     if (nl == 0) return (char*)hay;
     for (size_t i = 0; hay[i] != 0; i++)
         if (hay[i] == needle[0] && strncmp(hay + i, needle, nl) == 0) return (char*)(hay + i);
-    return 0;
+    return NULL;
 }
 
 size_t strspn(const char* s, const char* accept)
 {
     size_t n = 0;
-    while (s[n] != 0 && strchr(accept, s[n]) != 0) n++;
+    while (s[n] != 0 && strchr(accept, s[n]) != NULL) n++;
     return n;
 }
 
 size_t strcspn(const char* s, const char* reject)
 {
     size_t n = 0;
-    while (s[n] != 0 && strchr(reject, s[n]) == 0) n++;
+    while (s[n] != 0 && strchr(reject, s[n]) == NULL) n++;
     return n;
 }
 
 char* strpbrk(const char* s, const char* accept)
 {
     for (size_t i = 0; s[i] != 0; i++)
-        if (strchr(accept, s[i]) != 0) return (char*)(s + i);
-    return 0;
+        if (strchr(accept, s[i]) != NULL) return (char*)(s + i);
+    return NULL;
 }
 
 char* strtok_r(char* s, const char* delim, char** save)
 {
-    if (s == 0) s = *save;
-    if (s == 0) return 0;
+    if (s == NULL) s = *save;
+    if (s == NULL) return NULL;
     s += strspn(s, delim);                             // skip leading delimiters
-    if (*s == 0) { *save = 0; return 0; }
+    if (*s == 0) { *save = NULL; return NULL; }
     char* end = s + strcspn(s, delim);
-    if (*end == 0) *save = 0;
+    if (*end == 0) *save = NULL;
     else { *end = 0; *save = end + 1; }
     return s;
 }
 
-static char* strtok_state = 0;
+static char* strtok_state = NULL;
 char* strtok(char* s, const char* delim) { return strtok_r(s, delim, &strtok_state); }
 
 char* strsep(char** s, const char* delim)
 {
     char* start = *s;
-    if (start == 0) return 0;
+    if (start == NULL) return NULL;
     char* end = start + strcspn(start, delim);
-    if (*end == 0) *s = 0;
+    if (*end == 0) *s = NULL;
     else { *end = 0; *s = end + 1; }
     return start;
 }
@@ -166,7 +166,7 @@ char* strdup(const char* s)
 {
     size_t n = strlen(s) + 1;
     char* p = (char*)malloc(n);
-    if (p != 0) memcpy(p, s, n);
+    if (p != NULL) memcpy(p, s, n);
     return p;
 }
 
@@ -174,7 +174,7 @@ char* strndup(const char* s, size_t max)
 {
     size_t n = strnlen(s, max);
     char* p = (char*)malloc(n + 1);
-    if (p != 0) { memcpy(p, s, n); p[n] = 0; }
+    if (p != NULL) { memcpy(p, s, n); p[n] = 0; }
     return p;
 }
 

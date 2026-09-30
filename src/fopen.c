@@ -81,7 +81,7 @@ static const struct __file_ops host_ops = { host_ops_read, host_ops_write, host_
 // The host name inside "host:name", or 0 for a name on the disk.
 static const char* host_name(const char* path)
 {
-    return strncmp(path, "host:", 5) == 0 ? path + 5 : 0;
+    return strncmp(path, "host:", 5) == 0 ? path + 5 : NULL;
 }
 
 // ---- the end of the program ----
@@ -99,7 +99,7 @@ static void sync_disk(void)
 
 static void flush_at_exit(void)
 {
-    fflush(0);
+    fflush(NULL);
 }
 
 static void note_open(void)
@@ -132,7 +132,7 @@ static int disk_flags(int readable, int writable, int truncate, int append, int 
 static int open_into(struct __file* f, const char* path, const char* mode)
 {
     int readable, writable, truncate, append;
-    if (path == 0 || __file_parse_mode(mode, &readable, &writable, &truncate, &append) != 0)
+    if (path == NULL || __file_parse_mode(mode, &readable, &writable, &truncate, &append) != 0)
     {
         errno = EINVAL;
         return -1;
@@ -141,7 +141,7 @@ static int open_into(struct __file* f, const char* path, const char* mode)
     int kind;
     int fd;
     const char* host = host_name(path);
-    if (host != 0)
+    if (host != NULL)
     {
         unsigned int flags = (readable ? HOST_READ : 0) | (writable ? HOST_WRITE : 0) | (create ? HOST_CREATE : 0) |
             (truncate ? HOST_TRUNCATE : 0) | (append ? HOST_APPEND : 0);
@@ -184,17 +184,17 @@ static int open_into(struct __file* f, const char* path, const char* mode)
 FILE* fopen(const char* path, const char* mode)
 {
     struct __file* f = (struct __file*)malloc(sizeof(struct __file));
-    if (f == 0)
+    if (f == NULL)
     {
         errno = ENOMEM;
-        return 0;
+        return NULL;
     }
     memset(f, 0, sizeof(struct __file));
     f->owned = 1;
     if (open_into(f, path, mode) != 0)
     {
         free(f);
-        return 0;
+        return NULL;
     }
     return f;
 }
@@ -205,16 +205,16 @@ FILE* fopen(const char* path, const char* mode)
 // on the terminal instead.
 FILE* freopen(const char* path, const char* mode, FILE* f)
 {
-    if (f == 0 || path == 0)
+    if (f == NULL || path == NULL)
     {
         errno = EINVAL;
-        return 0;
+        return NULL;
     }
     int readable, writable, truncate, append;
     if (__file_parse_mode(mode, &readable, &writable, &truncate, &append) != 0)
     {
         errno = EINVAL;
-        return 0;
+        return NULL;
     }
     int standard = f == stdin || f == stdout || f == stderr;
     // What f had open goes first, whatever comes next.
@@ -232,7 +232,7 @@ FILE* freopen(const char* path, const char* mode, FILE* f)
             __file_forget(f);
             if (f->owned)
                 free(f);
-            return 0;
+            return NULL;
         }
         // Back on the terminal, as it started.
         int listed = f->listed;
@@ -248,7 +248,7 @@ FILE* freopen(const char* path, const char* mode, FILE* f)
         if (f == stdout)
             __file_stdout_changed();
         errno = saved;
-        return failed ? 0 : f;
+        return failed ? NULL : f;
     }
     if (standard && f != stdin)
         f->buf_mode = buf_mode == _IONBF ? _IOLBF : buf_mode;   // a log file is written a line at a time
@@ -269,38 +269,38 @@ FILE* tmpfile(void)
         if (fs_stat(name, &st) == 0)
             continue;                                     // taken: try the next number
         FILE* f = fopen(name, "w+");
-        if (f == 0)
-            return 0;
+        if (f == NULL)
+            return NULL;
         f->temporary = 1;
         strcpy(f->name, name);
         return f;
     }
     errno = EEXIST;
-    return 0;
+    return NULL;
 }
 
 int remove(const char* path)
 {
-    if (path != 0 && host_name(path) != 0)
+    if (path != NULL && host_name(path) != NULL)
         return host_result(host_remove(host_name(path))) < 0 ? -1 : 0;
     return fs_remove(path);
 }
 
 int rename(const char* from, const char* to)
 {
-    if (from == 0 || to == 0)
+    if (from == NULL || to == NULL)
     {
         errno = EINVAL;
         return -1;
     }
     const char* host_from = host_name(from);
     const char* host_to = host_name(to);
-    if ((host_from != 0) != (host_to != 0))
+    if ((host_from != NULL) != (host_to != NULL))
     {
         errno = EXDEV;                                    // between the disk and the host: copy it instead
         return -1;
     }
-    if (host_from != 0)
+    if (host_from != NULL)
         return host_result(host_rename(host_from, host_to)) < 0 ? -1 : 0;
     return fs_rename(from, to);
 }

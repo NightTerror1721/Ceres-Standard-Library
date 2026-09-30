@@ -20,7 +20,7 @@ struct header
 // "<path>.a" or ".b" into name: 0, or -1 (ENAMETOOLONG).
 static int name_of(char* name, const char* path, int which)
 {
-    size_t length = path != 0 ? strlen(path) : 0;
+    size_t length = path != NULL ? strlen(path) : 0;
     if (length == 0 || length > SAVE_PATH_MAX)
     {
         errno = length == 0 ? EINVAL : ENAMETOOLONG;
@@ -39,11 +39,11 @@ static int name_of(char* name, const char* path, int which)
 static int open_copy(const char* path, int which, struct header* h, FILE** out)
 {
     char name[SAVE_PATH_MAX + 3];
-    *out = 0;
+    *out = NULL;
     if (name_of(name, path, which) != 0)
         return -1;
     FILE* f = fopen(name, "rb");
-    if (f == 0)
+    if (f == NULL)
         return errno == ENOENT ? 0 : -1;
     unsigned char raw[HEADER];
     if (fread(raw, 1, HEADER, f) != HEADER || le32(raw) != MAGIC || le32(raw + 20) != hash_crc32(raw, 20))
@@ -71,11 +71,11 @@ static int read_body(FILE* f, const struct header* h, void* data)
     while (ok && left > 0)
     {
         unsigned int n = left < sizeof piece ? left : (unsigned int)sizeof piece;
-        unsigned char* into = out != 0 ? out : piece;
+        unsigned char* into = out != NULL ? out : piece;
         ok = fread(into, 1, n, f) == n;
         if (ok)
             crc = hash_crc32_update(crc, into, n);
-        if (out != 0)
+        if (out != NULL)
             out += n;
         left -= n;
     }
@@ -105,16 +105,16 @@ static int newest(const char* path, struct header* h, void* data, size_t cap, in
     if (error == ENOENT)
     {
         int first = 0;
-        if (files[0] == 0 || (files[1] != 0 && heads[1].sequence - heads[0].sequence < 0x80000000u))
+        if (files[0] == NULL || (files[1] != NULL && heads[1].sequence - heads[0].sequence < 0x80000000u))
             first = 1;
         for (int k = 0; k < 2 && result < 0; k++)
         {
             int which = k == 0 ? first : 1 - first;
-            if (files[which] == 0)
+            if (files[which] == NULL)
                 continue;
-            if (data != 0 && heads[which].size > cap)
+            if (data != NULL && heads[which].size > cap)
             {
-                if (read_body(files[which], &heads[which], 0))
+                if (read_body(files[which], &heads[which], NULL))
                 {
                     error = ENOSPC;                                  // good, and too big: not the older one instead
                     break;
@@ -129,7 +129,7 @@ static int newest(const char* path, struct header* h, void* data, size_t cap, in
         }
     }
     for (int which = 0; which < 2; which++)
-        if (files[which] != 0)
+        if (files[which] != NULL)
             fclose(files[which]);
     if (result < 0)
         errno = error == ENOENT ? unopened : error;
@@ -140,7 +140,7 @@ int save_write(const char* path, unsigned int version, const void* data, size_t 
 {
     struct header latest_header;
     int saved_errno = errno;
-    int latest = newest(path, &latest_header, 0, 0, 1);
+    int latest = newest(path, &latest_header, NULL, 0, 1);
     if (latest < 0 && errno != ENOENT)
         return -1;
     errno = saved_errno;
@@ -157,7 +157,7 @@ int save_write(const char* path, unsigned int version, const void* data, size_t 
     put_le32(raw + 16, hash_crc32(data, size));
     put_le32(raw + 20, hash_crc32(raw, 20));
     FILE* f = fopen(name, "wb");
-    if (f == 0)
+    if (f == NULL)
         return -1;
     int ok = fwrite(raw, 1, HEADER, f) == HEADER && (size == 0 || fwrite(data, 1, size, f) == size);
     if (fclose(f) != 0)                                              // the disk has it once the file is closed
@@ -175,7 +175,7 @@ long save_read(const char* path, unsigned int* version, void* data, size_t cap)
     struct header h;
     if (newest(path, &h, data, cap, 0) < 0)
         return -1;
-    if (version != 0)
+    if (version != NULL)
         *version = h.version;
     return (long)h.size;
 }
@@ -186,7 +186,7 @@ void* save_load(const char* path, unsigned int* version, size_t* size)
     if (n < 0)
         return 0;
     void* data = malloc(n > 0 ? (size_t)n : 1u);
-    if (data == 0)
+    if (data == NULL)
     {
         errno = ENOMEM;
         return 0;
@@ -199,7 +199,7 @@ void* save_load(const char* path, unsigned int* version, size_t* size)
         errno = e;
         return 0;
     }
-    if (size != 0)
+    if (size != NULL)
         *size = (size_t)got;
     return data;
 }
@@ -207,14 +207,14 @@ void* save_load(const char* path, unsigned int* version, size_t* size)
 long save_size(const char* path)
 {
     struct header h;
-    return newest(path, &h, 0, 0, 0) < 0 ? -1 : (long)h.size;
+    return newest(path, &h, NULL, 0, 0) < 0 ? -1 : (long)h.size;
 }
 
 int save_exists(const char* path)
 {
     struct header h;
     int saved = errno;
-    int yes = newest(path, &h, 0, 0, 0) >= 0;
+    int yes = newest(path, &h, NULL, 0, 0) >= 0;
     errno = saved;
     return yes;
 }

@@ -34,46 +34,46 @@ char** sys_envp(void)
     return (char**)read_register(SYS_CTRL_ENVP);
 }
 
-static char** owned = 0;          // the copy setenv/unsetenv edit; 0 until one of them is called
-static unsigned char* mine = 0;   // for each entry of the copy: 1 when setenv allocated its string
+static char** owned = NULL;          // the copy setenv/unsetenv edit; NULL until one of them is called
+static unsigned char* mine = NULL;   // for each entry of the copy: 1 when setenv allocated its string
 static int owned_count = 0;
 static int owned_cap = 0;
 
 static char** environment(void)
 {
-    return owned != 0 ? owned : sys_envp();
+    return owned != NULL ? owned : sys_envp();
 }
 
-// The entry for `name` ("NAME=value"), or 0. `index`, when not 0, receives its position.
+// The entry for `name` ("NAME=value"), or NULL. `index`, when not NULL, receives its position.
 static char* find(const char* name, int* index)
 {
     char** env = environment();
-    if (env == 0 || name == 0)
-        return 0;
+    if (env == NULL || name == NULL)
+        return NULL;
     size_t length = strlen(name);
-    for (int i = 0; env[i] != 0; i++)
+    for (int i = 0; env[i] != NULL; i++)
     {
         if (strncmp(env[i], name, length) == 0 && env[i][length] == '=')
         {
-            if (index != 0)
+            if (index != NULL)
                 *index = i;
             return env[i];
         }
     }
-    return 0;
+    return NULL;
 }
 
 char* getenv(const char* name)
 {
-    if (name == 0 || name[0] == 0 || strchr(name, '=') != 0)
-        return 0;                                        // no such name can be there (and getenv sets no errno)
-    char* entry = find(name, 0);
-    return entry == 0 ? 0 : entry + strlen(name) + 1;
+    if (name == NULL || name[0] == 0 || strchr(name, '=') != NULL)
+        return NULL;                                     // no such name can be there (and getenv sets no errno)
+    char* entry = find(name, NULL);
+    return entry == NULL ? NULL : entry + strlen(name) + 1;
 }
 
 static int valid_name(const char* name)
 {
-    if (name == 0 || name[0] == 0 || strchr(name, '=') != 0)
+    if (name == NULL || name[0] == 0 || strchr(name, '=') != NULL)
     {
         errno = EINVAL;
         return 0;
@@ -84,20 +84,20 @@ static int valid_name(const char* name)
 // Makes the copy the first time, with room for one more entry.
 static int take_ownership(void)
 {
-    if (owned == 0)
+    if (owned == NULL)
     {
         char** env = sys_envp();
         int count = 0;
-        while (env != 0 && env[count] != 0)
+        while (env != NULL && env[count] != NULL)
             count++;
         owned = (char**)malloc(sizeof(char*) * (size_t)(count + 8));
         mine = (unsigned char*)malloc((size_t)(count + 8));
-        if (owned == 0 || mine == 0)
+        if (owned == NULL || mine == NULL)
         {
             free(owned);
             free(mine);
-            owned = 0;
-            mine = 0;
+            owned = NULL;
+            mine = NULL;
             errno = ENOMEM;
             return 0;
         }
@@ -106,7 +106,7 @@ static int take_ownership(void)
             owned[i] = env[i];
             mine[i] = 0;                                 // the loader's strings stay where it put them
         }
-        owned[count] = 0;
+        owned[count] = NULL;
         owned_count = count;
         owned_cap = count + 8;
     }
@@ -115,14 +115,14 @@ static int take_ownership(void)
         // The flags first: a flag array larger than the entries is harmless, the other way round is not.
         int new_cap = owned_cap * 2;
         unsigned char* flags = (unsigned char*)realloc(mine, (size_t)new_cap);
-        if (flags == 0)
+        if (flags == NULL)
         {
             errno = ENOMEM;
             return 0;
         }
         mine = flags;
         char** bigger = (char**)realloc(owned, sizeof(char*) * (size_t)new_cap);
-        if (bigger == 0)
+        if (bigger == NULL)
         {
             errno = ENOMEM;
             return 0;
@@ -138,14 +138,14 @@ int setenv(const char* name, const char* value, int overwrite)
     if (!valid_name(name))
         return -1;
     int at = -1;
-    if (find(name, &at) != 0 && !overwrite)
+    if (find(name, &at) != NULL && !overwrite)
         return 0;
     if (!take_ownership())
         return -1;
     size_t name_length = strlen(name);
-    size_t value_length = value != 0 ? strlen(value) : 0;
+    size_t value_length = value != NULL ? strlen(value) : 0;
     char* entry = (char*)malloc(name_length + value_length + 2);
-    if (entry == 0)
+    if (entry == NULL)
     {
         errno = ENOMEM;
         return -1;
@@ -166,7 +166,7 @@ int setenv(const char* name, const char* value, int overwrite)
     {
         mine[owned_count] = 1;
         owned[owned_count++] = entry;
-        owned[owned_count] = 0;
+        owned[owned_count] = NULL;
     }
     return 0;
 }
@@ -176,9 +176,9 @@ int unsetenv(const char* name)
     if (!valid_name(name))
         return -1;
     int at = -1;
-    if (find(name, &at) == 0)
+    if (find(name, &at) == NULL)
         return 0;
-    if (owned == 0 && !take_ownership())                 // a removal needs the copy, but no room in it
+    if (owned == NULL && !take_ownership())                 // a removal needs the copy, but no room in it
         return -1;
     if (mine[at])
         free(owned[at]);

@@ -110,7 +110,7 @@ void* video_vram_alloc(unsigned int bytes)
         vram_next = vram_start();
     const unsigned int rounded = ALIGN256(bytes);
     if (bytes == 0 || rounded < bytes || rounded > vram_end() - vram_next)
-        return (void*)0;
+        return NULL;
     void* block = (void*)vram_next;
     vram_next += rounded;
     return block;

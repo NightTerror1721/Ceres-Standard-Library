@@ -16,7 +16,7 @@ Console I/O over the terminal device (see ceres/terminal.h), formatted input and
 
 struct __file;
 typedef struct __file FILE;
-typedef int fpos_t;
+typedef long fpos_t;
 
 // Pointer VARIABLES, not objects: an `extern struct-of-unknown-size x;` cannot be declared in this subset.
 extern FILE* stdin;
@@ -128,8 +128,8 @@ char* fgets(char* buf, int n, FILE* f);                    // through the newlin
 int   fputs(const char* s, FILE* f);
 int   getline(char** line, size_t* cap, FILE* f);          // POSIX: a malloc'd, growing buffer; -1 at EOF
 
-int   fseek(FILE* f, int offset, int whence);              // files and memory streams (ESPIPE on the terminal)
-int   ftell(FILE* f);
+int   fseek(FILE* f, long offset, int whence);              // files and memory streams (ESPIPE on the terminal)
+long  ftell(FILE* f);
 void  rewind(FILE* f);
 int   fgetpos(FILE* f, fpos_t* p);
 int   fsetpos(FILE* f, const fpos_t* p);

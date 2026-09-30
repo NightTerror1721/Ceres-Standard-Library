@@ -17,7 +17,7 @@ struct sorter
 
 static int compare(const struct sorter* s, const char* a, const char* b)
 {
-    if (s->cmp_r != 0)
+    if (s->cmp_r != NULL)
         return s->cmp_r(a, b, s->ctx);
     return s->cmp(a, b);
 }
@@ -145,8 +145,8 @@ void qsort(void* base, size_t n, size_t size, int (*cmp)(const void*, const void
     struct sorter s;
     s.size = size;
     s.cmp = cmp;
-    s.cmp_r = 0;
-    s.ctx = 0;
+    s.cmp_r = NULL;
+    s.ctx = NULL;
     sort(&s, base, n);
 }
 
@@ -154,7 +154,7 @@ void qsort_r(void* base, size_t n, size_t size, int (*cmp)(const void*, const vo
 {
     struct sorter s;
     s.size = size;
-    s.cmp = 0;
+    s.cmp = NULL;
     s.cmp_r = cmp;
     s.ctx = ctx;
     sort(&s, base, n);

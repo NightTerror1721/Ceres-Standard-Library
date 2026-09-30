@@ -57,7 +57,7 @@ int utf8_decode(const char* s, size_t n, unsigned int* cp)
             return -1;
         if (r > 0)
         {
-            if (cp != 0)
+            if (cp != NULL)
                 *cp = c;
             return (int)i + 1;
         }
@@ -133,7 +133,7 @@ int utf8_valid(const char* s, size_t n)
     size_t i = 0;
     while (i < n)
     {
-        int k = utf8_decode(s + i, n - i, 0);
+        int k = utf8_decode(s + i, n - i, NULL);
         if (k < 0)
             return 0;
         i += (size_t)k;

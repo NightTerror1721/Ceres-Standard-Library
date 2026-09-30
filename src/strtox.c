@@ -65,41 +65,41 @@ static unsigned int parse_magnitude(const char* s, char** end, int base, int* ne
     return value;
 }
 
-unsigned int strtoul(const char* s, char** end, int base)
+unsigned long strtoul(const char* s, char** end, int base)
 {
     int negative, overflow;
     unsigned int v = parse_magnitude(s, end, base, &negative, &overflow);
     if (overflow)
     {
         errno = ERANGE;
-        return UINT_MAX;
+        return ULONG_MAX;
     }
-    return negative ? 0u - v : v;       // "-1" is UINT_MAX, as in C
+    return negative ? (unsigned long)0 - (unsigned long)v : (unsigned long)v;   // "-1" is ULONG_MAX, as in C
 }
 
-int strtol(const char* s, char** end, int base)
+long strtol(const char* s, char** end, int base)
 {
     int negative, overflow;
     unsigned int v = parse_magnitude(s, end, base, &negative, &overflow);
     if (negative)
     {
-        if (overflow || v > 2147483648u)
+        if (overflow || v > (unsigned long)LONG_MAX + 1ul)
         {
             errno = ERANGE;
-            return INT_MIN;
+            return LONG_MIN;
         }
-        return (int)(0u - v);
+        return (long)(0ul - (unsigned long)v);
     }
-    if (overflow || v > 2147483647u)
+    if (overflow || v > (unsigned long)LONG_MAX)
     {
         errno = ERANGE;
-        return INT_MAX;
+        return LONG_MAX;
     }
-    return (int)v;
+    return (long)v;
 }
 
-int atoi(const char* s) { return strtol(s, 0, 10); }
-int atol(const char* s) { return strtol(s, 0, 10); }
+int atoi(const char* s) { return (int)strtol(s, 0, 10); }
+long atol(const char* s) { return strtol(s, 0, 10); }
 
 // ---- 64-bit integers ----
 

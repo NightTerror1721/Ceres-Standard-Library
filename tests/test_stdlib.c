@@ -79,7 +79,11 @@ int main(void)
     CHECK_EQ(abs(-7), 7);
     CHECK_EQ(abs_fn(-7), 7);
     CHECK_EQ(abs(-2147483647 - 1), abs_fn(-2147483647 - 1));   // the builtin wraps like the function
+    long (*labs_fn)(long) = labs;
     CHECK_EQ(labs(-9), 9);
+    CHECK_EQ(labs_fn(-9), 9);
+    CHECK_EQ(labs(LONG_MIN), LONG_MIN);            // no positive counterpart: the function wraps like abs
+    CHECK_EQ(labs_fn(LONG_MIN), LONG_MIN);
     CHECK_EQ(abs(5), 5);
     CHECK_EQ(abs(-5), 5);
     CHECK_EQ(abs(0), 0);
@@ -101,8 +105,12 @@ int main(void)
     CHECK(d.quot == 0 && d.rem == 0);
     d = div(INT_MIN, 1);
     CHECK(d.quot == INT_MIN && d.rem == 0);
-    d = ldiv(-9, 4);
-    CHECK(d.quot == -2 && d.rem == -1);
+    ldiv_t lq = ldiv(-9, 4);
+    CHECK(lq.quot == -2 && lq.rem == -1);
+    lq = ldiv(-9, -4);
+    CHECK(lq.quot == 2 && lq.rem == -1);
+    lq = ldiv(LONG_MIN, 1);
+    CHECK(lq.quot == LONG_MIN && lq.rem == 0);
     lldiv_t ld = lldiv(9, 4);
     CHECK(ld.quot == 2 && ld.rem == 1);
     CHECK(RAND_MAX == 32767 && EXIT_SUCCESS == 0 && EXIT_FAILURE == 1);

@@ -7,11 +7,11 @@ static unsigned int oam_resets;                  // video_vram_resets() when it 
 
 int sprites_init(const void* palette, const void* pictures)
 {
-    if (oam == (void*)0 || oam_resets != video_vram_resets())
+    if (oam == NULL || oam_resets != video_vram_resets())
     {
         oam = video_vram_alloc(sizeof shadow);
         oam_resets = video_vram_resets();
-        if (oam == (void*)0)
+        if (oam == NULL)
             return -1;
     }
     sprite_hide_all();
@@ -27,7 +27,7 @@ void sprites_off(void) { mmio_w32(SPRITE_CONTROL, 0u); }
 
 struct oam_entry* sprite_entry(int index)
 {
-    return index >= 0 && index < SPRITE_COUNT ? &shadow[index] : (struct oam_entry*)0;
+    return index >= 0 && index < SPRITE_COUNT ? &shadow[index] : NULL;
 }
 
 static unsigned int position(int x, int y)
@@ -38,7 +38,7 @@ static unsigned int position(int x, int y)
 void sprite_set(int index, int x, int y, unsigned int graphic, unsigned int attributes)
 {
     struct oam_entry* entry = sprite_entry(index);
-    if (entry == (struct oam_entry*)0)
+    if (entry == NULL)
         return;
     entry->position = position(x, y);
     entry->attributes = (graphic & 0xFFFFu) | (attributes & 0xFFFF0000u) | SPRITE_VISIBLE;
@@ -47,14 +47,14 @@ void sprite_set(int index, int x, int y, unsigned int graphic, unsigned int attr
 void sprite_move(int index, int x, int y)
 {
     struct oam_entry* entry = sprite_entry(index);
-    if (entry != (struct oam_entry*)0)
+    if (entry != NULL)
         entry->position = position(x, y);
 }
 
 void sprite_hide(int index)
 {
     struct oam_entry* entry = sprite_entry(index);
-    if (entry != (struct oam_entry*)0)
+    if (entry != NULL)
         entry->attributes &= ~SPRITE_VISIBLE;
 }
 
@@ -70,7 +70,7 @@ void sprite_hide_all(void)
 
 void sprites_commit(void)
 {
-    if (oam != (void*)0)
+    if (oam != NULL)
         video_copy(oam, shadow, sizeof shadow);
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stddef.h"
+#include "stdint.h"
 
 // Wide characters. wchar_t is int and holds a Unicode code point (UTF-32), and the multibyte strings are UTF-8
 // (see ceres/utf8.h and <uchar.h>), so a wide string is a string of code points. There are the conversions between
@@ -36,6 +37,17 @@ size_t mbsrtowcs(wchar_t* dst, const char** src, size_t len, mbstate_t* ps);
 size_t wcsrtombs(char* dst, const wchar_t** src, size_t len, mbstate_t* ps);
 wint_t btowc(int c);                                       // a byte that is a character alone (ASCII), else WEOF
 int    wctob(wint_t c);                                    // ... and back, else EOF
+
+// ---- text to number: strtod/strtol (stdlib.h) over a wide string ----
+double      wcstod(const wchar_t* s, wchar_t** end);
+float       wcstof(const wchar_t* s, wchar_t** end);
+long double wcstold(const wchar_t* s, wchar_t** end);
+long        wcstol(const wchar_t* s, wchar_t** end, int base);
+long long   wcstoll(const wchar_t* s, wchar_t** end, int base);
+unsigned long      wcstoul(const wchar_t* s, wchar_t** end, int base);
+unsigned long long wcstoull(const wchar_t* s, wchar_t** end, int base);
+intmax_t    wcstoimax(const wchar_t* s, wchar_t** end, int base);
+uintmax_t   wcstoumax(const wchar_t* s, wchar_t** end, int base);
 
 // ---- wide strings, as their string.h namesakes (wcscoll and wcsxfrm as in the one locale: wcscmp and a copy) ----
 size_t   wcslen(const wchar_t* s);

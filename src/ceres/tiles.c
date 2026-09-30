@@ -61,7 +61,7 @@ void tiles_line_scroll(int layer, const void* table)
     if (layer < 0 || layer > 3)
         return;
     const unsigned int control = mmio_r32(TILE_LAYER_CONTROL(layer));
-    if (table == (const void*)0)
+    if (table == NULL)
     {
         mmio_w32(TILE_LAYER_CONTROL(layer), control & ~LAYER_LINE_SCROLL);
         return;
@@ -110,7 +110,7 @@ void tiles_affine_rotate(int map_x, int map_y, int screen_x, int screen_y, int a
 
 void tiles_line_table(const void* vram, int entries)
 {
-    if (vram == (const void*)0 || entries <= 0)
+    if (vram == NULL || entries <= 0)
     {
         mmio_w32(LINE_TABLE_COUNT, 0u);
         return;

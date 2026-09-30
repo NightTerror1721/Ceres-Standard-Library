@@ -12,4 +12,8 @@ typedef int ptrdiff_t;
 // Ceres-C gives them. <stdlib.h> has it too, through this header.
 typedef int wchar_t;
 
+// The type every object can be aligned to. `long long` and `double` are the widest scalars, each a pair
+// of 32-bit words aligned to one.
+typedef struct { long long __max_align_ll; double __max_align_d; } max_align_t;
+
 #define offsetof(T, m) ((size_t)&(((T*)0)->m))

@@ -8,7 +8,7 @@
 int sys_run(const char* path, int argc, char** argv, char** envp)
 {
     // What is still in a stream's buffer would be lost with the program: the machine restarts with the new image.
-    fflush(0);
+    fflush(NULL);
 
     // The block command 3 reads: argc, argv and envp (0 keeps this program's environment). Static, so it is in RAM
     // and not only in registers when the device reads it.
@@ -17,7 +17,7 @@ int sys_run(const char* path, int argc, char** argv, char** envp)
     block[1] = (unsigned int)argv;
     block[2] = (unsigned int)envp;
     mmio_w32(SYS_CTRL_LOAD_PATH, (unsigned int)path);
-    mmio_w32(SYS_CTRL_LOAD_ARGS, argv != 0 ? (unsigned int)block : 0u);
+    mmio_w32(SYS_CTRL_LOAD_ARGS, argv != NULL ? (unsigned int)block : 0u);
     mmio_w32(SYS_CTRL_CMD, 3u);
     return -1;                                   // still here: the load failed
 }

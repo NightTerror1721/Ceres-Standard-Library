@@ -12,7 +12,7 @@
 #undef abs
 #undef labs
 int abs(int v)   { return v < 0 ? (int)(0u - (unsigned int)v) : v; }   // wraps for INT_MIN, on purpose
-int labs(int v)  { return abs(v); }
+long labs(long v) { return v < 0 ? (long)(0u - (unsigned long)v) : v; }
 long long llabs(long long v) { return v < 0 ? (long long)(0ULL - (unsigned long long)v) : v; }   // wraps for LLONG_MIN
 intmax_t imaxabs(intmax_t v) { return llabs(v); }
 
@@ -24,7 +24,13 @@ div_t div(int num, int den)
     return r;
 }
 
-div_t ldiv(int num, int den)  { return div(num, den); }
+ldiv_t ldiv(long num, long den)
+{
+    ldiv_t r;
+    r.quot = num / den;
+    r.rem = num % den;
+    return r;
+}
 
 lldiv_t lldiv(long long num, long long den)
 {
@@ -70,14 +76,14 @@ void* bsearch(const void* key, const void* base, size_t n, size_t size, int (*cm
         if (c < 0) hi = mid;
         else       lo = mid + 1;
     }
-    return 0;
+    return NULL;
 }
 
 // ---- the process ---- (exit, _Exit, abort and atexit are in exit.c; the environment in env.c)
 
 int system(const char* cmd)
 {
-    if (cmd == 0)
+    if (cmd == NULL)
         return 0;                          // "is there a shell?" - no
     errno = ENOSYS;
     return -1;

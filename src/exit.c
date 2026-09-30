@@ -13,6 +13,8 @@
 #define ATEXIT_SLOTS CERES_ATEXIT_SLOTS
 static void (*atexit_table[ATEXIT_SLOTS])(void);
 static int atexit_count = 0;
+static void (*quick_table[ATEXIT_SLOTS])(void);
+static int quick_count = 0;
 
 int atexit(void (*fn)(void))
 {
@@ -21,6 +23,27 @@ int atexit(void (*fn)(void))
     atexit_table[atexit_count] = fn;
     atexit_count++;
     return 0;
+}
+
+// at_quick_exit and quick_exit: the same, but their handlers are a table of their own and exit() never runs
+// them (C11 7.22.4).
+int at_quick_exit(void (*fn)(void))
+{
+    if (fn == NULL || quick_count >= ATEXIT_SLOTS)
+        return -1;
+    quick_table[quick_count] = fn;
+    quick_count++;
+    return 0;
+}
+
+void quick_exit(int status)
+{
+    while (quick_count > 0)
+    {
+        quick_count--;                     // pop first: a handler that calls quick_exit() must not run twice
+        quick_table[quick_count]();
+    }
+    sys_exit_status(status);
 }
 
 void _Exit(int status)

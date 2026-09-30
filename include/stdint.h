@@ -79,6 +79,14 @@ typedef unsigned int            uintptr_t;
 #define UINTMAX_MAX   UINT64_MAX
 #define PTRDIFF_MIN   INT32_MIN
 #define PTRDIFF_MAX   INT32_MAX
+#ifndef SIG_ATOMIC_MIN                  // sig_atomic_t is int (signal.h)
+#define SIG_ATOMIC_MIN INT32_MIN
+#define SIG_ATOMIC_MAX INT32_MAX
+#endif
+#ifndef WINT_MIN                        // wint_t is unsigned int (wchar.h)
+#define WINT_MIN      0u
+#define WINT_MAX      UINT32_MAX
+#endif
 #ifndef WCHAR_MIN                    // <wchar.h> has them too; whichever comes first wins
 #define WCHAR_MIN     INT32_MIN      // wchar_t is int (<stddef.h>)
 #define WCHAR_MAX     INT32_MAX

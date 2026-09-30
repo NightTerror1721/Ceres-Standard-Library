@@ -28,7 +28,7 @@ static void log_put(void* ctx, int c)
 static void log_str(const char* s)
 {
     while (*s)
-        log_put(0, *s++);
+        log_put(NULL, *s++);
 }
 
 // Lines from here on go at `level`, which the device takes from 0 (error) to 3 (debug).
@@ -41,7 +41,7 @@ static void log_printf(const char* fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    __vformat_ext(log_put, 0, fmt, ap);
+    __vformat_ext(log_put, NULL, fmt, ap);
     va_end(ap);
 }
 
@@ -52,9 +52,9 @@ void log_msg(int level, const char* fmt, ...)
     log_at(level);
     va_list ap;
     va_start(ap, fmt);
-    __vformat_ext(log_put, 0, fmt, ap);
+    __vformat_ext(log_put, NULL, fmt, ap);
     va_end(ap);
-    log_put(0, '\n');
+    log_put(NULL, '\n');
 }
 
 void dbg_break(void)
@@ -77,7 +77,7 @@ void dbg_hexdump_base(const void* p, size_t n, unsigned int shown_base)
         for (size_t i = 0; i < 16; i++)
         {
             if (i == 8)
-                log_put(0, ' ');
+                log_put(NULL, ' ');
             if (row + i < n)
                 log_printf(" %02x", s[row + i]);
             else
@@ -87,7 +87,7 @@ void dbg_hexdump_base(const void* p, size_t n, unsigned int shown_base)
         for (size_t i = 0; i < 16 && row + i < n; i++)
         {
             unsigned char c = s[row + i];
-            log_put(0, c >= 32 && c < 127 ? c : '.');
+            log_put(NULL, c >= 32 && c < 127 ? c : '.');
         }
         log_str("|\n");
     }

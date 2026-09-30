@@ -10,7 +10,8 @@ General utilities. `long` is 32 bits (`labs`/`ldiv` are the int versions), but `
 
 struct __div_s { int quot; int rem; };
 typedef struct __div_s div_t;
-typedef struct __div_s ldiv_t;
+struct __ldiv_s { long quot; long rem; };
+typedef struct __ldiv_s ldiv_t;
 struct __lldiv_s { long long quot; long long rem; };
 typedef struct __lldiv_s lldiv_t;
 ```
@@ -33,10 +34,10 @@ int   posix_memalign(void** out, size_t alignment, size_t n); // 0, EINVAL or EN
 // part of the number (or `s` itself when there was no number). Overflow sets errno = ERANGE and
 // returns the nearest limit. A base of 0 means "look at the prefix": 0x is 16, a bare 0 is 8.
 int          atoi(const char* s);
-int          atol(const char* s);
+long         atol(const char* s);
 long long    atoll(const char* s);
-int          strtol(const char* s, char** end, int base);
-unsigned int strtoul(const char* s, char** end, int base);
+long         strtol(const char* s, char** end, int base);
+unsigned long strtoul(const char* s, char** end, int base);
 long long    strtoll(const char* s, char** end, int base);
 unsigned long long strtoull(const char* s, char** end, int base);
 float        strtof(const char* s, char** end);    // correctly rounded; decimal, 0x hex floats ("0x1.8p3"), inf/infinity and nan
@@ -77,14 +78,14 @@ void  srand(unsigned int seed);
 
 ```c
 int   abs(int v);              // abs(INT_MIN) is INT_MIN: the negation wraps
-int   labs(int v);
+long  labs(long v);
 // One instruction. For INT_MIN the `abs` instruction gives INT_MIN back (and sets Overflow), as the
 // function does; Ceres-C does not fold its builtins, so no optimization level assumes otherwise.
 #define abs(v)   __builtin_abs((int)(v))
-#define labs(v)  __builtin_abs((int)(v))
+#define labs(v)  __builtin_abs((long)(v))
 long long llabs(long long v);
 div_t div(int num, int den);   // quotient truncated toward zero; a zero divisor sets the Trap flag
-div_t ldiv(int num, int den);
+ldiv_t ldiv(long num, long den);
 lldiv_t lldiv(long long num, long long den);
 ```
 
@@ -108,6 +109,8 @@ void  exit(int status) __attribute__((__noreturn__));    // runs the atexit func
 void  _Exit(int status) __attribute__((__noreturn__));   // stops at once
 void  abort(void) __attribute__((__noreturn__));         // prints "abort" and stops with status 134, without running the atexit functions
 int   atexit(void (*fn)(void)); // 0 on success, -1 when the 32 slots are taken
+int   at_quick_exit(void (*fn)(void)); // the same, for quick_exit
+void  quick_exit(int status) __attribute__((__noreturn__));   // runs the at_quick_exit functions, then stops
 char* getenv(const char* name); // what `ceres run --env NAME=value` gave the program, or NULL (src/env.c)
 int   setenv(const char* name, const char* value, int overwrite);   // 0, or -1 with errno EINVAL/ENOMEM
 int   unsetenv(const char* name);

@@ -43,7 +43,7 @@ int text_init(int width, int height)
     if (width < 1 || height < 1 || width > text_screen_cols() || height > text_screen_rows())
         return -1;
     unsigned short* fresh = (unsigned short*)malloc((size_t)width * (size_t)height * sizeof(unsigned short));
-    if (fresh == 0)
+    if (fresh == NULL)
         return -1;
     free(grid);
     grid = fresh;
@@ -59,7 +59,7 @@ int text_init(int width, int height)
 void text_shutdown(void)
 {
     free(grid);
-    grid = 0;
+    grid = NULL;
     cols = 0;
     rows = 0;
     term_show_cursor(1);
@@ -73,7 +73,7 @@ unsigned char text_attr(void) { return current_attr; }
 
 void text_clear(char c)
 {
-    if (grid == 0)
+    if (grid == NULL)
         return;
     const unsigned short cell = cell_of(c, current_attr);
     for (int i = 0; i < cols * rows; i++)
@@ -83,7 +83,7 @@ void text_clear(char c)
 // The grid, a row at a time (the screen's rows are wider), into the cells in VRAM; then the blank that shows it.
 void text_present(void)
 {
-    if (grid == 0)
+    if (grid == NULL)
         return;
     unsigned short* base = (unsigned short*)mmio_r32(TEXT_CELLS_BASE);
     const int stride = text_screen_cols();
@@ -100,13 +100,13 @@ void text_present(void)
 
 void text_put_attr(int x, int y, char c, unsigned char attr)
 {
-    if (grid != 0 && x >= 0 && x < cols && y >= 0 && y < rows)
+    if (grid != NULL && x >= 0 && x < cols && y >= 0 && y < rows)
         grid[y * cols + x] = cell_of(c, attr);
 }
 
 unsigned char text_get_attr(int x, int y)
 {
-    if (grid != 0 && x >= 0 && x < cols && y >= 0 && y < rows)
+    if (grid != NULL && x >= 0 && x < cols && y >= 0 && y < rows)
         return (unsigned char)(grid[y * cols + x] >> 8);
     return 0;
 }
@@ -118,7 +118,7 @@ void text_put(int x, int y, char c)
 
 char text_get(int x, int y)
 {
-    if (grid != 0 && x >= 0 && x < cols && y >= 0 && y < rows)
+    if (grid != NULL && x >= 0 && x < cols && y >= 0 && y < rows)
         return (char)(grid[y * cols + x] & 0xFFu);
     return ' ';
 }

@@ -35,6 +35,20 @@ wint_t btowc(int c);                                       // a byte that is a c
 int    wctob(wint_t c);                                    // ... and back, else EOF
 ```
 
+## Text to number: strtod/strtol (stdlib.h) over a wide string
+
+```c
+double      wcstod(const wchar_t* s, wchar_t** end);
+float       wcstof(const wchar_t* s, wchar_t** end);
+long double wcstold(const wchar_t* s, wchar_t** end);
+long        wcstol(const wchar_t* s, wchar_t** end, int base);
+long long   wcstoll(const wchar_t* s, wchar_t** end, int base);
+unsigned long      wcstoul(const wchar_t* s, wchar_t** end, int base);
+unsigned long long wcstoull(const wchar_t* s, wchar_t** end, int base);
+intmax_t    wcstoimax(const wchar_t* s, wchar_t** end, int base);
+uintmax_t   wcstoumax(const wchar_t* s, wchar_t** end, int base);
+```
+
 ## Wide strings, as their string.h namesakes (wcscoll and wcsxfrm as in the one locale: wcscmp and a copy)
 
 ```c

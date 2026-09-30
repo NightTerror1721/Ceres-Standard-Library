@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ceres.h"
+#include "../stddef.h"
 
 // The GPU (0xFF400000): the screen and what it shows, for every video level (CeresASM plan/v2 SPEC 7). The screen
 // has a resolution (640x480 when the machine starts, or the profile's largest when that is smaller) and is drawn

@@ -170,6 +170,22 @@ int main(void)
     CHECK(wcscoll(L"a", L"b") < 0);
     CHECK_EQ((int)wcsxfrm(w1, L"xyz", 16), 3);
 
+    TEST_SECTION("wcsto*");
+    wchar_t* end;
+    CHECK_EQ((int)wcstol(L"  -1234xyz", &end, 10), -1234);
+    CHECK(*end == L'x');
+    CHECK_EQ((int)wcstol(L"0x1f", &end, 0), 31);
+    CHECK_EQ64((long long)wcstoll(L"-9223372036854775807", &end, 10), -9223372036854775807LL);
+    CHECK_EQ64((long long)wcstoull(L"18446744073709551615", &end, 10), (long long)0xFFFFFFFFFFFFFFFFull);
+    CHECK_EQ((int)wcstoimax(L"77", &end, 10), 77);
+    CHECK_NEAR(wcstod(L"2.5", &end), 2.5, 1e-9f);
+    CHECK_NEAR(wcstof(L"0.25", &end), 0.25f, 1e-6f);
+    CHECK_EQ((int)wcstol(L"12\x00B1", &end, 10), 12);   // ends on a non-ASCII code point
+    CHECK(*end == 0x00B1);
+    const wchar_t* notanumber = L"abc";
+    CHECK_EQ((int)wcstol(notanumber, &end, 10), 0);
+    CHECK(end == notanumber);                           // no conversion: the end is the start
+
     TEST_SECTION("printf and scanf");
     char line[32];
     snprintf(line, sizeof line, "[%lc|%ls|%5ls|%.3ls]", (wint_t)0xF1, L"a\x00F1o", L"\x00E9", L"\x00F1\x00F1");

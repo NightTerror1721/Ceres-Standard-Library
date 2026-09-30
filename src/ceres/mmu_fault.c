@@ -6,7 +6,7 @@
 extern unsigned int __mmu_fault_target;             // asm/optional/mmu_fault.casm
 void __mmu_fault_present(void);
 
-static mmu_fault_fn handler = 0;
+static mmu_fault_fn handler = NULL;
 
 static void err(const char* s)
 {
@@ -28,7 +28,7 @@ static void err_hex(unsigned int v)
 static int dispatch(unsigned int va, unsigned int pc)
 {
     unsigned int access = sys_fault_access() & 0xFFu;
-    if (handler != 0 && handler(va, pc, access))
+    if (handler != NULL && handler(va, pc, access))
         return 1;
     err("page fault: ");
     err(access == FAULT_WRITE ? "store to " : access == FAULT_FETCH ? "fetch from " : "load from ");

@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "stddef.h"
+
 #define TERMINAL_BASE       0xFF000000
 #define TIMER_BASE          0xFF010000
 #define DMA_BASE            0xFF020000

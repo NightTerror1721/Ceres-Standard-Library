@@ -34,7 +34,7 @@ static int init(int w, int h, int bytes_per_pixel)
     if (need > block_bytes || block_resets != video_vram_resets())
     {
         void* got = video_vram_alloc(need);
-        if (got == (void*)0)
+        if (got == NULL)
             return -1;
         block = (unsigned int)got;
         block_bytes = need;
@@ -87,7 +87,7 @@ int fb_indexed(void) { return indexed; }
 
 void* fb_pixels(void)
 {
-    return width > 0 ? (void*)mmio_r32(FB_BACK_BASE) : (void*)0;
+    return width > 0 ? (void*)mmio_r32(FB_BACK_BASE) : NULL;
 }
 
 void fb_present(void)
@@ -114,7 +114,7 @@ void fb_clear(unsigned int value)
 
 void fb_blit(const void* pixels)
 {
-    if (width > 0 && pixels != 0)
+    if (width > 0 && pixels != NULL)
         video_copy(fb_pixels(), pixels, bytes_per_frame());
 }
 
@@ -128,7 +128,7 @@ void fb_set_palette(int index, unsigned int rgb)
 
 void fb_load_palette(const unsigned int* colors, int count)
 {
-    if (colors == 0)
+    if (colors == NULL)
         return;
     for (int i = 0; i < count && i < 256; i++)
         fb_set_palette(i, colors[i]);

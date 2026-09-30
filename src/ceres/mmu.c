@@ -16,7 +16,7 @@ extern void (*__task_stack_guard)(unsigned char* stack, int guard);   // src/cer
 #define FRAME_MASK 0xFFFFF000u
 #define FLAG_MASK  0x00000FFFu
 
-static struct mmu_space* active = 0;
+static struct mmu_space* active = NULL;
 
 static int aligned(unsigned int x)
 {
@@ -26,20 +26,20 @@ static int aligned(unsigned int x)
 static unsigned int* new_page(void)
 {
     unsigned int* p = (unsigned int*)aligned_alloc(MMU_PAGE, MMU_PAGE);
-    if (p != 0)
+    if (p != NULL)
         memset(p, 0, MMU_PAGE);
     return p;
 }
 
 int mmu_space_init(struct mmu_space* s)
 {
-    if (s == 0)
+    if (s == NULL)
     {
         errno = EINVAL;
         return -1;
     }
     s->directory = new_page();
-    if (s->directory == 0)
+    if (s->directory == NULL)
     {
         errno = ENOMEM;
         return -1;
@@ -47,35 +47,35 @@ int mmu_space_init(struct mmu_space* s)
     return 0;
 }
 
-static struct mmu_space* guard_space = 0;
+static struct mmu_space* guard_space = NULL;
 
 void mmu_space_free(struct mmu_space* s)
 {
-    if (s == 0 || s->directory == 0 || s == active)
+    if (s == NULL || s->directory == NULL || s == active)
         return;
     if (s == guard_space)
     {
-        guard_space = 0;                                 // stacks spawned from now on are not guarded
-        __task_stack_guard = 0;
+        guard_space = NULL;                              // stacks spawned from now on are not guarded
+        __task_stack_guard = NULL;
     }
     for (int i = 0; i < 1024; i++)
         if (s->directory[i] & MMU_PRESENT)
             free((void*)(s->directory[i] & FRAME_MASK));
     free(s->directory);
-    s->directory = 0;
+    s->directory = NULL;
 }
 
-// The table that holds va's entry; with `create`, made when there is none. 0 when there is none (or no memory).
+// The table that holds va's entry; with `create`, made when there is none. NULL when there is none (or no memory).
 static unsigned int* table_of(const struct mmu_space* s, unsigned int va, int create)
 {
     unsigned int* entry = &s->directory[va >> 22];
     if (!(*entry & MMU_PRESENT))
     {
         if (!create)
-            return 0;
+            return NULL;
         unsigned int* table = new_page();
-        if (table == 0)
-            return 0;
+        if (table == NULL)
+            return NULL;
         *entry = (unsigned int)table | MMU_PRESENT;
     }
     return (unsigned int*)(*entry & FRAME_MASK);
@@ -89,7 +89,7 @@ static void changed(const struct mmu_space* s, unsigned int va)
 
 static int check(const struct mmu_space* s, unsigned int va, unsigned int bytes)
 {
-    if (s == 0 || s->directory == 0 || !aligned(va) || !aligned(bytes) || va + bytes < va)
+    if (s == NULL || s->directory == NULL || !aligned(va) || !aligned(bytes) || va + bytes < va)
     {
         errno = EINVAL;
         return -1;
@@ -107,7 +107,7 @@ int mmu_map(struct mmu_space* s, unsigned int va, unsigned int pa, unsigned int 
     for (unsigned int off = 0; off < bytes; off += MMU_PAGE)
     {
         unsigned int* table = table_of(s, va + off, 1);
-        if (table == 0)
+        if (table == NULL)
         {
             errno = ENOMEM;
             return -1;
@@ -125,7 +125,7 @@ int mmu_unmap(struct mmu_space* s, unsigned int va, unsigned int bytes)
     for (unsigned int off = 0; off < bytes; off += MMU_PAGE)
     {
         unsigned int* table = table_of(s, va + off, 0);
-        if (table != 0)
+        if (table != NULL)
         {
             table[((va + off) >> 12) & 1023u] = 0;
             changed(s, va + off);
@@ -141,8 +141,8 @@ int mmu_protect(struct mmu_space* s, unsigned int va, unsigned int bytes, unsign
     for (unsigned int off = 0; off < bytes; off += MMU_PAGE)
     {
         unsigned int* table = table_of(s, va + off, 0);
-        unsigned int* entry = table != 0 ? &table[((va + off) >> 12) & 1023u] : 0;
-        if (entry == 0 || !(*entry & MMU_PRESENT))
+        unsigned int* entry = table != NULL ? &table[((va + off) >> 12) & 1023u] : NULL;
+        if (entry == NULL || !(*entry & MMU_PRESENT))
         {
             errno = ENOENT;                              // only what is mapped can change what it allows
             return -1;
@@ -155,19 +155,19 @@ int mmu_protect(struct mmu_space* s, unsigned int va, unsigned int bytes, unsign
 
 int mmu_translate(const struct mmu_space* s, unsigned int va, unsigned int* pa)
 {
-    if (s == 0 || s->directory == 0)
+    if (s == NULL || s->directory == NULL)
     {
         errno = EINVAL;
         return -1;
     }
     unsigned int* table = table_of(s, va, 0);
-    unsigned int entry = table != 0 ? table[(va >> 12) & 1023u] : 0u;
+    unsigned int entry = table != NULL ? table[(va >> 12) & 1023u] : 0u;
     if (!(entry & MMU_PRESENT))
     {
         errno = ENOENT;
         return -1;
     }
-    if (pa != 0)
+    if (pa != NULL)
         *pa = (entry & FRAME_MASK) | (va & (MMU_PAGE - 1u));
     return (int)(entry & FLAG_MASK);
 }
@@ -180,7 +180,7 @@ int mmu_identity(struct mmu_space* s, unsigned int flags)
 
 void mmu_activate(struct mmu_space* s)
 {
-    if (s == 0 || s->directory == 0)
+    if (s == NULL || s->directory == NULL)
         return;
     __mmu_set_directory((unsigned int)s->directory);   // also flushes the TLB
     active = s;
@@ -190,7 +190,7 @@ void mmu_activate(struct mmu_space* s)
 void mmu_deactivate(void)
 {
     __mmu_disable();
-    active = 0;
+    active = NULL;
 }
 
 struct mmu_space* mmu_active(void)
@@ -205,7 +205,7 @@ struct mmu_space* mmu_active(void)
 // A stack spawned before the space was freed keeps its page unmapped: the space, and so the fault, is gone.
 static void guard_stack(unsigned char* stack, int guard)
 {
-    if (guard_space == 0)
+    if (guard_space == NULL)
         return;
     if (guard)
         mmu_unmap(guard_space, (unsigned int)stack, MMU_PAGE);
@@ -215,7 +215,7 @@ static void guard_stack(unsigned char* stack, int guard)
 
 int mmu_guard_task_stacks(struct mmu_space* s)
 {
-    if (s == 0 || s->directory == 0)
+    if (s == NULL || s->directory == NULL)
     {
         errno = EINVAL;
         return -1;
