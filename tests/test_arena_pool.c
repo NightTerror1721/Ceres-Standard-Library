@@ -214,7 +214,7 @@ static void atomics(void)
     irq_restore(a);
 
     TEST_SECTION("critical sections with interrupts on");
-    // sti, not irq_enable_all(): that one is in the optional irq module, which this test does not link.
+    // sti, not the irq module's calls: this test does not link that module.
     // Each irq_save() result is read into a variable first: CHECK_EQ evaluates its arguments again to
     // report a failure, and a second irq_save() would report the state the first one left.
     __builtin_sti();                                           // no device is armed: nothing arrives

@@ -78,8 +78,9 @@ void game_pace_ms(struct game* g, unsigned int ms)
     g->wait = sleep_nanos;
 }
 
-// Spins on the GPU's frame counter until `wait_ms` blanks have passed since the frame began. A frame that took
-// longer than that ends at once: the next starts from now.
+// Spins on the GPU's frame counter until `wait_ms` blanks have passed since the frame began: the machine
+// reaches the blank by advancing cycles (ceres/video.h), so the wait is a spin, as video_wait_vblank is. A frame
+// that took longer than that ends at once: the next starts from now.
 static void wait_vblank(struct game* g)
 {
     while (video_frame() - g->frame_start_vblank < g->wait_ms)

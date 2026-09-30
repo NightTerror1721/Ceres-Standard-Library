@@ -1,5 +1,6 @@
-// getchar and getchar_nb, kept apart from the rest of the console code (stdio.c) so that a program that only
-// prints does not link the FILE layer they read through.
+// getchar and getchar_nb. getchar() goes through stdin (fgetc), which is the stream scanf and ungetc use, so a
+// program that mixes them sees one input stream, as the standard wants. getchar_nb() reads the terminal's buffer
+// directly (file.c's __stdin_getc_nb) and is the loop-friendly form.
 #include "stdio.h"
 
 int __stdin_getc_nb(void);                            // file.c: the pushed-back character, else a waiting byte

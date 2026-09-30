@@ -28,7 +28,8 @@ int video_set_resolution(int width, int height)
 }
 
 // A spin on the frame counter: the blank is an event of the machine's clock, which the loop's own cycles move
-// towards, so the wait is exact and the same on every run.
+// towards, so the wait is exact and the same on every run. (A halt is not used here: the machine reaches the
+// blank by advancing cycles, so sleeping until a scheduled event would not wake it in the general case.)
 void video_wait_vblank(void)
 {
     unsigned int frame = video_frame();

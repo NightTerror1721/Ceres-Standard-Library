@@ -25,6 +25,10 @@ Errors are -1 or NULL with errno: EINVAL for something that is not a pack (or a 
 ```c
 #define PACK_NAME_MAX 31
 
+// A stream of ceres/pack.h's own is stdio's FILE, only forward-declared here so this header does not drag
+// <stdio.h> in: pack_open_file takes one, pack_close closes it.
+struct __file;
+
 struct pack_entry
 {
     char name[PACK_NAME_MAX + 1];
@@ -38,7 +42,7 @@ struct pack
 {
     int kind;                       // where it is read from: memory, a file, a block device
     const unsigned char* memory;
-    FILE* file;
+    struct __file* file;
     struct blockdev device;
     unsigned int length;            // the bytes there are to read
     int count;

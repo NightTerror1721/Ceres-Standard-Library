@@ -4,6 +4,7 @@
 #include "ceres/test.h"
 #include "ceres/irq.h"
 #include "ceres/periph.h"
+#include "ceres.h"
 
 static volatile int calls = 0;
 static volatile int number = 0;
@@ -30,7 +31,7 @@ int main(void)
     CHECK_EQ(connected, 1);
 
     TEST_SECTION("pulling a medium out raises the interrupt");
-    irq_enable_all();
+    irq_enable();
     // Connecting the medium before the start may have raised the interrupt too, and a masked one stays
     // queued. The machine takes a deliverable interrupt before the next instruction, once the one after
     // the sti has run (its shadow), so it is taken within the first iteration of this loop - by

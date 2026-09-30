@@ -127,12 +127,19 @@ int periph_next_event(struct periph_event* ev)
 
 int periph_wait(struct periph_event* ev, unsigned int timeout_ms)
 {
-    unsigned int start = timer_millis();
+    if (periph_next_event(ev))
+        return 1;
+    // A connection raises a request (IRQ_PERIPH), which ends a halt whether it is taken or not, so this sleeps
+    // instead of spinning; the timeout is the timer's alarm. 0 ms waits for ever (a halt with nothing scheduled
+    // is woken by the host, and by the next request).
+    uint64_t deadline = timeout_ms != 0 ? timer_nanos64() + (uint64_t)timeout_ms * 1000000u : 0;
     for (;;)
     {
+        if (deadline != 0 && timer_halt_until_ns(deadline))
+            return periph_next_event(ev) ? 1 : 0;    // the timeout came
         if (periph_next_event(ev))
             return 1;
-        if (timeout_ms != 0 && timer_millis_elapsed(start) >= timeout_ms)
-            return 0;
+        if (deadline == 0)
+            __builtin_halt();
     }
 }

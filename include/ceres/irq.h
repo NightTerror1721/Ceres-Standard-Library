@@ -12,7 +12,8 @@
 //
 // irq_attach() is OPTIONAL to link: the module binds vectors, and a program that binds one of
 // them itself (say `__interrupt_vector(19, my_isr)`) must not link it. See tools/runtests.ps1
-// (`// USE: irq`) and the Makefile (`USE=irq`).
+// (`// USE: irq`) and the Makefile (`USE=irq`). Nothing in the library attaches a handler: its own waits
+// halt (`__builtin_halt`) or arm the timer's alarm, so this is for programs.
 //
 // A handler runs with user interrupts masked, on the 4 KiB system stack: keep it short, and do not
 // call printf or malloc from it. It gets the interrupt number.
@@ -43,7 +44,7 @@ static inline void __irq_restore(unsigned int state)
 }
 #define irq_save()          __irq_save()
 #define irq_restore(state)  __irq_restore(state)
-void         irq_enable_all(void);                 // sti
+// To turn interrupts on unconditionally, irq_enable() (ceres.h) is the `sti` macro; there is no separate call.
 
 // Wait for an interrupt. irq_wait() is `sti` followed by `halt`, and the machine takes no interrupt
 // between the two (`sti` takes effect after the next instruction), so an interrupt that arrives just

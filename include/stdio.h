@@ -110,9 +110,10 @@ int   rename(const char* from, const char* to);            // -1 with errno set 
 size_t fread(void* buf, size_t size, size_t n, FILE* f);
 size_t fwrite(const void* buf, size_t size, size_t n, FILE* f);
 int   fgetc(FILE* f);
-int   getc(FILE* f);
-int   fputc(int c, FILE* f);
-int   putc(int c, FILE* f);
+int   getc(FILE* f);                                       // getc and putc are functions here, not the macros the
+int   fputc(int c, FILE* f);                               //    standard allows: the stream is evaluated exactly
+int   putc(int c, FILE* f);                                //    once, as the function form must (the macro form may
+                                                           //    evaluate it more than once)
 int   ungetc(int c, FILE* f);                              // one character of pushback
 char* fgets(char* buf, int n, FILE* f);                    // through the newline, at most n-1 characters
 int   fputs(const char* s, FILE* f);

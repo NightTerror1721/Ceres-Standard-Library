@@ -42,7 +42,7 @@ int main(void)
     TEST_SECTION("timer interrupts");
     mmio_w32(TIMER_BASE + 0x0C, 1u);                  // CountdownControl: periodic ...
     mmio_w32(TIMER_BASE + 0x08, 500u);                // ... every 500 cycles
-    irq_enable_all();
+    irq_enable();
     while (ticks < 5)
         __builtin_halt();
     mmio_w32(TIMER_BASE + 0x08, 0);
@@ -55,13 +55,13 @@ int main(void)
     irq_detach(16);
     CHECK(irq_handler(16) == 0);
     mmio_w32(TIMER_BASE + 0x08, 300);                 // one shot; nobody is listening
-    irq_enable_all();
+    irq_enable();
     __builtin_halt();                                 // the stub is entered, finds no handler, returns
     irq_disable();
     CHECK_EQ(ticks, seen);
 
     TEST_SECTION("critical sections");
-    irq_enable_all();
+    irq_enable();
     unsigned int outer = irq_save();
     CHECK(outer != 0);                                // they were enabled
     unsigned int inner = irq_save();

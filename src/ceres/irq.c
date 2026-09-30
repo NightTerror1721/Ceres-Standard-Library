@@ -103,11 +103,6 @@ const char* irq_name(int n)
     return "Reserved";
 }
 
-void irq_enable_all(void)
-{
-    __builtin_sti();
-}
-
 // irq_wait is in asm/sys.casm: it has to be an `sti` and a `halt` with nothing between them.
 
 void irq_wait_flag(volatile int* flag)

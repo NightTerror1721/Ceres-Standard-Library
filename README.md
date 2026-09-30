@@ -236,6 +236,11 @@ A few things this library is that a desktop libc is not:
 - **UTF-8.** Strings, the multibyte functions (`MB_CUR_MAX` is 4), `%lc`/`%ls`, the terminal, the text plane and the
   font (Latin-1 glyphs and box drawing) all speak it (`ceres/utf8.h`).
 - **No threads, cooperative tasks.** `ceres/task.h` has tasks and channels that switch only where they wait.
+- **Header layering.** `ceres/*.h` includes only the freestanding headers (`stddef.h`, `stdint.h`); the standard
+  library is built on top of the machine, never the other way round - no `include/*.h` includes a `ceres/` one.
+- **Headers left out.** `complex.h` and `tgmath.h` (Ceres-C has no `_Complex`), `fenv.h` (the machine's `Trap` flag
+  is not a configurable floating-point environment), `stdatomic.h` (no hardware atomics; use the critical sections
+  of `ceres/irq.h`) and `threads.h` (no threads; `ceres/task.h` is cooperative) are not provided.
 
 ## The shell
 

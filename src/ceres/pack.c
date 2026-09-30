@@ -3,6 +3,7 @@
 #include "ceres/lz.h"
 #include "ceres/hash.h"
 #include "ceres/endian.h"
+#include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
 #include "errno.h"
